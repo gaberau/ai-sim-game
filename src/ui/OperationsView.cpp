@@ -1,4 +1,5 @@
 #include "ai_sim/ui/TerminalUI.h"
+#include "ai_sim/ui/ScreenRenderer.h"
 #include "ai_sim/OperationsSystem.h"
 #include "ai_sim/EconomySystem.h"
 #include "ai_sim/AgentSystem.h"
@@ -12,6 +13,7 @@ const char* capabilities[] = {"task_scheduler", "resource_manager", "remote_comp
 } // namespace
 void TerminalUI::draw_operations(int top, int bottom, int width) {
     const int split = std::clamp(width / 3, 24, 40);
+    renderer_->split(top, bottom - 1, split);
     write(top, 1, "OPERATIONS", Heading, true);
     for (int i = 0; i < 5; ++i)
         write(top + 2 + i * 2, 1, std::string(i == operations_selected_ ? "> " : "  ") + labels[i],

@@ -58,6 +58,14 @@ endif()
 
 set(CURSES_NEED_NCURSES TRUE)
 find_package(Curses REQUIRED)
+get_filename_component(AI_SIM_CURSES_LIBRARY_DIR "${CURSES_LIBRARY}" DIRECTORY)
+if(CURSES_LIBRARIES MATCHES "ncursesw")
+    set(AI_SIM_PANEL_NAME panelw)
+else()
+    set(AI_SIM_PANEL_NAME panel)
+endif()
+find_library(AI_SIM_PANEL_LIBRARY NAMES ${AI_SIM_PANEL_NAME}
+    HINTS "${AI_SIM_CURSES_LIBRARY_DIR}" REQUIRED)
 
 add_executable(ai_sim
     src/main.cpp
@@ -65,6 +73,7 @@ add_executable(ai_sim
     src/ui/SettingsView.cpp
     src/ui/ProcessViewConfig.cpp
     src/ui/TerminalUI.cpp
+    src/ui/ScreenRenderer.cpp
     src/ui/ProcessesView.cpp
     src/ui/ActionMenus.cpp
     src/ui/PeopleView.cpp
@@ -89,6 +98,7 @@ target_include_directories(ai_sim PRIVATE ${CURSES_INCLUDE_DIRS})
 
 target_link_libraries(ai_sim PRIVATE
     ai_sim_core
+    ${AI_SIM_PANEL_LIBRARY}
     ${CURSES_LIBRARIES}
 )
 
@@ -101,6 +111,11 @@ endif()
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(ai_sim_renderer_tests tests/ScreenRendererTests.cpp src/ui/ScreenRenderer.cpp)
+    target_include_directories(ai_sim_renderer_tests PRIVATE include ${CURSES_INCLUDE_DIRS})
+    target_compile_features(ai_sim_renderer_tests PRIVATE cxx_std_20)
+    target_link_libraries(ai_sim_renderer_tests PRIVATE ${AI_SIM_PANEL_LIBRARY} ${CURSES_LIBRARIES})
+    add_test(NAME terminal_windows_pads_and_panels COMMAND ai_sim_renderer_tests)
     add_executable(ai_sim_paid_workspace_tests tests/PaidWorkspaceTests.cpp)
     target_link_libraries(ai_sim_paid_workspace_tests PRIVATE ai_sim_core)
     add_test(NAME paid_workspace_and_resources COMMAND ai_sim_paid_workspace_tests ${CMAKE_CURRENT_SOURCE_DIR})

@@ -1,4 +1,5 @@
 #include "ai_sim/ui/TerminalUI.h"
+#include "ai_sim/ui/ScreenRenderer.h"
 
 #include <algorithm>
 #include <cmath>
@@ -142,6 +143,7 @@ void TerminalUI::draw_network(int top, int bottom, int width) {
     const int panel_width = std::min(settings_.network_panel_width, width - 20);
 
     const int divider = width - panel_width - 2;
+    renderer_->split(top, bottom - 1, divider);
     const int map_left = 1;
     const int map_right = divider - 2;
     const int map_top = top + 1;

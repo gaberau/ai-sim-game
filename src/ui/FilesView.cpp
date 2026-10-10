@@ -1,4 +1,5 @@
 #include "ai_sim/ui/TerminalUI.h"
+#include "ai_sim/ui/ScreenRenderer.h"
 
 #include <algorithm>
 #include <cctype>
@@ -234,6 +235,7 @@ void TerminalUI::draw_files(int top, int bottom, int width) {
     write(top + 2, 1, fit(filters, width - 2), Footer);
     const int body = top + 4, divider = std::clamp(width / 3, 26, 42), right = divider + 2;
     const int content_width = std::max(1, width - right - 2);
+    renderer_->split(body, bottom - 1, divider);
     for (int row = body; row < bottom; ++row)
         line_cell(row, divider, '|', Border);
     write(bottom, 1,
@@ -325,9 +327,12 @@ void TerminalUI::draw_files(int top, int bottom, int width) {
         const int readable = std::max(0, bottom - body - 4);
         file_content_offset_ = std::clamp(file_content_offset_, 0,
                                           std::max(0, static_cast<int>(lines.size()) - readable));
-        for (int i = 0; i < readable && file_content_offset_ + i < static_cast<int>(lines.size());
-             ++i)
-            write(body + 4 + i, right, fit(lines[file_content_offset_ + i], content_width));
+        std::vector<ScreenRenderer::TextRow> preview;
+        preview.reserve(lines.size());
+        for (const auto& line : lines)
+            preview.push_back({fit(line, content_width)});
+        renderer_->scroll_text("files", preview, file_content_offset_, body + 4, right,
+                          readable, content_width);
     } catch (const std::exception& error) {
         write(body + 4, right, fit(error.what(), content_width), FileBlocked);
     }

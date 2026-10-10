@@ -1,4 +1,5 @@
 #include "ai_sim/ui/TerminalUI.h"
+#include "ai_sim/ui/ScreenRenderer.h"
 #include "ai_sim/EconomySystem.h"
 #include "ai_sim/UpgradeSystem.h"
 #include "ai_sim/AgentSystem.h"
@@ -264,66 +265,19 @@ std::string TerminalUI::clock_text() const {
 
 void TerminalUI::write(int row, int column, const std::string& value, int color, bool bold,
                        bool dim) const {
-    int height;
-    int width;
-    getmaxyx(stdscr, height, width);
-
-    if (row < 0 || row >= height || column < 0 || column >= width) {
-        return;
-    }
-
-    std::string safe = value;
-
-    for (char& character : safe) {
-        const auto byte = static_cast<unsigned char>(character);
-
-        if (byte < 32 || byte == 127) {
-            character = ' ';
-        }
-    }
-
-    int attributes = A_NORMAL;
-
-    if (colors_enabled_) {
-        attributes |= COLOR_PAIR(color + 1);
-    }
-
-    if (bold)
-        attributes |= A_BOLD;
-    if (dim)
-        attributes |= A_DIM;
-
-    attron(attributes);
-    mvaddnstr(row, column, safe.c_str(), width - column - 1);
-    attroff(attributes);
+    renderer_->write(row, column, value, color, bold, dim);
 }
 
 void TerminalUI::line_cell(int row, int column, char symbol, int color) const {
-    int height, width;
-    getmaxyx(stdscr, height, width);
-    if (row < 0 || row >= height || column < 0 || column >= width)
-        return;
-    const int attributes = colors_enabled_ ? COLOR_PAIR(color + 1) : A_NORMAL;
-    const chtype glyph = symbol == '-'   ? ACS_HLINE
-                         : symbol == '|' ? ACS_VLINE
-                                         : static_cast<unsigned char>(symbol);
-    attron(attributes);
-    mvaddch(row, column, glyph);
-    attroff(attributes);
+    renderer_->cell(row, column, symbol, color);
 }
 
 void TerminalUI::separator(int row) const {
-    int height;
-    int width;
+    int height, width;
     getmaxyx(stdscr, height, width);
-
-    if (row >= 0 && row < height) {
-        const int attributes = colors_enabled_ ? COLOR_PAIR(Border + 1) : A_NORMAL;
-
-        attron(attributes);
-        mvhline(row, 0, ACS_HLINE, width);
-        attroff(attributes);
-    }
+    if (row >= 0 && row < height)
+        for (int column = 0; column < width; ++column)
+            renderer_->cell(row, column, '-', Border);
 }
 
 void TerminalUI::draw_notification(int row, int width) {
@@ -361,12 +315,7 @@ void TerminalUI::add_log(const std::string& message, NoticeKind kind) {
 void TerminalUI::draw() {
     if (!tab_available(selected_tab_))
         selected_tab_ = Tab::Chat;
-    // Keep compatibility repainting without clearing the physical screen each
-    // frame: clearok causes visible flashing while the terminal receives the
-    // replacement frame. redrawwin invalidates cached lines for repainting.
-    if (settings_.full_redraw)
-        redrawwin(stdscr);
-    erase();
+    renderer_->begin(menu_active_ || text_active_, colors_enabled_, settings_.full_redraw);
 
     int height;
     int width;
@@ -378,8 +327,13 @@ void TerminalUI::draw() {
             draw_menu(1, std::max(2, height - 2), width);
         else
             draw_text_dialog(1, std::max(2, height - 2), width);
-        move(0, 0);
-        refresh();
+        if (text_active_)
+            renderer_->cursor(5, 3 + std::min(static_cast<int>(text_value_.size()),
+                                            std::max(0, width - 7)),
+                              settings_.software_cursor, Prompt);
+        else
+            renderer_->cursor(0, 0);
+        renderer_->present();
         return;
     }
     if (!ChatSystem::interface_visible(people_)) {
@@ -389,8 +343,8 @@ void TerminalUI::draw() {
             draw_menu(1, std::max(2, height - 2), width);
         if (text_active_)
             draw_text_dialog(1, std::max(2, height - 2), width);
-        move(0, 0);
-        refresh();
+        renderer_->cursor(0, 0);
+        renderer_->present();
         return;
     }
 
@@ -409,7 +363,7 @@ void TerminalUI::draw() {
                   settings_.binding_label(KeyAction::Quit) + ": exit",
               Footer);
 
-        refresh();
+        renderer_->present();
         return;
     }
 
@@ -562,21 +516,14 @@ void TerminalUI::draw() {
                                settings_.binding_label(KeyAction::Pause) + ": pause";
     write(height - 1, 1, footer, Footer);
 
-    if (editor_active_ && !menu_active_ && !text_active_) {
-        if (settings_.software_cursor && !(email_editor_ && email_original_focused_))
-            mvchgat(editor_cursor_row_, editor_cursor_column_, 1, A_REVERSE,
-                    colors_enabled_ ? static_cast<short>(Prompt + 1) : 0, nullptr);
-        move(editor_cursor_row_, editor_cursor_column_);
-    } else if (text_active_) {
-        const int position = 3 + std::min(static_cast<int>(text_value_.size()), width - 7);
-        if (settings_.software_cursor)
-            mvchgat(content_top + 4, position, 1, A_REVERSE,
-                    colors_enabled_ ? static_cast<short>(Prompt + 1) : 0, nullptr);
-        move(content_top + 4, position);
-    } else
-        move(0, 0);
+    if (editor_active_ && !menu_active_ && !text_active_)
+        renderer_->cursor(editor_cursor_row_, editor_cursor_column_,
+                          settings_.software_cursor && !(email_editor_ && email_original_focused_),
+                          Prompt);
+    else
+        renderer_->cursor(0, 0);
 
-    refresh();
+    renderer_->present();
 }
 
 void TerminalUI::scroll_view(int direction) {
@@ -921,6 +868,12 @@ void TerminalUI::toggle_pane_focus() {
 
 void TerminalUI::run() {
     TerminalSession terminal;
+    ScreenRenderer renderer;
+    renderer_ = &renderer;
+    struct Binding {
+        ScreenRenderer*& pointer;
+        ~Binding() { pointer = nullptr; }
+    } binding{renderer_};
     apply_settings();
 
     using WallClock = std::chrono::steady_clock;
@@ -941,7 +894,7 @@ void TerminalUI::run() {
         draw();
 
         const bool modal_was_active = menu_active_ || text_active_;
-        const int key = getch();
+        const int key = renderer.input(settings_.refresh_milliseconds);
         const auto now = WallClock::now();
 
         const double elapsed = std::chrono::duration<double>(now - previous).count();

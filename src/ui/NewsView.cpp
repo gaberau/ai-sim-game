@@ -1,4 +1,5 @@
 #include "ai_sim/ui/TerminalUI.h"
+#include "ai_sim/ui/ScreenRenderer.h"
 
 #include <ncurses.h>
 #include <algorithm>
@@ -109,6 +110,7 @@ void TerminalUI::select_news(int direction) {
 void TerminalUI::draw_news(int top, int bottom, int width) {
     const auto articles = available_news();
     const int split = width * 2 / 5;
+    renderer_->split(top, bottom - 1, split);
     const int detail_width = std::max(1, width - split - 4);
     for (int row = top; row <= bottom; ++row) {
         line_cell(row, split, '|', Border);

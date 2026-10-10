@@ -26,6 +26,8 @@
 
 namespace ai_sim::ui {
 
+class ScreenRenderer;
+
 enum class Tab {
     Chat,
     Processes,
@@ -54,6 +56,7 @@ class TerminalUI {
     void run();
 
   private:
+    ScreenRenderer* renderer_ = nullptr;
     enum Color {
         Plain = 0,
         Protected = 1,

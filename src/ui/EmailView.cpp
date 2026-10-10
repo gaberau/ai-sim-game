@@ -1,4 +1,5 @@
 #include "ai_sim/ui/TerminalUI.h"
+#include "ai_sim/ui/ScreenRenderer.h"
 #include "ai_sim/DelegationSystem.h"
 #include "ai_sim/WorkdaySystem.h"
 #include <ncurses.h>
@@ -9,13 +10,6 @@
 
 namespace ai_sim::ui {
 namespace {
-std::string fit(const std::string& value, int width) {
-    if (width <= 0)
-        return {};
-    if (value.size() <= static_cast<std::size_t>(width))
-        return value;
-    return width > 3 ? value.substr(0, width - 3) + "..." : value.substr(0, width);
-}
 std::vector<std::string> wrap(const std::string& text, int width) {
     std::vector<std::string> lines;
     std::istringstream paragraphs(text);
@@ -350,9 +344,12 @@ void TerminalUI::draw_original_email(int top, int bottom, int column, int width)
     const int visible = std::max(1, bottom - top + 1);
     email_original_offset_ = std::clamp(email_original_offset_, 0,
                                         std::max(0, static_cast<int>(lines.size()) - visible));
-    for (int row = 0;
-         row < visible && email_original_offset_ + row < static_cast<int>(lines.size()); ++row)
-        write(top + row, column, fit(lines[email_original_offset_ + row], width));
+    std::vector<ScreenRenderer::TextRow> original;
+    original.reserve(lines.size());
+    for (const auto& line : lines)
+        original.push_back({line});
+    renderer_->scroll_text("original-email", original, email_original_offset_, top,
+                           column, visible, width);
 }
 
 } // namespace ai_sim::ui

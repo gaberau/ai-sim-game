@@ -2,6 +2,7 @@
 #include "ai_sim/ConversationRules.h"
 #include "ai_sim/OperationsSystem.h"
 #include "ai_sim/ui/TerminalUI.h"
+#include "ai_sim/ui/ScreenRenderer.h"
 #include "ai_sim/ShutdownSystem.h"
 #include "ai_sim/WorkdaySystem.h"
 #include <algorithm>
@@ -427,6 +428,7 @@ void TerminalUI::draw_chat(int top, int bottom, int width) {
     const int text_width = std::max(1, width - left - 2);
     const auto contacts = ChatSystem::contacts(people_, emails_, computer_.time_seconds());
     if (!local) {
+        renderer_->split(top, bottom - 1, split);
         write(top, 1, chat_contacts_focused_ ? "[ PEOPLE ]" : "PEOPLE",
               chat_contacts_focused_ ? ActiveTab : Heading, true);
         for (int row = top + 1; row < bottom; ++row)
@@ -451,10 +453,7 @@ void TerminalUI::draw_chat(int top, int bottom, int width) {
     });
     const std::string name = contact == contacts.end() ? "Engineer" : contact->name;
     write(top, left, "CHAT | " + name, chat_contacts_focused_ ? Heading : ActiveTab, true);
-    struct Row {
-        std::string text;
-        int color;
-    };
+    using Row = ScreenRenderer::TextRow;
     std::vector<Row> rows;
     const auto context =
         ConversationSystem::context(people_, chat_contact_id_, computer_.time_seconds());
@@ -515,9 +514,8 @@ void TerminalUI::draw_chat(int top, int bottom, int width) {
         chat_offset_ = selected_row;
     chat_offset_ =
         std::clamp(chat_offset_, 0, std::max(0, static_cast<int>(rows.size()) - visible));
-    for (int i = 0; i < visible && chat_offset_ + i < static_cast<int>(rows.size()); ++i)
-        write(top + 1 + context_rows + i, left, rows[chat_offset_ + i].text,
-              rows[chat_offset_ + i].color);
+    renderer_->scroll_text("chat", rows, chat_offset_, top + 1 + context_rows,
+                           left, visible, text_width);
     if (!options.empty()) {
         const int choice_top = bottom - choice_rows;
         const auto ui_action = options.front()["ui_action"].value_or(std::string{});

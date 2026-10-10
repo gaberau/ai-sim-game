@@ -180,3 +180,7 @@ layouts. See [the agent guide](data/agents/README.md) and
 The Modifications tab has a scrollable upgrade list and a detail panel showing
 compute cost, per-upgrade trust and prerequisites, resource use, and estimated
 research time. Up/Down selects upgrades; Enter opens controls for that selection.
+
+The terminal uses ncurses subwindows, bounded scroll pads, and panels for menus
+and dialogs. See [terminal rendering](docs/terminal-ui.md) for ownership and
+composition details.

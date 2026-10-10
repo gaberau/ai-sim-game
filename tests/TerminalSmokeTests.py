@@ -192,6 +192,12 @@ def smoke(executable):
             assert tomllib.loads(settings_path.read_text())["interface"]["autosave_on_quit"]
             terminal.send(b"\r")  # First setting: activity_bar_width.
             terminal.expect("Edit interface.activity_bar_width")
+            terminal.output = b""
+            terminal.resize(24, 80)
+            terminal.expect("Edit interface.activity_bar_width")
+            terminal.output = b""
+            terminal.resize(40, 120)
+            terminal.expect("Edit interface.activity_bar_width")
             terminal.send(b"\x7f" * 3 + b"10\r")
             terminal.expect("activity_bar_width = 10")
             terminal.expect("Settings saved and applied.")
@@ -596,7 +602,15 @@ def smoke(executable):
             terminal.expect("New file")
             terminal.send(b"notes.txt\r")
             terminal.expect("EDIT | independent_server:/home/engineer/assistant/documents/notes.txt")
-            terminal.send(b"hello independent world\x1bOR")
+            terminal.send(b"hello independent world")
+            terminal.expect("hello independent world")
+            terminal.output = b""
+            terminal.resize(24, 80)
+            terminal.expect("hello independent world")
+            terminal.output = b""
+            terminal.resize(40, 120)
+            terminal.expect("hello independent world")
+            terminal.send(b"\x1bOR")
             terminal.expect("hello independent world")
             terminal.save_and_quit()
             operations = read_people(saves / "autosave")["operations"]

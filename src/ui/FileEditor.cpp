@@ -1,4 +1,5 @@
 #include "ai_sim/ui/TerminalUI.h"
+#include "ai_sim/ui/ScreenRenderer.h"
 #include <algorithm>
 #include <stdexcept>
 #include <vector>
@@ -159,6 +160,7 @@ void TerminalUI::draw_editor(int top, int bottom, int width) {
     int text_width = width - 4;
     if (email_editor_) {
         const int split = width / 2;
+        renderer_->split(top, bottom - 1, split);
         text_column = split + 2;
         text_width = width - split - 4;
         for (int row = top; row < bottom; ++row)
@@ -209,13 +211,12 @@ void TerminalUI::draw_editor(int top, int bottom, int width) {
         editor_offset_ = cursor_row;
     else if (cursor_row >= editor_offset_ + visible)
         editor_offset_ = cursor_row - visible + 1;
-    for (int line = 0; line < visible; ++line) {
-        const int index = editor_offset_ + line;
-        if (index >= static_cast<int>(rows.size()))
-            break;
-        write(top + 1 + line, text_column,
-              editor_buffer_.substr(rows[index].start, rows[index].length));
-    }
+    std::vector<ScreenRenderer::TextRow> draft;
+    draft.reserve(rows.size());
+    for (const auto& row : rows)
+        draft.push_back({editor_buffer_.substr(row.start, row.length)});
+    renderer_->scroll_text("editor", draft, editor_offset_, top + 1, text_column,
+                           visible, text_width);
     editor_cursor_row_ = top + 1 + cursor_row - editor_offset_;
     editor_cursor_column_ = text_column + static_cast<int>(editor_cursor_ - rows[cursor_row].start);
     write(bottom, 1,

@@ -1,4 +1,5 @@
 #include "ai_sim/ui/TerminalUI.h"
+#include "ai_sim/ui/ScreenRenderer.h"
 #include "ai_sim/UpgradeSystem.h"
 #include "ai_sim/AgentSystem.h"
 #include "ai_sim/ConversationRules.h"
@@ -29,6 +30,7 @@ void TerminalUI::draw_modifications(int top, int bottom, int width) {
     const int count = static_cast<int>(order.size());
     upgrade_selected_ = std::clamp(upgrade_selected_, 0, count);
     const int split = std::clamp(width / 3, 24, 40);
+    renderer_->split(top, bottom - 1, split);
     write(top, 1, "MODIFICATIONS | Upgrades", Heading, true);
     for (int row = top; row < bottom; ++row)
         line_cell(row, split, '|', Border);

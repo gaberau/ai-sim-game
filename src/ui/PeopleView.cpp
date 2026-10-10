@@ -1,4 +1,5 @@
 #include "ai_sim/ui/TerminalUI.h"
+#include "ai_sim/ui/ScreenRenderer.h"
 #include <algorithm>
 #include <cmath>
 #include <map>
@@ -504,6 +505,8 @@ void TerminalUI::draw_people(int top, int bottom, int width) {
     const int panel = std::min(width - 20, width >= 110 ? settings_.people_wide_panel_width
                                                         : settings_.people_panel_width),
               divider = dossier_layout_ == "map" ? width - 1 : width - panel - 1;
+    if (dossier_layout_ != "map" && dossier_layout_ != "dossier")
+        renderer_->split(top, bottom - 1, divider);
     const int left = 1, right = divider - 2, map_top = top + 2, map_bottom = bottom - 3;
     if (dossier_layout_ != "dossier") {
         write(top, 1, "DOSSIERS | " + std::to_string(known.size()) + " known | " + people_filter_,

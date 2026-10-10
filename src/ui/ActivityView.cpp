@@ -1,12 +1,11 @@
 #include "ai_sim/ui/TerminalUI.h"
+#include "ai_sim/ui/ScreenRenderer.h"
 
 #include <algorithm>
 
 namespace ai_sim::ui {
 
 void TerminalUI::draw_activity(int top, int bottom, int width) {
-    (void)width;
-
     write(top, 1, "ACTIVITY HISTORY", Heading, true);
 
     const int visible_rows = std::max(0, bottom - top - 1);
@@ -16,14 +15,11 @@ void TerminalUI::draw_activity(int top, int bottom, int width) {
 
     const int first = std::max(0, count - visible_rows - activity_offset_);
 
-    for (int row = 0; row < visible_rows; ++row) {
-        const int index = first + row;
-
-        if (index >= count)
-            break;
-
-        write(top + 1 + row, 1, log_[index], Log);
-    }
+    std::vector<ScreenRenderer::TextRow> rows;
+    rows.reserve(log_.size());
+    for (const auto& entry : log_)
+        rows.push_back({entry, Log});
+    renderer_->scroll_text("activity", rows, first, top + 1, 1, visible_rows, width - 2);
 
     write(bottom, 1,
           settings_.binding_label(KeyAction::ScrollUp) + ": older | " +
