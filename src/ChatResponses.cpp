@@ -70,6 +70,7 @@ void ChatResponses::validate(const toml::table& people){
 }
 std::vector<toml::table> ChatResponses::choices(const toml::table& people,const toml::table& messages,const ChatLine& line,double time){
     std::vector<toml::table> result;
+    if(people["chat"]["authored_only"].value_or(false))return result;
     if(ChatSystem::stopped(people) || ChatSystem::waiting(people))return result;
     if(line.id.empty() || line.outgoing || line.seconds>time)return result;
     const auto* catalog=people["chat"]["response_catalog"].as_table();if(!catalog)return result;

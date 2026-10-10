@@ -86,7 +86,7 @@ void TerminalUI::respond_chat(const toml::table& choice) {
         update_people();
     } else ChatSystem::choose(people_,choice["id"].value_or(std::string{}),computer_.time_seconds());
     chat_choice_selected_=0;chat_offset_=0;chat_follow_latest_=true;
-    if(!before && ChatSystem::connected(people_)){paused_=false;add_log("Company chat connected. The first real request will arrive shortly.");}
+    if(!before && ChatSystem::connected(people_)){paused_=false;add_log("Company chat connected.");}
 }
 ChatLine TerminalUI::selected_chat_line() const {
     const auto timeline=ChatSystem::timeline(people_,emails_,chat_contact_id_,computer_.time_seconds());

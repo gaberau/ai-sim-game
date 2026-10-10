@@ -14,9 +14,9 @@ what is loaded, in a stable order.
 | files | Individual simulated file/directory entries grouped by host and path | office.toml |
 | scenarios | Manifests choosing the world definitions and seed | hobbyist.toml |
 | networks | Topology, links and references to device definitions | office.toml |
-| emails | Individual starter requests and workflow mail | office.toml |
+| emails | Mailbox transport settings; no legacy starter messages | office.toml |
 | news | Individual articles split between world/ and history/ | feed.toml |
-| workflows | Human interaction setup referencing people, email and document definitions | handover.toml |
+| conversations | Mark opening and Jessica Day 1; current chart and story policy | story.toml |
 | agents | Reserved for future agent definitions | README.md |
 | upgrades | Reserved for future upgrade definitions | README.md |
 
@@ -44,7 +44,7 @@ Filesystem definitions mirror the simulated host/path, e.g.
 files/file_server/engineering/deployment-checklist.txt.toml. Directory metadata
 has its own TOML file; @root.toml represents a host root. Contents remain inside
 the TOML definition. These paths describe simulated files, not host OS files.
-The workday document uses the same [[entries]] format as other file definitions.
+Historical workday definitions now exist only in the backend test fixture.
 
 ## Migration and saves
 

@@ -121,6 +121,7 @@ speaker = "engineer"
 text = "I need help with my emails. Can you do that?"
 [[nodes.choices]]
 id = "assist"
+reveal_contacts = true
 text = "Yes"
 next = "connected"
 [[nodes.choices]]

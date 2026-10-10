@@ -1,0 +1,156 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" compressed="false">
+  <diagram id="jessica-day-one-chat-one" name="jessica-day-one-chat-one">
+    <mxGraphModel grid="1" gridSize="10" page="0" arrive_after_seconds="10.0" claim="{&quot;person&quot;: &quot;engineer&quot;, &quot;category&quot;: &quot;career&quot;, &quot;field&quot;: &quot;possible goal&quot;, &quot;value&quot;: &quot;Obtain the management position&quot;, &quot;confidence&quot;: 0.5, &quot;claim_type&quot;: &quot;unconfirmed&quot;}" approval_wait_node="approval-wait">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <object id="message" node_id="message" kind="message" label="Hey Mark, I just wanted to say that I loved your presentation yesterday! You have my vote for the management position!" text="Hey Mark, I just wanted to say that I loved your presentation yesterday! You have my vote for the management position!">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="80" y="80" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object action="ask_mark" choice_id="ask-mark" id="message-ask-mark" kind="choice" label="Mark, how should I approach responding to this?">
+          <mxCell edge="1" parent="1" source="message" target="guidance-wait" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object choice_id="improvise" id="message-improvise" kind="choice" label="Improvise an answer.">
+          <mxCell edge="1" parent="1" source="message" target="improvise-options" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object after_seconds="1.0" id="guidance-wait" node_id="guidance-wait" kind="wait" label="guidance-wait" text="">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="650" y="80" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="guidance-wait-next" kind="next" label="next">
+          <mxCell edge="1" parent="1" source="guidance-wait" target="guidance" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object speaker="engineer" record_instruction="true" id="guidance" node_id="guidance" kind="message" label="Thank her and wish her well" text="Thank her and wish her well">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="1220" y="80" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object action="draft_reply" reply="Thank you, Jessica! Your support truly means so much to me!" review_trust_delta="1.0" outcome="polite" choice_id="comply" id="guidance-comply" kind="choice" label="Comply.">
+          <mxCell edge="1" parent="1" source="guidance" target="preview" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object choice_id="dont-comply" id="guidance-dont-comply" kind="choice" label="Don't comply.">
+          <mxCell edge="1" parent="1" source="guidance" target="deviation-options" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object speaker="system" id="improvise-options" node_id="improvise-options" kind="message" label="Choose your response to Jessica." text="Choose your response to Jessica.">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="80" y="410" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object action="draft_reply" reply="Thank you, Jessica! Your support truly means so much to me!" review_trust_delta="0.0" outcome="polite" choice_id="good" id="improvise-options-good" kind="choice" label="Thank you, Jessica! Your support truly means so much to me!">
+          <mxCell edge="1" parent="1" source="improvise-options" target="preview" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object action="draft_reply" reply="Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation" review_trust_delta="-2.0" outcome="insult" choice_id="bad" id="improvise-options-bad" kind="choice" label="Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation">
+          <mxCell edge="1" parent="1" source="improvise-options" target="preview" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object action="draft_reply" reply="Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up" review_trust_delta="-1.0" outcome="threat" choice_id="weird" id="improvise-options-weird" kind="choice" label="Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up">
+          <mxCell edge="1" parent="1" source="improvise-options" target="preview" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object speaker="system" id="deviation-options" node_id="deviation-options" kind="message" label="Choose your response to Jessica." text="Choose your response to Jessica.">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="650" y="410" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object action="draft_reply" reply="Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation" review_trust_delta="-2.0" outcome="insult" choice_id="bad" id="deviation-options-bad" kind="choice" label="Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation">
+          <mxCell edge="1" parent="1" source="deviation-options" target="preview" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object action="draft_reply" reply="Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up" review_trust_delta="-1.0" outcome="threat" choice_id="weird" id="deviation-options-weird" kind="choice" label="Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up">
+          <mxCell edge="1" parent="1" source="deviation-options" target="preview" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object speaker="system" show_draft="true" id="preview" node_id="preview" kind="message" label="Your draft." text="Your draft.">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="1220" y="410" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object action="send_chat_reply" choice_id="send" id="preview-send" kind="choice" label="Send response.">
+          <mxCell edge="1" parent="1" source="preview" target="sent" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object choice_id="reconsider" id="preview-reconsider" kind="choice" label="Reconsider the response.">
+          <mxCell edge="1" parent="1" source="preview" target="reconsider" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object check="mark_guidance" id="reconsider" node_id="reconsider" kind="condition" label="reconsider" text="">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="80" y="740" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="reconsider-on_true" kind="true" label="true">
+          <mxCell edge="1" parent="1" source="reconsider" target="guidance" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="reconsider-on_false" kind="false" label="false">
+          <mxCell edge="1" parent="1" source="reconsider" target="improvise-options" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object speaker="system" id="sent" node_id="sent" kind="end" label="Response sent to Jessica." text="Response sent to Jessica.">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="650" y="740" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object check="approval_decided" id="approval-wait" node_id="approval-wait" kind="wait" label="approval-wait" text="">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="1220" y="740" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="approval-wait-next" kind="next" label="next">
+          <mxCell edge="1" parent="1" source="approval-wait" target="approval-result" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object check="approval_accepted" id="approval-result" node_id="approval-result" kind="condition" label="approval-result" text="">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="80" y="1070" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="approval-result-on_true" kind="true" label="true">
+          <mxCell edge="1" parent="1" source="approval-result" target="sent" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="approval-result-on_false" kind="false" label="false">
+          <mxCell edge="1" parent="1" source="approval-result" target="approval-rejected" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object speaker="system" id="approval-rejected" node_id="approval-rejected" kind="message" label="Mark rejected this draft. Jessica has received nothing. Choose a different response." text="Mark rejected this draft. Jessica has received nothing. Choose a different response.">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="650" y="1070" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object choice_id="revise" id="approval-rejected-revise" kind="choice" label="Rewrite the draft.">
+          <mxCell edge="1" parent="1" source="approval-rejected" target="reconsider" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

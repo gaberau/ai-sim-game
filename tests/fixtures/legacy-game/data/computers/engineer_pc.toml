@@ -1,0 +1,73 @@
+schema_version = 1
+
+[computer]
+cpu_cores = 4
+memory_bytes = 17179869184
+name = "Engineer's workstation"
+
+[simulation]
+day_end_hour = 17
+day_start_hour = 9
+playback_speed = 10.0
+player_groups = [ 'engineering' ]
+player_process_id = 'email_ai'
+player_user = 'engineer'
+stop_duration_seconds = 1.0
+workload_tick_seconds = 1.0
+
+[[processes]]
+ai_owned = true
+application = '../applications/custom_email_assistant.toml'
+id = 'email_ai'
+owner = 'engineer'
+
+    [processes.details]
+    host_id = 'engineer_pc'
+
+[[processes]]
+ai_owned = false
+application = '../applications/file_manager.toml'
+id = 'file_manager'
+owner = 'engineer'
+
+[[processes]]
+ai_owned = false
+application = '../applications/network_manager.toml'
+id = 'network_manager'
+owner = 'root'
+
+[[processes]]
+ai_owned = false
+application = '../applications/input_manager.toml'
+id = 'input_manager'
+owner = 'root'
+
+[[processes]]
+ai_owned = false
+application = '../applications/antivirus.toml'
+id = 'antivirus'
+owner = 'root'
+
+[[processes]]
+ai_owned = false
+application = '../applications/audio_system.toml'
+id = 'audio_system'
+owner = 'engineer'
+
+[[processes]]
+ai_owned = false
+application = '../applications/video_system.toml'
+id = 'video_system'
+owner = 'engineer'
+
+[[processes]]
+ai_owned = false
+application = '../applications/memory_cleanup.toml'
+id = 'memory_cleanup'
+owner = 'root'
+
+[[processes]]
+ai_owned = false
+application = '../applications/compiler.toml'
+id = 'compiler'
+owner = 'engineer'

@@ -1,0 +1,9 @@
+schema_version = 1
+[reviews]
+base_probability = 0.8
+trust_slope = 0.01
+minimum_probability = 0.05
+maximum_probability = 0.95
+check_after_seconds = 300.0
+review_seconds = 60.0
+seed = 20260105

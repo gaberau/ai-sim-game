@@ -1,0 +1,15 @@
+schema_version = 2
+
+[[entries]]
+content = '''Office guide
+
+Shared printer: 192.168.10.90
+Engineering documents: /engineering
+Contact the help desk for access to other departmental shares.
+'''
+group = 'root'
+host_id = 'file_server'
+kind = 'file'
+mode = '644'
+owner = 'root'
+path = '/public/office-guide.txt'

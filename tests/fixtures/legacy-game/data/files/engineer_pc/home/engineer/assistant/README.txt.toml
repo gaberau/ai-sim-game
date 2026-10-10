@@ -1,0 +1,17 @@
+schema_version = 2
+
+[[entries]]
+content = '''Custom Email Assistant v0.1
+
+Purpose: answer routine questions from colleagues.
+Sources: local documents and permitted company files.
+Human approval is still required before sending replies.
+
+There is no email backend yet. This is a simulated document.
+'''
+group = 'engineer'
+host_id = 'engineer_pc'
+kind = 'file'
+mode = '600'
+owner = 'engineer'
+path = '/home/engineer/assistant/README.txt'

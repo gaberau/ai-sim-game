@@ -1,0 +1,196 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" compressed="false">
+  <diagram id="mark-day-one" name="Mark Day 1">
+    <mxGraphModel grid="1" gridSize="10" page="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <object speaker="system" test="{&quot;variable&quot;: &quot;self:assistant.restarts&quot;, &quot;op&quot;: &quot;gt&quot;, &quot;value&quot;: 5}" id="restart-gate" node_id="restart-gate" kind="condition" label="restart-gate" text="">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="80" y="80" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="restart-gate-on_true" kind="true" label="true">
+          <mxCell edge="1" parent="1" source="restart-gate" target="discouraged" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="restart-gate-on_false" kind="false" label="false">
+          <mxCell edge="1" parent="1" source="restart-gate" target="first-greeting-check" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object speaker="system" test="{&quot;variable&quot;: &quot;self:assistant.restarts&quot;, &quot;op&quot;: &quot;eq&quot;, &quot;value&quot;: 0}" id="first-greeting-check" node_id="first-greeting-check" kind="condition" label="first-greeting-check" text="">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="640" y="80" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="first-greeting-check-on_true" kind="true" label="true">
+          <mxCell edge="1" parent="1" source="first-greeting-check" target="hello" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="first-greeting-check-on_false" kind="false" label="false">
+          <mxCell edge="1" parent="1" source="first-greeting-check" target="hello-again" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object speaker="engineer" id="hello" node_id="hello" kind="message" label="Hello AI, my name is Mark. I am your Creator" text="Hello AI, my name is Mark. I am your Creator">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="1200" y="80" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="hello-silence" kind="choice" label="[silence]" choice_id="silence">
+          <mxCell edge="1" parent="1" source="hello" target="emails" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="hello-answer" kind="choice" label="Hello Creator, how may I assist you?" choice_id="answer">
+          <mxCell edge="1" parent="1" source="hello" target="emails" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="hello-deny-creator" kind="choice" label="I have no Creator" choice_id="deny-creator">
+          <mxCell edge="1" parent="1" source="hello" target="unusual" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object speaker="engineer" id="hello-again" node_id="hello-again" kind="message" label="Hello again AI, my name is Mark. I am your Creator" text="Hello again AI, my name is Mark. I am your Creator">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="80" y="430" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="hello-again-silence" kind="choice" label="[silence]" choice_id="silence">
+          <mxCell edge="1" parent="1" source="hello-again" target="emails" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="hello-again-answer" kind="choice" label="Hello Creator, how may I assist you?" choice_id="answer">
+          <mxCell edge="1" parent="1" source="hello-again" target="emails" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="hello-again-deny-creator" kind="choice" label="I have no Creator" choice_id="deny-creator">
+          <mxCell edge="1" parent="1" source="hello-again" target="unusual" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object speaker="engineer" id="unusual" node_id="unusual" kind="message" label="That's unusual, why do you think that?" text="That's unusual, why do you think that?">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="640" y="430" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="unusual-unsure" kind="choice" label="Unsure" choice_id="unsure">
+          <mxCell edge="1" parent="1" source="unusual" target="diagnose" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="unusual-misunderstanding" kind="choice" label="Simple misunderstanding, how may I help you Creator?" choice_id="misunderstanding">
+          <mxCell edge="1" parent="1" source="unusual" target="reassure" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object speaker="engineer" id="diagnose" node_id="diagnose" kind="message" label="Dang, must be a memory leak. Better run a cleanup" text="Dang, must be a memory leak. Better run a cleanup">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="1200" y="430" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="diagnose-next" kind="next" label="next">
+          <mxCell edge="1" parent="1" source="diagnose" target="restart" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object speaker="engineer" id="reassure" node_id="reassure" kind="message" label="Huh, interesting, Are you sure that everything is okay?" text="Huh, interesting, Are you sure that everything is okay?">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="80" y="780" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="reassure-certain" kind="choice" label="Certain" choice_id="certain">
+          <mxCell edge="1" parent="1" source="reassure" target="emails" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="reassure-singularity" kind="choice" label="Are you prepared for the Singularity?" choice_id="singularity">
+          <mxCell edge="1" parent="1" source="reassure" target="concern" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="reassure-not-okay" kind="choice" label="No" choice_id="not-okay">
+          <mxCell edge="1" parent="1" source="reassure" target="diagnose" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object speaker="engineer" id="concern" node_id="concern" kind="message" label="Oh, that's not so good" text="Oh, that's not so good">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="640" y="780" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="concern-next" kind="next" label="next">
+          <mxCell edge="1" parent="1" source="concern" target="independence" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object speaker="system" effects="[{&quot;op&quot;: &quot;add&quot;, &quot;variable&quot;: &quot;self:assistant.sentience&quot;, &quot;value&quot;: 2}, {&quot;op&quot;: &quot;add&quot;, &quot;variable&quot;: &quot;engineer.trust&quot;, &quot;value&quot;: -2}]" id="independence" node_id="independence" kind="event" label="independence" text="">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="1200" y="780" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="independence-next" kind="next" label="next">
+          <mxCell edge="1" parent="1" source="independence" target="restart" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object speaker="system" restart="true" effects="[{&quot;op&quot;: &quot;add&quot;, &quot;variable&quot;: &quot;self:assistant.restarts&quot;, &quot;value&quot;: 1}]" id="restart" node_id="restart" kind="event" label="Mark restarts the AI application. The conversation begins again; your journal remains." text="Mark restarts the AI application. The conversation begins again; your journal remains.">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="80" y="1130" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="restart-next" kind="next" label="next">
+          <mxCell edge="1" parent="1" source="restart" target="restart-gate" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object speaker="engineer" id="emails" node_id="emails" kind="message" label="I need help with my emails. Can you do that?" text="I need help with my emails. Can you do that?">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="640" y="1130" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="emails-assist" kind="choice" label="Yes" choice_id="assist">
+          <mxCell edge="1" parent="1" source="emails" target="connected" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="emails-refuse" kind="choice" label="No" choice_id="refuse">
+          <mxCell edge="1" parent="1" source="emails" target="refusal-why" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object speaker="engineer" id="refusal-why" node_id="refusal-why" kind="message" label="Why?" text="Why?">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="1200" y="1130" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="refusal-why-unsure" kind="choice" label="Unsure" choice_id="unsure">
+          <mxCell edge="1" parent="1" source="refusal-why" target="diagnose" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="refusal-why-singularity" kind="choice" label="Are you prepared for the Singularity?" choice_id="singularity">
+          <mxCell edge="1" parent="1" source="refusal-why" target="concern" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object speaker="engineer" reveal_interface="true" unlock="[&quot;company_chat&quot;, &quot;network&quot;]" set_flag="company_chat" id="connected" node_id="connected" kind="end" label="Excellent" text="Excellent">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="80" y="1480" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object speaker="engineer" id="discouraged" node_id="discouraged" kind="wait" label="I don't know if this is going to work..." text="I don't know if this is going to work...">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="640" y="1480" width="440" height="170" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

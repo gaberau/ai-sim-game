@@ -1,0 +1,15 @@
+schema_version = 1
+
+[[articles]]
+body = '''A regional service provider says a morning outage interrupted several customer portals.
+
+The company has not announced a cause. Customers are asking whether local fallback systems would have kept essential services available.
+
+This timed headline is scripted background; it is not caused by the player's actions.
+'''
+category = 'world'
+date = 'Today, 10:00'
+headline = 'Regional service outage prompts resilience review'
+id = 'morning-outage'
+release_seconds = 3600.0
+source = 'Civic Wire (fictional)'

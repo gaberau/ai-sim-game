@@ -155,7 +155,7 @@
             <mxGeometry as="geometry" x="640" y="1130" width="440" height="170" />
           </mxCell>
         </object>
-        <object id="emails-assist" kind="choice" label="Yes" choice_id="assist">
+        <object id="emails-assist" kind="choice" label="Yes" choice_id="assist" reveal_contacts="true">
           <mxCell edge="1" parent="1" source="emails" target="connected" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
             <mxGeometry as="geometry" relative="1" />
           </mxCell>

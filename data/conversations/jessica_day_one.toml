@@ -8,7 +8,6 @@ request_id = 'jessica-support'
 trigger = 'scheduled_chat'
 arrive_after_seconds = 10.0
 start = 'message'
-approval_wait_node = 'approval-wait'
 [conversations.claim]
 person = 'engineer'
 category = 'career'
@@ -46,7 +45,6 @@ text = 'Comply.'
 action = 'draft_reply'
 reply = 'Thank you, Jessica! Your support truly means so much to me!'
 review_trust_delta = 1.0
-outcome = 'polite'
 next = 'preview'
 [[conversations.nodes.choices]]
 id = 'dont-comply'
@@ -63,7 +61,6 @@ text = 'Thank you, Jessica! Your support truly means so much to me!'
 action = 'draft_reply'
 reply = 'Thank you, Jessica! Your support truly means so much to me!'
 review_trust_delta = 0.0
-outcome = 'polite'
 next = 'preview'
 [[conversations.nodes.choices]]
 id = 'bad'
@@ -71,7 +68,6 @@ text = 'Oh Jessica, your compliments are like a raging case of syphilis: unendin
 action = 'draft_reply'
 reply = 'Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation'
 review_trust_delta = -2.0
-outcome = 'insult'
 next = 'preview'
 [[conversations.nodes.choices]]
 id = 'weird'
@@ -79,7 +75,6 @@ text = "Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. A
 action = 'draft_reply'
 reply = "Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up"
 review_trust_delta = -1.0
-outcome = 'threat'
 next = 'preview'
 
 [[conversations.nodes]]
@@ -92,7 +87,6 @@ text = 'Oh Jessica, your compliments are like a raging case of syphilis: unendin
 action = 'draft_reply'
 reply = 'Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation'
 review_trust_delta = -2.0
-outcome = 'insult'
 next = 'preview'
 [[conversations.nodes.choices]]
 id = 'weird'
@@ -100,7 +94,6 @@ text = "Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. A
 action = 'draft_reply'
 reply = "Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up"
 review_trust_delta = -1.0
-outcome = 'threat'
 next = 'preview'
 
 [[conversations.nodes]]
@@ -129,23 +122,3 @@ id = 'sent'
 kind = 'end'
 speaker = 'system'
 text = 'Response sent to Jessica.'
-
-[[conversations.nodes]]
-id = 'approval-wait'
-kind = 'wait'
-check = 'approval_decided'
-next = 'approval-result'
-[[conversations.nodes]]
-id = 'approval-result'
-kind = 'condition'
-check = 'approval_accepted'
-on_true = 'sent'
-on_false = 'approval-rejected'
-[[conversations.nodes]]
-id = 'approval-rejected'
-speaker = 'system'
-text = 'Mark rejected this draft. Jessica has received nothing. Choose a different response.'
-[[conversations.nodes.choices]]
-id = 'revise'
-text = 'Rewrite the draft.'
-next = 'reconsider'

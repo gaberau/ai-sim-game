@@ -1,0 +1,11 @@
+schema_version = 1
+
+[application]
+cpu_demand_cores = 0.20000000000000001
+memory_bytes = 1610612736
+
+    [application.burst]
+    active_ticks = 7
+    extra_cores = 2.0
+    period_ticks = 20
+    phase_ticks = 3

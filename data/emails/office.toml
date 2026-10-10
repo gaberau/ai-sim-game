@@ -1,10 +1,5 @@
 schema_version = 1
-sources = [
-    'requests/assistant-access.toml',
-    'requests/deployment-checklist.toml',
-    'requests/printer-help.toml',
-    'requests/budget-request.toml'
-]
+emails = []
 
 [mailbox]
 address = 'engineer@firm.example'

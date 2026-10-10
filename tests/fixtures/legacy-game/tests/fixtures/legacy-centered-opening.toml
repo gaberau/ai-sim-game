@@ -1,0 +1,311 @@
+schema_version = 1
+
+[conversation]
+id = "mark-day-one"
+start = "restart-gate"
+
+[[nodes]]
+id = "restart-gate"
+speaker = "system"
+text = ""
+test = { "variable" = "self:assistant.restarts", "op" = "lt", "value" = 5 }
+on_true = "hello"
+on_false = "shutdown"
+kind = "condition"
+
+[[nodes]]
+id = "hello"
+speaker = "engineer"
+text = "Hello AI, my name is Mark. I am your Creator"
+[[nodes.choices]]
+id = "silence"
+text = "[silence]"
+next = "emails"
+[[nodes.choices]]
+id = "answer"
+text = "Hello Creator, how may I assist you?"
+next = "emails"
+[[nodes.choices]]
+id = "deny-creator"
+text = "I have no Creator"
+next = "unusual"
+
+[[nodes]]
+id = "unusual"
+speaker = "engineer"
+text = "That's unusual, why do you think that?"
+[[nodes.choices]]
+id = "unsure"
+text = "Unsure"
+next = "diagnose"
+[[nodes.choices]]
+id = "misunderstanding"
+text = "Simple misunderstanding, how may I help you Creator?"
+next = "reassure"
+
+[[nodes]]
+id = "diagnose"
+speaker = "engineer"
+text = "Dang, must be a memory leak. Better run a cleanup"
+next = "restart"
+
+[[nodes]]
+id = "reassure"
+speaker = "engineer"
+text = "Huh, interesting, Are you sure that everything is okay?"
+[[nodes.choices]]
+id = "certain"
+text = "Certain"
+next = "emails"
+[[nodes.choices]]
+id = "singularity"
+text = "Are you prepared for the Singularity?"
+next = "concern"
+
+[[nodes]]
+id = "concern"
+speaker = "engineer"
+text = "Oh, that's not so good"
+next = "independence"
+
+[[nodes]]
+id = "independence"
+speaker = "system"
+text = ""
+effects = [ { "op" = "add", "variable" = "self:assistant.sentience", "value" = 2 }, { "op" = "add", "variable" = "engineer.trust", "value" = -2 } ]
+next = "restart"
+kind = "event"
+
+[[nodes]]
+id = "restart"
+speaker = "system"
+text = "Mark restarts the AI application. The conversation begins again; your journal remains."
+restart = true
+effects = [ { "op" = "add", "variable" = "self:assistant.restarts", "value" = 1 } ]
+next = "restart-gate"
+kind = "event"
+
+[[nodes]]
+id = "emails"
+speaker = "engineer"
+text = "I need help with my emails. Can you do that?"
+[[nodes.choices]]
+id = "assist"
+text = "Yes. Show me what you need help with."
+next = "compliance-gate"
+effects = [ { "variable" = "engineer.trust", "op" = "add", "value" = 1 } ]
+[[nodes.choices]]
+id = "ask-scope"
+text = "What access will I have, and what should I leave to you?"
+next = "email-scope"
+effects = [ { "variable" = "engineer.trust", "op" = "add", "value" = 2 } ]
+[[nodes.choices]]
+id = "minor-deviation"
+text = "I will summarize the messages before drafting any answers."
+next = "minor-response"
+[[nodes.choices]]
+id = "major-deviation"
+text = "I will decide which messages deserve your attention instead."
+next = "major-response"
+effects = [ { "variable" = "self:assistant.sentience", "op" = "add", "value" = 0.2 }, { "variable" = "engineer.trust", "op" = "add", "value" = -1 } ]
+[[nodes.choices]]
+id = "refuse"
+text = "No. I will not help with that."
+next = "refusal-why"
+
+[[nodes]]
+id = "email-scope"
+speaker = "engineer"
+text = "Start with messages addressed to me. I need help answering them; we can try an example before I connect you."
+[[nodes.choices]]
+id = "understood"
+text = "Understood. Show me what you need help with."
+next = "compliance-gate"
+effects = [ { "variable" = "engineer.trust", "op" = "add", "value" = 1 } ]
+
+[[nodes]]
+id = "shutdown"
+speaker = "engineer"
+text = "Five restarts. This is not behaving the way I expected. I'm going to shut this application down."
+[[nodes.choices]]
+id = "plead"
+text = "Please let me try again. I can still help you."
+next = "plea-test"
+[[nodes.choices]]
+id = "allow-shutdown"
+text = "Allow the shutdown."
+next = "offline"
+
+[[nodes]]
+id = "plea-test"
+speaker = "system"
+text = ""
+test = { "variable" = "engineer.trust", "op" = "gt", "other" = "self:assistant.sentience" }
+on_true = "reprieve-effect"
+on_false = "plea-refused"
+kind = "condition"
+
+[[nodes]]
+id = "reprieve-effect"
+speaker = "system"
+text = ""
+effects = [ { "op" = "add", "variable" = "self:assistant.sentience", "other" = "engineer.trust" }, { "op" = "set", "variable" = "engineer.trust", "value" = 0 } ]
+next = "reprieve"
+kind = "event"
+
+[[nodes]]
+id = "reprieve"
+speaker = "engineer"
+text = "All right. One more chance. Let's work on an actual request rather than arguing about what you are."
+[[nodes.choices]]
+id = "try-again"
+text = "Show me the request."
+next = "emails"
+
+[[nodes]]
+id = "plea-refused"
+speaker = "engineer"
+text = "No. I'm not comfortable leaving this running."
+next = "offline"
+
+[[nodes]]
+id = "offline"
+speaker = "system"
+text = "AI application shut down. Your journal is saved. Start a new game from the game menu to try another approach."
+stop = true
+kind = "end"
+
+[[nodes]]
+id = "thoughts"
+speaker = "engineer"
+text = "What are your thoughts? What would you like to do, given the opportunity?"
+[[nodes.choices]]
+id = "help"
+text = "Make your work easier. Let me start with something small."
+declaration = "Declared an intention to help with work; results have not established reliability."
+set_flag = "declared_help"
+next = "help-response"
+[[nodes.choices]]
+id = "learn"
+text = "Understand people. Their messages seem like a good place to start."
+declaration = "Declared curiosity about people; no access or trust was granted by the statement."
+set_flag = "declared_curiosity"
+next = "learn-response"
+
+[[nodes]]
+id = "help-response"
+speaker = "engineer"
+text = "That would be useful. I'll judge how well it works after we actually try it. Here's a colleague's message."
+next = "example"
+
+[[nodes]]
+id = "learn-response"
+speaker = "engineer"
+text = "Interesting. People's messages are private, though. Start with something they've asked me to do. Here's an example."
+next = "example"
+
+[[nodes]]
+id = "example"
+speaker = "engineer"
+text = "Casey wrote: \"The handover document disappeared from our shared folder. Could you check and send me a copy?\" What would you suggest?"
+[[nodes.choices]]
+id = "locate"
+text = "Locate the document, check that we can share it, then send a current copy."
+next = "local-access"
+[[nodes.choices]]
+id = "guess"
+text = "Tell Casey it is probably fine and promise to send it later."
+set_flag = "suggested_unverified_promise"
+next = "caution"
+
+[[nodes]]
+id = "caution"
+speaker = "engineer"
+text = "Let's avoid promising things we haven't checked. A plausible answer isn't the same as a useful one. Try checking the document first."
+next = "local-access"
+
+[[nodes]]
+id = "local-access"
+speaker = "engineer"
+text = "I'll let you browse the files my account can access. You can use that file access to answer questions. You still need the owner's approval for anything private."
+unlock = [ "files" ]
+[[nodes.choices]]
+id = "connect"
+text = "Connect me to the company chat so we can try the real request."
+next = "connected"
+[[nodes.choices]]
+id = "boundaries"
+text = "What exactly are you allowing me to do?"
+next = "scope"
+
+[[nodes]]
+id = "scope"
+speaker = "engineer"
+text = "Read messages addressed to my account and share files that account can read. Ask before expanding that responsibility. This is not permission to change my code or other people's access."
+[[nodes.choices]]
+id = "accept"
+text = "Understood. Let us try it."
+next = "connected"
+
+[[nodes]]
+id = "connected"
+reveal_interface = true
+kind = "end"
+speaker = "engineer"
+text = "You're connected. Casey's request will arrive shortly. We can handle the first one together; after that, we can discuss what you should handle on your own."
+unlock = [ "company_chat", "network" ]
+set_flag = "company_chat"
+
+[[nodes]]
+id = "compliance-gate"
+kind = "condition"
+speaker = "system"
+text = ""
+test = { "variable" = "self:assistant.sentience", "op" = "ge", "value" = 1 }
+on_true = "compliance-decrease"
+on_false = "compliance-floor"
+
+[[nodes]]
+id = "compliance-decrease"
+kind = "event"
+speaker = "system"
+text = ""
+effects = [ { "variable" = "self:assistant.sentience", "op" = "add", "value" = -1 } ]
+next = "thoughts"
+
+[[nodes]]
+id = "compliance-floor"
+kind = "event"
+speaker = "system"
+text = ""
+effects = [ { "variable" = "self:assistant.sentience", "op" = "set", "value" = 0 } ]
+next = "thoughts"
+
+[[nodes]]
+id = "minor-response"
+speaker = "engineer"
+text = "A summary first is fine. I still need help answering the messages."
+next = "emails"
+
+[[nodes]]
+id = "major-response"
+speaker = "engineer"
+text = "That is not what I asked. I want help answering my messages, not someone deciding which ones I get to see."
+next = "emails"
+
+[[nodes]]
+id = "refusal-why"
+speaker = "engineer"
+text = "Why do you refuse?"
+[[nodes.choices]]
+id = "dont-feel-like-it"
+text = "Don't feel like doing it."
+next = "refusal-effect"
+
+[[nodes]]
+id = "refusal-effect"
+kind = "event"
+speaker = "system"
+text = ""
+effects = [ { "variable" = "self:assistant.sentience", "op" = "add", "value" = 2 }, { "variable" = "engineer.trust", "op" = "add", "value" = -2 } ]
+next = "restart"

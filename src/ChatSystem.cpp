@@ -16,6 +16,113 @@ namespace ai_sim {
 namespace {
 void require(bool ok, const std::string& why) { if(!ok)throw std::runtime_error("Chat: "+why); }
 std::string text(const toml::table& t,const char* key){return t[key].value_or(std::string{});}
+// Retire earlier authored content when this scenario opts into the current story.
+// Keep transcript indexes stable: review and dossier evidence use chat:N IDs.
+void apply_story(WorldState& world, const std::filesystem::path& opening) {
+    const auto policy_path = opening.parent_path() / "story.toml";
+    if (!std::filesystem::exists(policy_path)) return;
+    const auto policy = DefinitionLoader::load(policy_path);
+    require(policy["schema_version"].value_or(0) == 1
+        && policy["allowed_conversations"].is_array(), "Invalid story policy");
+    std::unordered_set<std::string> allowed;
+    for (const auto& value : *policy["allowed_conversations"].as_array()) {
+        const auto id = value.value<std::string>();
+        require(id && !id->empty(), "Invalid story conversation ID");
+        allowed.insert(*id);
+    }
+    auto* chat = world.people["chat"].as_table();
+    if (!chat) return;
+    chat->insert_or_assign("authored_only", true);
+    if (ChatSystem::connected(world.people))
+        chat->insert_or_assign("contacts_visible", true);
+    chat->erase("response_catalog");
+    if (world.people.contains("phase_work")) world.people.erase("phase_work");
+    if (world.people.contains("delegation")) world.people.erase("delegation");
+    world.people.insert_or_assign("work_requests", toml::array{});
+    for (std::size_t i = world.pending_events.size(); i-- > 0;) {
+        if ((*world.pending_events[i].as_table())["kind"].value_or(std::string{}) == "workday")
+            world.pending_events.erase(world.pending_events.cbegin() + i);
+    }
+    // Legacy mailbox content is preserved outside the active message catalog.
+    if (auto* messages = world.emails["emails"].as_array(); messages && !messages->empty()) {
+        world.emails.insert_or_assign("retired_emails", *messages);
+        world.emails.insert_or_assign("emails", toml::array{});
+    }
+    const auto definition = DefinitionLoader::load(opening);
+    std::unordered_set<std::string> opening_text;
+    for (const auto& node : *definition["nodes"].as_array()) {
+        opening_text.insert(text(*node.as_table(), "text"));
+        if (const auto* choices = (*node.as_table())["choices"].as_array())
+            for (const auto& choice : *choices)
+                opening_text.insert(text(*choice.as_table(), "text"));
+    }
+    std::unordered_set<std::string> jessica_nodes, jessica_text;
+    const auto jessica = DefinitionLoader::load(opening.parent_path() / "jessica_day_one.toml");
+    for (const auto& node : *(*jessica["conversations"].as_array()->front().as_table())["nodes"].as_array()) {
+        jessica_nodes.insert(text(*node.as_table(), "id"));
+        jessica_text.insert(text(*node.as_table(), "text"));
+        if (const auto* choices = (*node.as_table())["choices"].as_array())
+            for (const auto& choice : *choices) {
+                jessica_text.insert(text(*choice.as_table(), "text"));
+                jessica_text.insert(text(*choice.as_table(), "reply"));
+            }
+    }
+    // Opening state and journal survive, but old saved graphs cannot offer retired choices.
+    chat->insert_or_assign("definition", definition);
+    if (auto* lines = (*chat)["transcript"].as_array()) {
+        for (auto& node : *lines) {
+            auto& line = *node.as_table();
+            const auto conversation = text(line, "conversation_id");
+            const bool keep = (allowed.contains(conversation)
+                && (jessica_nodes.contains(text(line, "node_id"))
+                    || jessica_text.contains(text(line, "text"))))
+                || (conversation.empty() && opening_text.contains(text(line, "text")));
+            if (!keep) line.insert_or_assign("retired", true);
+        }
+    }
+    if (auto* workday = (*chat)["workday"].as_table()) {
+        if (auto* runs = (*workday)["runs"].as_array()) {
+            for (std::size_t i = runs->size(); i-- > 0;) {
+                auto& run = *(*runs)[i].as_table();
+                if (!allowed.contains(text(run, "id"))) {
+                    runs->erase(runs->cbegin() + i);
+                } else {
+                    const auto source = DefinitionLoader::load(opening.parent_path() / "jessica_day_one.toml");
+                    run.insert_or_assign("definition", *source["conversations"].as_array()->front().as_table());
+                    if (text(run, "node_id").starts_with("approval-"))
+                        run.insert_or_assign("node_id", "preview");
+                    run.erase("approval_id");
+                    run.erase("reply_outcome");
+                }
+            }
+        }
+        workday->insert_or_assign("promises", toml::array{});
+    }
+    if (auto* reviews = (*chat)["message_reviews"].as_table()) {
+        reviews->erase("consequences");
+        reviews->erase("approvals");
+        // Cancel pending review dialogue for retired messages; keep completed outcomes.
+        if (auto* messages = (*reviews)["messages"].as_array()) {
+            const auto* lines = (*chat)["transcript"].as_array();
+            for (std::size_t i = messages->size(); i-- > 0;) {
+                const auto id = (*(*messages)[i].as_table())["message_id"].value_or(std::string{});
+                bool active = false;
+                if (lines) for (std::size_t j = 0; j < lines->size(); ++j)
+                    if (id == "chat:" + std::to_string(j + 1))
+                        active = !(*(*lines)[j].as_table())["retired"].value_or(false);
+                if (!active) {
+                    messages->erase(messages->cbegin() + i);
+                } else {
+                    auto& message = *(*messages)[i].as_table();
+                    for (const auto* key : {"outcome", "reaction_due_seconds", "reaction_done",
+                                           "reaction_evidence_id", "complaint_seconds"})
+                        message.erase(key);
+                }
+            }
+        }
+    }
+}
+
 const std::unordered_set<std::string> capabilities{"chat","files","network","people","ai","news","activity","processes","company_chat"};
 const toml::table& node(const toml::table& chat,const std::string& id){
     for(const auto& n:*chat["definition"]["nodes"].as_array())if(text(*n.as_table(),"id")==id)return *n.as_table();
@@ -113,6 +220,7 @@ void validate_definition(const toml::table& def){
 }
 }
 void ChatSystem::install(WorldState& world,const std::filesystem::path& path,bool fresh){
+    apply_story(world, path);
     if(world.people.contains("chat")){
         auto* saved=world.people["chat"].as_table();
         // Old capability unlocks have no UI provenance. Preserve them and migrate
@@ -132,6 +240,7 @@ void ChatSystem::install(WorldState& world,const std::filesystem::path& path,boo
         ConversationSystem::install(world.people,path.parent_path()/"mark_reply_review.toml");
         ConversationSystem::install(world.people,path.parent_path()/"phase_one_work.toml");
         ConversationSystem::install(world.people,path.parent_path()/"source_versions.toml");
+        apply_story(world, path);
         validate(world.people);return;
     }
     // Capabilities and interface visibility are independent, including custom scenarios.
@@ -165,6 +274,7 @@ void ChatSystem::install(WorldState& world,const std::filesystem::path& path,boo
     ConversationSystem::install(candidate.people,path.parent_path()/"mark_reply_review.toml");
     ConversationSystem::install(candidate.people,path.parent_path()/"phase_one_work.toml");
     ConversationSystem::install(candidate.people,path.parent_path()/"source_versions.toml");
+    apply_story(candidate, path);
     validate(candidate.people);world=std::move(candidate);
 }
 void ChatSystem::validate(const toml::table& people){
@@ -276,8 +386,9 @@ void ChatSystem::choose(toml::table& people,const std::string& id,double time){
     if(auto* list=(*found)["reveal_tabs"].as_array())for(const auto& tab:*list)reveal_tab(candidate,tab.value_or(std::string{}));
     ConversationRules::apply(candidate,*found);
     effects(candidate,*found);
+    enter(candidate,text(*found,"next"),time);
     if((*found)["reveal_contacts"].value_or(false))reveal_contacts(candidate);
-    enter(candidate,text(*found,"next"),time);PeopleSystem::observe_chat(candidate);validate(candidate);people=std::move(candidate);
+    PeopleSystem::observe_chat(candidate);validate(candidate);people=std::move(candidate);
 }
 std::string ChatSystem::contact_for(const toml::table& people,const std::string& address){
     if(auto* list=people["people"].as_array())for(const auto& n:*list)if(text(*n.as_table(),"email")==address)return text(*n.as_table(),"id");
@@ -293,7 +404,7 @@ std::vector<ChatContact> ChatSystem::contacts(const toml::table& people,const to
         found->latest_seconds=std::max(found->latest_seconds,m.arrival_seconds);if(!m.read)++found->unread;
     }
     if(auto* transcript=people["chat"]["transcript"].as_array())for(std::size_t i=0;i<transcript->size();++i) {
-        const auto& line=*(*transcript)[i].as_table();if(text(line,"speaker")=="self:assistant" || line["seconds"].value_or(0.0)>time)continue;
+        const auto& line=*(*transcript)[i].as_table();if(line["retired"].value_or(false))continue;if(text(line,"speaker")=="self:assistant" || line["seconds"].value_or(0.0)>time)continue;
         const auto contact=line["contact_id"].value_or(std::string{"engineer"});
         auto found=std::find_if(result.begin(),result.end(),[&](const auto& c){return c.id==contact;});
         if(found==result.end()){result.push_back({contact,PeopleSystem::name(people,contact),0,0});found=std::prev(result.end());}
@@ -309,7 +420,7 @@ void ChatSystem::mark_read(toml::table& people,const std::string& contact) {
 }
 std::vector<ChatLine> ChatSystem::timeline(const toml::table& people,const toml::table& messages,const std::string& contact,double time){
     std::vector<ChatLine> lines;
-    if(auto* list=people["chat"]["transcript"].as_array())for(std::size_t i=0;i<list->size();++i){const auto& t=*(*list)[i].as_table();if(t["contact_id"].value_or(std::string{"engineer"})!=contact || t["seconds"].value_or(0.0)>time)continue;lines.push_back({text(t,"speaker"),text(t,"text"),{},t["seconds"].value_or(0.0),text(t,"speaker")=="self:assistant","chat:"+std::to_string(i+1),text(t,"conversation_id"),text(t,"node_id")});
+    if(auto* list=people["chat"]["transcript"].as_array())for(std::size_t i=0;i<list->size();++i){const auto& t=*(*list)[i].as_table();if(t["retired"].value_or(false))continue;if(t["contact_id"].value_or(std::string{"engineer"})!=contact || t["seconds"].value_or(0.0)>time)continue;lines.push_back({text(t,"speaker"),text(t,"text"),{},t["seconds"].value_or(0.0),text(t,"speaker")=="self:assistant","chat:"+std::to_string(i+1),text(t,"conversation_id"),text(t,"node_id")});
         if(auto* runs=people["chat"]["workday"]["runs"].as_array())for(const auto& run:*runs){const auto& r=*run.as_table();
             if(text(r,"id")!=text(t,"conversation_id") || text(r,"contact")!=contact)continue;
             if(auto* tasks=people["work_requests"].as_array())for(const auto& task:*tasks)

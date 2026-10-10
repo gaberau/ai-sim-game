@@ -1,0 +1,22 @@
+schema_version = 1
+
+[ai_character]
+id = 'self:assistant'
+name = 'Assistant'
+
+[ai_character.state_definitions.sentience]
+initial = 0
+min = 0
+max = 100
+
+[ai_character.state_definitions.autonomy]
+initial = 0
+min = 0
+max = 100
+
+[ai_character.state_definitions.restarts]
+initial = 0
+min = 0
+max = 1000000
+integer = true
+

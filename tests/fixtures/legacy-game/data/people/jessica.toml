@@ -1,0 +1,10 @@
+schema_version = 1
+[[profiles]]
+id = 'jessica'
+name = 'Jessica'
+email = 'jessica@firm.example'
+user = 'jessica'
+groups = ['engineering']
+response_seconds = 60.0
+busy_until_seconds = 0.0
+role = 'Colleague'

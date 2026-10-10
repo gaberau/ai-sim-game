@@ -10,11 +10,31 @@ import urllib.parse
 import xml.etree.ElementTree as ET
 import zlib
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / 'tools'))
+PROJECT = Path(__file__).resolve().parents[1]
+ROOT = PROJECT / 'tests/fixtures/legacy-game'
+sys.path.insert(0, str(PROJECT / 'tools'))
 import drawio_to_conversation as converter
 
 class DrawioTests(unittest.TestCase):
+    def test_current_story_graphs(self):
+        folder = PROJECT / 'data/conversations'
+        opening = tomllib.loads((folder / 'opening.toml').read_text())
+        converted = converter.convert(folder / 'opening.drawio', 'mark-day-one', 'restart-gate')
+        for node in converted["nodes"]:
+            if node["kind"] == "message":
+                node.pop("kind")
+        self.assertEqual(opening, converted)
+        source = tomllib.loads((folder / 'jessica_day_one.toml').read_text())['conversations'][0]
+        converted = converter.convert(folder / 'jessica_day_one.drawio', source['id'],
+            source['start'], source['contact'], None, source['contact'], source['request_id'],
+            source['trigger'], False, source['contact_name'])['conversations'][0]
+        converted.pop('cancel_when_resolved')
+        for original, node in zip(source['nodes'], converted['nodes']):
+            for key in ('speaker', 'text', 'kind'):
+                if key not in original:
+                    node.pop(key, None)
+        self.assertEqual(source, converted)
+
     def test_jessica_round_trip(self):
         source=tomllib.loads((ROOT/'data/conversations/jessica_day_one.toml').read_text())['conversations'][0]
         result=converter.convert(ROOT/'data/conversations/jessica_day_one.drawio',source['id'],source['start'],source['contact'],None,source['contact'],source['request_id'],source['trigger'],False,source['contact_name'])['conversations'][0]
@@ -132,7 +152,7 @@ class DrawioTests(unittest.TestCase):
     def test_append_preserves_catalog_and_rejects_duplicates(self):
         with tempfile.TemporaryDirectory() as folder:
             output=Path(folder)/'catalog.toml'
-            base=[sys.executable,str(ROOT/'tools/drawio_to_conversation.py'),str(ROOT/'data/conversations/first_workday.drawio'),str(output),'--request','missing-document']
+            base=[sys.executable,str(PROJECT/'tools/drawio_to_conversation.py'),str(ROOT/'data/conversations/first_workday.drawio'),str(output),'--request','missing-document']
             subprocess.run(base+['--page','casey-first-document','--id','casey-first-document','--start','approach','--contact','casey','--cancel-when-resolved'],check=True,capture_output=True)
             append=base+['--page','engineer-first-responsibility','--id','engineer-first-responsibility','--start','offer','--contact','engineer','--trigger','verified_delivery','--append']
             subprocess.run(append,check=True,capture_output=True)

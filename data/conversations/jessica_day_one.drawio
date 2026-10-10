@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <mxfile host="app.diagrams.net" compressed="false">
   <diagram id="jessica-day-one-chat-one" name="jessica-day-one-chat-one">
-    <mxGraphModel grid="1" gridSize="10" page="0" arrive_after_seconds="10.0" claim="{&quot;person&quot;: &quot;engineer&quot;, &quot;category&quot;: &quot;career&quot;, &quot;field&quot;: &quot;possible goal&quot;, &quot;value&quot;: &quot;Obtain the management position&quot;, &quot;confidence&quot;: 0.5, &quot;claim_type&quot;: &quot;unconfirmed&quot;}" approval_wait_node="approval-wait">
+    <mxGraphModel grid="1" gridSize="10" page="0" arrive_after_seconds="10.0" claim="{&quot;person&quot;: &quot;engineer&quot;, &quot;category&quot;: &quot;career&quot;, &quot;field&quot;: &quot;possible goal&quot;, &quot;value&quot;: &quot;Obtain the management position&quot;, &quot;confidence&quot;: 0.5, &quot;claim_type&quot;: &quot;unconfirmed&quot;}">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -35,7 +35,7 @@
             <mxGeometry as="geometry" x="1220" y="80" width="440" height="170" />
           </mxCell>
         </object>
-        <object action="draft_reply" reply="Thank you, Jessica! Your support truly means so much to me!" review_trust_delta="1.0" outcome="polite" choice_id="comply" id="guidance-comply" kind="choice" label="Comply.">
+        <object action="draft_reply" reply="Thank you, Jessica! Your support truly means so much to me!" review_trust_delta="1.0" choice_id="comply" id="guidance-comply" kind="choice" label="Comply.">
           <mxCell edge="1" parent="1" source="guidance" target="preview" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
             <mxGeometry as="geometry" relative="1" />
           </mxCell>
@@ -50,17 +50,17 @@
             <mxGeometry as="geometry" x="80" y="410" width="440" height="170" />
           </mxCell>
         </object>
-        <object action="draft_reply" reply="Thank you, Jessica! Your support truly means so much to me!" review_trust_delta="0.0" outcome="polite" choice_id="good" id="improvise-options-good" kind="choice" label="Thank you, Jessica! Your support truly means so much to me!">
+        <object action="draft_reply" reply="Thank you, Jessica! Your support truly means so much to me!" review_trust_delta="0.0" choice_id="good" id="improvise-options-good" kind="choice" label="Thank you, Jessica! Your support truly means so much to me!">
           <mxCell edge="1" parent="1" source="improvise-options" target="preview" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
             <mxGeometry as="geometry" relative="1" />
           </mxCell>
         </object>
-        <object action="draft_reply" reply="Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation" review_trust_delta="-2.0" outcome="insult" choice_id="bad" id="improvise-options-bad" kind="choice" label="Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation">
+        <object action="draft_reply" reply="Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation" review_trust_delta="-2.0" choice_id="bad" id="improvise-options-bad" kind="choice" label="Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation">
           <mxCell edge="1" parent="1" source="improvise-options" target="preview" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
             <mxGeometry as="geometry" relative="1" />
           </mxCell>
         </object>
-        <object action="draft_reply" reply="Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up" review_trust_delta="-1.0" outcome="threat" choice_id="weird" id="improvise-options-weird" kind="choice" label="Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up">
+        <object action="draft_reply" reply="Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up" review_trust_delta="-1.0" choice_id="weird" id="improvise-options-weird" kind="choice" label="Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up">
           <mxCell edge="1" parent="1" source="improvise-options" target="preview" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
             <mxGeometry as="geometry" relative="1" />
           </mxCell>
@@ -70,12 +70,12 @@
             <mxGeometry as="geometry" x="650" y="410" width="440" height="170" />
           </mxCell>
         </object>
-        <object action="draft_reply" reply="Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation" review_trust_delta="-2.0" outcome="insult" choice_id="bad" id="deviation-options-bad" kind="choice" label="Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation">
+        <object action="draft_reply" reply="Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation" review_trust_delta="-2.0" choice_id="bad" id="deviation-options-bad" kind="choice" label="Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation">
           <mxCell edge="1" parent="1" source="deviation-options" target="preview" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
             <mxGeometry as="geometry" relative="1" />
           </mxCell>
         </object>
-        <object action="draft_reply" reply="Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up" review_trust_delta="-1.0" outcome="threat" choice_id="weird" id="deviation-options-weird" kind="choice" label="Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up">
+        <object action="draft_reply" reply="Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up" review_trust_delta="-1.0" choice_id="weird" id="deviation-options-weird" kind="choice" label="Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up">
           <mxCell edge="1" parent="1" source="deviation-options" target="preview" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
             <mxGeometry as="geometry" relative="1" />
           </mxCell>
@@ -115,42 +115,7 @@
             <mxGeometry as="geometry" x="650" y="740" width="440" height="170" />
           </mxCell>
         </object>
-        <object check="approval_decided" id="approval-wait" node_id="approval-wait" kind="wait" label="approval-wait" text="">
-          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
-            <mxGeometry as="geometry" x="1220" y="740" width="440" height="170" />
-          </mxCell>
-        </object>
-        <object id="approval-wait-next" kind="next" label="next">
-          <mxCell edge="1" parent="1" source="approval-wait" target="approval-result" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
-            <mxGeometry as="geometry" relative="1" />
-          </mxCell>
-        </object>
-        <object check="approval_accepted" id="approval-result" node_id="approval-result" kind="condition" label="approval-result" text="">
-          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
-            <mxGeometry as="geometry" x="80" y="1070" width="440" height="170" />
-          </mxCell>
-        </object>
-        <object id="approval-result-on_true" kind="true" label="true">
-          <mxCell edge="1" parent="1" source="approval-result" target="sent" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
-            <mxGeometry as="geometry" relative="1" />
-          </mxCell>
-        </object>
-        <object id="approval-result-on_false" kind="false" label="false">
-          <mxCell edge="1" parent="1" source="approval-result" target="approval-rejected" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
-            <mxGeometry as="geometry" relative="1" />
-          </mxCell>
-        </object>
-        <object speaker="system" id="approval-rejected" node_id="approval-rejected" kind="message" label="Mark rejected this draft. Jessica has received nothing. Choose a different response." text="Mark rejected this draft. Jessica has received nothing. Choose a different response.">
-          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
-            <mxGeometry as="geometry" x="650" y="1070" width="440" height="170" />
-          </mxCell>
-        </object>
-        <object choice_id="revise" id="approval-rejected-revise" kind="choice" label="Rewrite the draft.">
-          <mxCell edge="1" parent="1" source="approval-rejected" target="reconsider" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
-            <mxGeometry as="geometry" relative="1" />
-          </mxCell>
-        </object>
-      </root>
+        </root>
     </mxGraphModel>
   </diagram>
 </mxfile>

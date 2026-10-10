@@ -1,0 +1,24 @@
+schema_version = 1
+[[profiles]]
+id = 'engineering_owner'
+values = ['accountability', 'privacy']
+[profiles.employment]
+employer = 'Example Technology'
+position = 'Engineering document administrator'
+approval_powers = ['Engineering document group access']
+[profiles.ai_attitudes]
+familiarity = 0.5
+understanding = 0.6
+email_trust = 0.5
+delegation_preference = 0.3
+privacy_concern = 0.85
+oversight_preference = 0.8
+boundaries = ['Apply existing access policy; trust does not override filesystem permissions']
+[[profiles.motivations]]
+id = 'security'
+importance = 0.9
+satisfaction = 0.6
+urgency = 0.0
+desired_outcome = 'Maintain accountable document access'
+target = 'work_requests'
+boundaries = ['Never grant access outside my authority']

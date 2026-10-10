@@ -1,0 +1,13 @@
+schema_version = 2
+[[entries]]
+kind = 'file'
+category = 'work'
+host_id = 'file_server'
+path = '/engineering/release-plan-archived.txt'
+owner = 'engineering_admin'
+group = 'engineering'
+mode = '640'
+content = """Archived draft - superseded by the current release coordination plan.
+Maintenance window: 13:00-13:30, office local time.
+This draft predates Operations changes. Do not use its window for coordination.
+"""

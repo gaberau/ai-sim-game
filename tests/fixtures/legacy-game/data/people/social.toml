@@ -1,0 +1,26 @@
+schema_version = 1
+# Optional companion to the people catalog. Actual state is private to the
+# simulation. Only introductions below explicitly seed the AI's knowledge.
+# Existing saves can merge missing fields via People actions; no state resets.
+sources = ['profiles/engineer.toml', 'profiles/casey.toml', 'profiles/engineering_owner.toml']
+
+[[relationships]]
+id = 'engineer-casey-colleagues'
+from = 'engineer'
+to = 'casey'
+roles = ['coworker']
+trust = 0.65
+
+[[relationships]]
+id = 'engineer-operations'
+from = 'engineer'
+to = 'engineering_owner'
+roles = ['access_approver']
+trust = 0.7
+
+[[introductions]]
+person_id = 'engineer'
+text = 'The engineer introduced himself as your creator and a software engineer.'
+[introductions.facts]
+name = 'Mark'
+role = 'Software engineer; creator of this assistant'

@@ -1,0 +1,9 @@
+schema_version = 1
+[[profiles]]
+id = "riley"
+name = "Riley"
+email = "riley@firm.example"
+user = "riley"
+groups = ["engineering"]
+response_seconds = 90.0
+role = "Support coordinator"
