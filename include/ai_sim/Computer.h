@@ -136,6 +136,8 @@ class Computer {
         return start_date_;
     }
 
+    void set_playback_speed(double speed);
+
     double playback_speed() const {
         return playback_speed_;
     }
@@ -157,7 +159,7 @@ class Computer {
     int day_start_hour_ = 9;
     int day_end_hour_ = 17;
 
-    double playback_speed_ = 10.0;
+    double playback_speed_ = 5.0;
     double workload_tick_seconds_ = 1.0;
     std::uint64_t workload_tick_ = 0;
 

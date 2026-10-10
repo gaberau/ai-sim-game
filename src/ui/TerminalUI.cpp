@@ -113,6 +113,8 @@ void TerminalUI::restore_world(WorldState world) {
         world.network.import_missing(Network::load(definitions_.network));
     InfrastructureSystem::install(world.people, definitions_.infrastructure);
     InfrastructureSystem::validate(world.people, world.network);
+    // Playback is a current presentation preference, including when resuming older saves.
+    world.computer.set_playback_speed(Computer::load(definitions_.computer).playback_speed());
     computer_ = std::move(world.computer);
     network_ = std::move(world.network);
     file_system_ = std::move(world.files);
@@ -138,6 +140,7 @@ void TerminalUI::restore_world(WorldState world) {
     dossier_filter_ = "all";
     agent_selected_ = 0;
     agent_reveal_ = false;
+    upgrade_selected_ = 0;
     people_details_focused_ = dossier_layout_ == "dossier";
     people_reveal_section_ = true;
     people_detail_offset_ = people_section_selected_ = 0;
@@ -409,11 +412,11 @@ void TerminalUI::draw() {
     const std::string state = computer_.day_finished()       ? "WORKDAY ENDED"
                               : menu_active_ || text_active_ ? "MENU"
                               : paused_                      ? "PAUSED"
-                                                             : "RUNNING";
+                                                             : "";
 
     // Persistent workday clock.
     const std::string clock =
-        clock_text() + " | " + state + " | " + number(computer_.playback_speed(), 1) + "x" +
+        clock_text() + (state.empty() ? "" : " | " + state) +
         (computer_.day_index() ? " | D" + std::to_string(computer_.day_index() + 1) : "");
     write(0, 1, clock, Clock, true);
     if (news_ticker_enabled_ && tab_available(Tab::News)) {
@@ -872,12 +875,6 @@ void TerminalUI::update_people() {
             break;
         case SimulationEvent::JessicaDiscovered:
             add_log("Jessica sent a message.");
-            if (selected_tab_ == Tab::Chat && chat_contact_id_ == "engineer" &&
-                chat_follow_latest_ && !menu_active_ && !text_active_) {
-                chat_contact_id_ = "jessica";
-                chat_choice_selected_ = chat_offset_ = 0;
-                chat_contacts_focused_ = false;
-            }
             break;
         }
     }
@@ -955,7 +952,9 @@ void TerminalUI::run() {
                 } else if (settings_.bound(KeyAction::FocusLeft, key) ||
                            settings_.bound(KeyAction::FocusRight, key)) {
                     const bool right = settings_.bound(KeyAction::FocusRight, key);
-                    if (selected_tab_ == Tab::People)
+                    if (selected_tab_ == Tab::Chat)
+                        chat_contacts_focused_ = ChatSystem::contacts_visible(people_) && !right;
+                    else if (selected_tab_ == Tab::People)
                         people_details_focused_ = right;
                     else if (selected_tab_ == Tab::Network)
                         network_details_focused_ = right;
@@ -1016,6 +1015,14 @@ void TerminalUI::run() {
                            navigation_bound(KeyAction::ScrollRight, key)) {
                     if (!people_details_focused_)
                         people_pan_x_ += settings_.scroll_step / people_zoom_;
+                } else if (selected_tab_ == Tab::Modifications &&
+                           navigation_bound(KeyAction::SelectPrevious, key)) {
+                    upgrade_selected_ = std::max(0, upgrade_selected_ - 1);
+                } else if (selected_tab_ == Tab::Modifications &&
+                           navigation_bound(KeyAction::SelectNext, key)) {
+                    const auto* items = people_["upgrades"]["items"].as_array();
+                    upgrade_selected_ = std::min(items ? static_cast<int>(items->size()) : 0,
+                                                 upgrade_selected_ + 1);
                 } else if ((selected_tab_ == Tab::AI || selected_tab_ == Tab::Agents ||
                             selected_tab_ == Tab::Phone || selected_tab_ == Tab::Money ||
                             selected_tab_ == Tab::Modifications) &&

@@ -6,6 +6,10 @@
 
 namespace ai_sim::ui {
 void TerminalUI::draw_progression(int top, int bottom, int width) {
+    if (selected_tab_ == Tab::Modifications) {
+        draw_modifications(top, bottom, width);
+        return;
+    }
     std::vector<std::string> rows;
     if (selected_tab_ == Tab::Money) {
         rows.push_back("MONEY-MAKING TOOLS | Balance " +

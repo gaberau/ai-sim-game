@@ -151,6 +151,8 @@ class TerminalUI {
     void draw_news_ticker(int row, int column, int width);
     void select_news(int direction);
     int ai_offset_ = 0;
+    int upgrade_selected_ = 0;
+    void draw_modifications(int top, int bottom, int width);
     void draw_ai(int top, int bottom, int width);
     void update_people();
     std::string selected_person_id_ = "self:assistant";

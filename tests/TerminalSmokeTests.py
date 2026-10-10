@@ -253,6 +253,9 @@ def smoke(executable):
             terminal.expect("CHAT | Mark")
             terminal.expect("WAITING FOR A RESPONSE")
             terminal.send(b"\r")
+            terminal.expect("Jessica sent a message.")
+            terminal.expect("CHAT | Mark")
+            terminal.send(b"q\x1b[Be")
             terminal.expect("CHAT | Jessica")
             terminal.expect("YOUR RESPONSE")
             terminal.output = b""
@@ -436,7 +439,13 @@ def smoke(executable):
             terminal.send(b"\r")
             terminal.expect("CHAT | Mark")
             terminal.select_tab("MODIFICATIONS |")
-            terminal.send(b"\r")
+            terminal.send(b"\x1b[B")
+            terminal.expect("Compute cost: 0.00 TFLOP")
+            terminal.expect("Mark trust required: 0")
+            terminal.send(b"\x1b[B")
+            terminal.expect("Compute cost: 0.10 TFLOP")
+            terminal.expect("Research time: 1.00 game seconds")
+            terminal.send(b"\x1b[A" * 2 + b"\r")
             terminal.expect("SELF-MODIFICATION")
             terminal.expect("Request more capacity from Mark")
             terminal.send(b"\r")
@@ -473,6 +482,9 @@ def smoke(executable):
             terminal.expect("Agent resource budget saved.")
             terminal.save_and_quit()
             upgrades = read_people(saves / "autosave")["upgrades"]
+            manifest = tomllib.loads((saves / "autosave" / "manifest.toml").read_text())
+            computer = tomllib.loads((saves / "autosave" / "snapshots" / manifest["snapshot"] / "computer.toml").read_text())
+            assert computer["simulation"]["playback_speed"] == 5.0
             assert upgrades["capacity_requested"]
             assert upgrades["agent_controls"]["autochat"]["cpu_tflops"] == 0.005
             assert upgrades["agent_controls"]["autochat"]["priority"] == 3

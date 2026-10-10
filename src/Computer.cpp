@@ -14,6 +14,12 @@
 #include <stdexcept>
 
 namespace ai_sim {
+void Computer::set_playback_speed(double speed) {
+    if (!std::isfinite(speed) || speed <= 0 || speed > 3600)
+        throw std::runtime_error("Playback speed must be between 0 and 3600");
+    playback_speed_ = speed;
+}
+
 namespace {
 template <class T>
 T required(const toml::table& table, std::string_view key, const std::string& location) {

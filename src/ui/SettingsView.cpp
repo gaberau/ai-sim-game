@@ -224,7 +224,8 @@ void TerminalUI::open_context_help() {
         switch (selected_tab_) {
         case Tab::Chat:
             explain("Choose a response at the bottom. Waiting advances to a pending reply.");
-            control(KeyAction::ToggleFocus, "switch contacts / conversation");
+            control(KeyAction::FocusLeft, "select contacts");
+            control(KeyAction::FocusRight, "select conversation");
             control(KeyAction::Submit, "send the selected response or open a contact");
             break;
         case Tab::Network:

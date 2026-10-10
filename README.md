@@ -35,11 +35,12 @@ Only those conversations are active; older office jobs, delegation offers,
 source-version discussions, complaint dialogue and review follow-ups are retired.
 
 Use arrows and Enter to select replies. Tab switches available views, Q/E focuses
-panes, Escape or F1 opens the shared game menu, and F2 pauses/resumes time.
+panes, Escape or F1 opens the shared game menu, and F2 pauses/resumes time. Time advances at 5x by default.
 The menu offers settings, help, saving, loading, waiting, restarting and quitting. Preferences remain in `config/`.
 
 Chat shows a continuous history with the current choices below it. Up/Down selects
-responses and Enter submits them. Left/Right and PageUp/PageDown have no chat action.
+responses and Enter submits them. Q selects contacts; E returns to the conversation.
+Incoming messages notify you without switching the selected contact. Left/Right and PageUp/PageDown have no chat action.
 System remarks remain in editor data and are hidden during play. A visible **Wait for the next response** action advances
 to the next scheduled conversation or review event. Control hints follow your
 configured keybindings, and contact names show unread message counts.
@@ -175,3 +176,7 @@ requests with cooldowns and recovery notifications. The **Dossiers** view now
 has a profile summary, search and filters, evidence labels and map/split/full-width
 layouts. See [the agent guide](data/agents/README.md) and
 [the dossier/workshop guide](data/upgrades/README.md) for configuration.
+
+The Modifications tab has a scrollable upgrade list and a detail panel showing
+compute cost, per-upgrade trust and prerequisites, resource use, and estimated
+research time. Up/Down selects upgrades; Enter opens controls for that selection.

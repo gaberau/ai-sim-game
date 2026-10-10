@@ -8,7 +8,7 @@ name = "Engineer's workstation"
 [simulation]
 day_end_hour = 17
 day_start_hour = 9
-playback_speed = 10.0
+playback_speed = 5.0
 player_groups = [ 'engineering' ]
 player_process_id = 'email_ai'
 player_user = 'engineer'

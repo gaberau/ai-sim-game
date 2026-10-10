@@ -548,8 +548,9 @@ void TerminalUI::draw_chat(int top, int bottom, int width) {
     } else
         write(bottom - choice_rows, left, "NO RESPONSE NEEDED", Heading, true);
     const std::string hint = local ? ""
-                                   : settings_.binding_label(KeyAction::ToggleFocus) +
-                                         ": switch contacts / conversation";
+                                   : settings_.binding_label(KeyAction::FocusLeft) + "/" +
+                                         settings_.binding_label(KeyAction::FocusRight) +
+                                         ": contacts / conversation";
     write(bottom, 1, fit(hint, width - 2), Footer);
     if (chat_follow_latest_)
         ChatSystem::mark_read(people_, chat_contact_id_);

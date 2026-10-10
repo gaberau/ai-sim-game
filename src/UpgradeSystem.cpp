@@ -109,7 +109,7 @@ std::string UpgradeSystem::unavailable(const toml::table& people, const std::str
     if (item["built"].value_or(false))
         return "Already built";
     if (!ChatSystem::available(people, "self_modification"))
-        return "Request more capacity from Mark first (trust 5)";
+        return "Self-modification authorization required";
     if (!people["upgrades"]["pending"].value_or(std::string{}).empty())
         return "Another upgrade is being built";
     const auto parent = item["parent"].value_or(std::string{});
