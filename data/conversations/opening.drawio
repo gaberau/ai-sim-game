@@ -180,7 +180,7 @@
             <mxGeometry as="geometry" relative="1" />
           </mxCell>
         </object>
-        <object speaker="engineer" reveal_interface="true" unlock="[&quot;company_chat&quot;, &quot;network&quot;]" set_flag="company_chat" id="connected" node_id="connected" kind="end" label="Excellent" text="Excellent">
+        <object speaker="engineer" reveal_interface="true" unlock="[&quot;company_chat&quot;]" set_flag="company_chat" id="connected" node_id="connected" kind="end" label="Excellent" text="Excellent">
           <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
             <mxGeometry as="geometry" x="80" y="1480" width="440" height="170" />
           </mxCell>

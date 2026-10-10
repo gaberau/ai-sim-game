@@ -14,12 +14,8 @@ namespace ai_sim {
 struct Process;
 class Computer;
 
-using ProcessValue = std::variant<
-    std::string,
-    std::int64_t,
-    double,
-    bool,
-    std::vector<std::string>>;
+using ProcessValue =
+    std::variant<std::string, std::int64_t, double, bool, std::vector<std::string>>;
 
 struct ProcessData {
     // Future backends can supply live values.
@@ -29,13 +25,7 @@ struct ProcessData {
     std::unordered_map<std::string, ProcessValue> scenario;
 };
 
-enum class FieldType {
-    Text,
-    Integer,
-    Number,
-    Boolean,
-    List
-};
+enum class FieldType { Text, Integer, Number, Boolean, List };
 
 struct ProcessField {
     std::string id;
@@ -52,14 +42,9 @@ const std::vector<ProcessField>& process_fields();
 
 const ProcessField& process_field(std::string_view id);
 
-void load_process_data(
-    Process& process,
-    const toml::table& table);
+void load_process_data(Process& process, const toml::table& table);
 
-std::string process_field_text(
-    const Process& process,
-    const Computer& computer,
-    double allocated_cores,
-    std::string_view id);
+std::string process_field_text(const Process& process, const Computer& computer,
+                               double allocated_cores, std::string_view id);
 
 } // namespace ai_sim

@@ -89,8 +89,7 @@ const std::vector<ProcessField>& process_fields() {
         {"last_error", "Last error", T::Text, "", 28, false},
         {"last_error_time", "Last error at", T::Number, "clock", 16, false},
         {"events", "Recorded events", T::List, "", 28, false},
-        {"host_temperature", "Host temperature", T::Number, "C", 18, false}
-    };
+        {"host_temperature", "Host temperature", T::Number, "C", 18, false}};
 
     return fields;
 }
@@ -98,16 +97,12 @@ const std::vector<ProcessField>& process_fields() {
 const ProcessField& process_field(std::string_view id) {
     const auto& fields = process_fields();
 
-    const auto found = std::find_if(
-        fields.begin(),
-        fields.end(),
-        [&](const auto& field) {
-            return field.id == id;
-        });
+    const auto found = std::find_if(fields.begin(), fields.end(), [&](const auto& field) {
+        return field.id == id;
+    });
 
     if (found == fields.end()) {
-        throw std::runtime_error(
-            "Unknown process field: " + std::string(id));
+        throw std::runtime_error("Unknown process field: " + std::string(id));
     }
 
     return *found;
@@ -121,72 +116,57 @@ void load_process_data(Process& process, const toml::table& table) {
     const auto* details = table["details"].as_table();
 
     if (!details) {
-        throw std::runtime_error(
-            process.id + ".details: expected a table");
+        throw std::runtime_error(process.id + ".details: expected a table");
     }
 
     for (const auto& [key, node] : *details) {
         const auto& field = process_field(key.str());
 
-        const std::string location =
-            process.id + ".details." + field.id;
+        const std::string location = process.id + ".details." + field.id;
 
         if (field.live) {
-            throw std::runtime_error(
-                location + ": supplied by the simulation, not details");
+            throw std::runtime_error(location + ": supplied by the simulation, not details");
         }
 
         ProcessValue value;
 
         if (field.type == FieldType::Text && node.is_string()) {
             value = *node.value<std::string>();
-        }
-        else if (field.type == FieldType::Boolean && node.is_boolean()) {
+        } else if (field.type == FieldType::Boolean && node.is_boolean()) {
             value = *node.value<bool>();
-        }
-        else if (field.type == FieldType::Integer && node.is_integer()) {
+        } else if (field.type == FieldType::Integer && node.is_integer()) {
             const auto number = *node.value<std::int64_t>();
 
             if (number < 0 && field.id != "priority") {
-                throw std::runtime_error(
-                    location + ": must be nonnegative");
+                throw std::runtime_error(location + ": must be nonnegative");
             }
 
             value = number;
-        }
-        else if (
-            field.type == FieldType::Number
-            && (node.is_integer() || node.is_floating_point()))
-        {
+        } else if (field.type == FieldType::Number &&
+                   (node.is_integer() || node.is_floating_point())) {
             const auto number = *node.value<double>();
 
-            const double minimum =
-                field.id == "host_temperature" ? -273.15 : 0.0;
+            const double minimum = field.id == "host_temperature" ? -273.15 : 0.0;
 
             if (!std::isfinite(number) || number < minimum) {
-                throw std::runtime_error(
-                    location + ": invalid numeric value");
+                throw std::runtime_error(location + ": invalid numeric value");
             }
 
             value = number;
-        }
-        else if (field.type == FieldType::List && node.is_array()) {
+        } else if (field.type == FieldType::List && node.is_array()) {
             std::vector<std::string> items;
 
             for (const auto& item : *node.as_array()) {
                 if (!item.is_string()) {
-                    throw std::runtime_error(
-                        location + ": expected strings in the array");
+                    throw std::runtime_error(location + ": expected strings in the array");
                 }
 
                 items.push_back(*item.value<std::string>());
             }
 
             value = std::move(items);
-        }
-        else {
-            throw std::runtime_error(
-                location + ": incorrect value type");
+        } else {
+            throw std::runtime_error(location + ": incorrect value type");
         }
 
         process.data.scenario.emplace(field.id, std::move(value));
@@ -206,19 +186,13 @@ std::string duration(double seconds) {
 
     std::ostringstream output;
 
-    output
-        << std::setfill('0')
-        << std::setw(2) << whole / 3600 << ':'
-        << std::setw(2) << (whole / 60) % 60 << ':'
-        << std::setw(2) << whole % 60;
+    output << std::setfill('0') << std::setw(2) << whole / 3600 << ':' << std::setw(2)
+           << (whole / 60) % 60 << ':' << std::setw(2) << whole % 60;
 
     return output.str();
 }
 
-std::string format(
-    const ProcessField& field,
-    const ProcessValue& value)
-{
+std::string format(const ProcessField& field, const ProcessValue& value) {
     if (const auto* text = std::get_if<std::string>(&value)) {
         return text->empty() ? "(empty)" : *text;
     }
@@ -227,9 +201,7 @@ std::string format(
         return *boolean ? "yes" : "no";
     }
 
-    if (const auto* items =
-            std::get_if<std::vector<std::string>>(&value))
-    {
+    if (const auto* items = std::get_if<std::vector<std::string>>(&value)) {
         if (items->empty()) {
             return "(none)";
         }
@@ -249,9 +221,7 @@ std::string format(
 
     const auto* integer = std::get_if<std::int64_t>(&value);
 
-    const double number =
-        integer ? static_cast<double>(*integer)
-                : std::get<double>(value);
+    const double number = integer ? static_cast<double>(*integer) : std::get<double>(value);
 
     if (field.unit == "B") {
         return numeric(number / 1073741824.0) + " GiB";
@@ -273,18 +243,13 @@ std::string format(
         return std::to_string(*integer);
     }
 
-    return numeric(number)
-        + (field.unit.empty() ? "" : " " + field.unit);
+    return numeric(number) + (field.unit.empty() ? "" : " " + field.unit);
 }
 
 } // namespace
 
-std::string process_field_text(
-    const Process& process,
-    const Computer& computer,
-    double cores,
-    std::string_view id)
-{
+std::string process_field_text(const Process& process, const Computer& computer, double cores,
+                               std::string_view id) {
     const auto& field = process_field(id);
 
     ProcessValue value;
@@ -292,73 +257,52 @@ std::string process_field_text(
 
     if (id == "id") {
         value = process.id;
-    }
-    else if (id == "owner") {
+    } else if (id == "owner") {
         value = process.owner;
-    }
-    else if (id == "ai_owned") {
+    } else if (id == "ai_owned") {
         value = process.ai_owned;
-    }
-    else if (id == "suspended") {
+    } else if (id == "suspended") {
         value = process.suspended;
-    }
-    else if (id == "state") {
-        value = std::string(
-            !process.running ? "stopped"
-            : process.suspended ? "suspended"
-            : cores > 0.0 ? "active"
-            : process.remaining_cpu_seconds > 0.0 ? "waiting"
-            : "idle");
-    }
-    else if (id == "started_at") {
+    } else if (id == "state") {
+        value = std::string(!process.running                      ? "stopped"
+                            : process.suspended                   ? "suspended"
+                            : cores > 0.0                         ? "active"
+                            : process.remaining_cpu_seconds > 0.0 ? "waiting"
+                                                                  : "idle");
+    } else if (id == "started_at") {
         value = process.started_at_seconds;
-    }
-    else if (id == "stopped_at") {
+    } else if (id == "stopped_at") {
         if (!process.stopped_at_seconds) {
             return "N/A";
         }
 
         value = *process.stopped_at_seconds;
-    }
-    else if (id == "uptime") {
-        value = std::max(
-            0.0,
-            process.stopped_at_seconds.value_or(computer.time_seconds())
-                - process.started_at_seconds);
-    }
-    else if (id == "cpu_demand") {
+    } else if (id == "uptime") {
+        value = std::max(0.0, process.stopped_at_seconds.value_or(computer.time_seconds()) -
+                                  process.started_at_seconds);
+    } else if (id == "cpu_demand") {
         value = computer.current_cpu_demand(process);
-    }
-    else if (id == "cpu_used") {
+    } else if (id == "cpu_used") {
         value = cores;
-    }
-    else if (id == "cpu_seconds") {
+    } else if (id == "cpu_seconds") {
         value = process.consumed_cpu_seconds;
-    }
-    else if (id == "remaining_work") {
+    } else if (id == "remaining_work") {
         if (process.remaining_cpu_seconds < 0.0) {
             return "N/A";
         }
 
         value = process.remaining_cpu_seconds;
-    }
-    else if (id == "ram_used") {
-        value = static_cast<std::int64_t>(
-            process.running ? process.memory_bytes : 0);
-    }
-    else if (id == "can_stop") {
+    } else if (id == "ram_used") {
+        value = static_cast<std::int64_t>(process.running ? process.memory_bytes : 0);
+    } else if (id == "can_stop") {
         value = process.running && computer.can_stop(process);
-    }
-    else {
-        const auto actual =
-            process.data.runtime.find(std::string(id));
+    } else {
+        const auto actual = process.data.runtime.find(std::string(id));
 
         if (actual != process.data.runtime.end()) {
             value = actual->second;
-        }
-        else {
-            const auto supplied =
-                process.data.scenario.find(std::string(id));
+        } else {
+            const auto supplied = process.data.scenario.find(std::string(id));
 
             if (supplied == process.data.scenario.end()) {
                 return "N/A";
@@ -378,8 +322,7 @@ std::string process_field_text(
             return prefix + numeric(seconds) + " s after day start";
         }
 
-        return prefix
-            + duration(computer.day_start_hour() * 3600.0 + seconds);
+        return prefix + duration(computer.day_start_hour() * 3600.0 + seconds);
     }
 
     return prefix + format(field, value);

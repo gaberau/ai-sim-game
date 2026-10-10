@@ -25,6 +25,7 @@ struct Process {
 
     std::uint64_t memory_bytes = 0;
     double cpu_demand_cores = 0.0;
+    double cpu_priority = 1.0;
 
     double remaining_cpu_seconds = -1.0;
     double consumed_cpu_seconds = 0.0;
@@ -43,8 +44,7 @@ struct Process {
 
         if (burst_period_ticks > 0) {
             const auto phase =
-                ((tick % burst_period_ticks) + burst_phase_ticks)
-                % burst_period_ticks;
+                ((tick % burst_period_ticks) + burst_phase_ticks) % burst_period_ticks;
 
             if (phase < burst_active_ticks) {
                 demand += burst_extra_cores;
@@ -56,13 +56,18 @@ struct Process {
 };
 
 class Computer {
-public:
+  public:
     static Computer load(const std::filesystem::path& path);
     static Computer load_snapshot(const std::filesystem::path& path);
     void save_snapshot(const std::filesystem::path& path) const;
 
     void advance(double seconds);
     void stop(const std::string& process_id);
+    void start_managed_process(Process process);
+    void grant_administrator();
+    void configure_agent(const std::string& id, double cpu_cores, std::uint64_t ram_bytes,
+                         double priority);
+    void set_managed_running(const std::string& id, bool running);
 
     const std::string& name() const {
         return name_;
@@ -96,8 +101,8 @@ public:
     std::vector<double> cpu_allocations() const;
 
     bool can_stop(const Process& process) const {
-        return process.id != player_process_id_
-            && (player_user_ == "root" || process.owner == player_user_);
+        return process.id != player_process_id_ && !process.id.starts_with("research-") &&
+               (player_user_ == "root" || process.owner == player_user_);
     }
 
     double current_cpu_demand(const Process& process) const {
@@ -115,19 +120,27 @@ public:
     bool day_finished() const {
         return time_seconds_ >= day_end_seconds();
     }
-    double day_end_seconds() const { return (day_index_ + 1) * day_length_seconds(); }
-    double time_in_day() const { return time_seconds_ - day_index_ * day_length_seconds(); }
-    std::uint64_t day_index() const { return day_index_; }
+    double day_end_seconds() const {
+        return (day_index_ + 1) * day_length_seconds();
+    }
+    double time_in_day() const {
+        return time_seconds_ - day_index_ * day_length_seconds();
+    }
+    std::uint64_t day_index() const {
+        return day_index_;
+    }
     void next_day();
     void set_start_date(const std::string& date);
     std::string date_text() const;
-    const std::string& start_date() const { return start_date_; }
+    const std::string& start_date() const {
+        return start_date_;
+    }
 
     double playback_speed() const {
         return playback_speed_;
     }
 
-private:
+  private:
     std::string name_;
     std::string player_user_;
     std::vector<std::string> player_groups_;

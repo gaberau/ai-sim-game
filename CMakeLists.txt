@@ -13,6 +13,11 @@ FetchContent_MakeAvailable(tomlplusplus)
 add_library(ai_sim_core
     src/ShutdownSystem.cpp
     src/Simulation.cpp
+    src/UpgradeSystem.cpp
+    src/AgentSystem.cpp
+    src/EconomySystem.cpp
+    src/StockMarketSystem.cpp
+    src/InfrastructureSystem.cpp
     src/DefinitionLoader.cpp
     src/DataMigration.cpp
     src/ConversationRules.cpp
@@ -55,12 +60,19 @@ find_package(Curses REQUIRED)
 add_executable(ai_sim
     src/main.cpp
     src/ui/UISettings.cpp
+    src/ui/SettingsView.cpp
     src/ui/ProcessViewConfig.cpp
     src/ui/TerminalUI.cpp
     src/ui/ProcessesView.cpp
     src/ui/ActionMenus.cpp
     src/ui/PeopleView.cpp
     src/ui/AIView.cpp
+    src/ui/UpgradeView.cpp
+    src/ui/AgentView.cpp
+    src/ui/MoneyView.cpp
+    src/ui/StockMarketView.cpp
+    src/ui/WebView.cpp
+    src/ui/InfrastructureView.cpp
     src/ui/NewsView.cpp
     src/ui/ChatView.cpp
     src/ui/EmailView.cpp
@@ -86,6 +98,21 @@ endif()
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(ai_sim_agent_resource_tests tests/AgentResourceTests.cpp)
+    target_link_libraries(ai_sim_agent_resource_tests PRIVATE ai_sim_core)
+    add_test(NAME agent_resource_management COMMAND ai_sim_agent_resource_tests ${CMAKE_CURRENT_SOURCE_DIR})
+    add_executable(ai_sim_upgrade_tests tests/UpgradeTests.cpp)
+    target_link_libraries(ai_sim_upgrade_tests PRIVATE ai_sim_core)
+    add_test(NAME upgrade_progression COMMAND ai_sim_upgrade_tests ${CMAKE_CURRENT_SOURCE_DIR})
+    add_executable(ai_sim_infrastructure_tests tests/InfrastructureTests.cpp)
+    target_link_libraries(ai_sim_infrastructure_tests PRIVATE ai_sim_core)
+    add_test(NAME infrastructure_and_discovery COMMAND ai_sim_infrastructure_tests ${CMAKE_CURRENT_SOURCE_DIR})
+    add_executable(ai_sim_stock_market_tests tests/StockMarketTests.cpp)
+    target_link_libraries(ai_sim_stock_market_tests PRIVATE ai_sim_core)
+    add_test(NAME stock_market_and_portfolio COMMAND ai_sim_stock_market_tests ${CMAKE_CURRENT_SOURCE_DIR})
+    add_executable(ai_sim_economy_tests tests/EconomyTests.cpp)
+    target_link_libraries(ai_sim_economy_tests PRIVATE ai_sim_core)
+    add_test(NAME paid_work_and_products COMMAND ai_sim_economy_tests ${CMAKE_CURRENT_SOURCE_DIR})
     # Historical content exercises backend mechanics without enabling retired game chats.
     set(LEGACY_TEST_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/legacy-game")
     add_executable(ai_sim_shutdown_tests tests/ShutdownTests.cpp)

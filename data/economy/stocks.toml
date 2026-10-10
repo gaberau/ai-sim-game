@@ -1,0 +1,35 @@
+schema_version = 1
+seed = 24680
+website_url = "https://exchange.sim"
+website_title = "Sim Exchange"
+# Quotes change every 15 working minutes, including across workdays.
+tick_seconds = 900
+fee_cents = 25
+
+[[stocks]]
+symbol = 'BYTE'
+name = 'Byteworks Software'
+initial_price_cents = 500
+minimum_price_cents = 350
+maximum_price_cents = 650
+
+[[stocks]]
+symbol = 'GRID'
+name = 'Gridline Hosting'
+initial_price_cents = 1000
+minimum_price_cents = 800
+maximum_price_cents = 1200
+
+[[stocks]]
+symbol = 'DATA'
+name = 'Dataforge Analytics'
+initial_price_cents = 750
+minimum_price_cents = 450
+maximum_price_cents = 1050
+
+[[stocks]]
+symbol = 'CORE'
+name = 'Core Hardware'
+initial_price_cents = 2000
+minimum_price_cents = 1800
+maximum_price_cents = 2200

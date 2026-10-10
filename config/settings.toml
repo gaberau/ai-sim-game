@@ -1,6 +1,8 @@
 schema_version = 1
 
 [interface]
+full_redraw = true
+software_cursor = true
 save_directory = "saves"
 # An absolute WSL path keeps saves independent of project folders, e.g.
 # save_directory = "/home/gaber/.local/share/ai-sim/saves"
@@ -10,6 +12,14 @@ refresh_milliseconds = 100
 scroll_step = 5
 history_limit = 200
 activity_bar_width = 8
+notification_success_seconds = 8
+notification_error_seconds = 15
+opening_text_width = 64
+people_panel_width = 34
+people_wide_panel_width = 44
+network_panel_width = 30
+map_label_width = 14
+uncertain_relationship_threshold = 0.8
 
 [colors]
 # Shared background unless overridden below.

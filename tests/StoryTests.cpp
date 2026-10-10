@@ -12,34 +12,36 @@ using namespace ai_sim;
 namespace {
 const Identity actor{"engineer", {"engineering"}};
 void check(bool value, const char* message) {
-    if (!value) throw std::runtime_error(message);
+    if (!value)
+        throw std::runtime_error(message);
 }
 void advance(WorldState& world, double time) {
     world.computer.advance(time - world.computer.time_seconds());
     Simulation::update(world);
 }
 void choose(WorldState& world, const std::string& id) {
-    ConversationSystem::choose(world.people, world.emails, world.pending_events,
-        world.files, world.network, actor, "jessica", "jessica-day-one-chat-one",
-        id, world.computer.time_seconds());
+    ConversationSystem::choose(world.people, world.emails, world.pending_events, world.files,
+                               world.network, actor, "jessica", "jessica-day-one-chat-one", id,
+                               world.computer.time_seconds());
 }
 void verify_story(const WorldState& world) {
     const auto* runs = world.people["chat"]["workday"]["runs"].as_array();
     check(runs && runs->size() == 1, "Retired conversations are active");
-    check((*runs->front().as_table())["id"].value_or(std::string{})
-        == "jessica-day-one-chat-one", "Wrong conversation retained");
+    check((*runs->front().as_table())["id"].value_or(std::string{}) == "jessica-day-one-chat-one",
+          "Wrong conversation retained");
     check(world.emails["emails"].as_array()->empty(), "Retired office messages are active");
     check(!world.people.contains("phase_work") && !world.people.contains("delegation"),
-        "Retired automatic work remains active");
-    for (const auto& contact : ChatSystem::contacts(world.people, world.emails,
-                                                   world.computer.time_seconds()))
+          "Retired automatic work remains active");
+    for (const auto& contact :
+         ChatSystem::contacts(world.people, world.emails, world.computer.time_seconds()))
         check(contact.id == "engineer" || contact.id == "jessica", "Retired contact is visible");
 }
-}
+} // namespace
 int main(int argc, char** argv) {
-    const auto temporary = std::filesystem::temp_directory_path()
-        / ("ai-sim-story-" + std::to_string(
-            std::chrono::steady_clock::now().time_since_epoch().count()));
+    const auto temporary =
+        std::filesystem::temp_directory_path() /
+        ("ai-sim-story-" +
+         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
     try {
         check(argc == 2, "Repository root required");
         const auto root = std::filesystem::path(argv[1]);
@@ -65,8 +67,8 @@ int main(int argc, char** argv) {
         }
         // Exercise a real old save containing requests, pending access work,
         // reply consequences and follow-up graphs before switching its story.
-        auto old = SaveSystem::new_game(root
-            / "tests/fixtures/legacy-game/data/scenarios/hobbyist.toml");
+        auto old =
+            SaveSystem::new_game(root / "tests/fixtures/legacy-game/data/scenarios/hobbyist.toml");
         ChatSystem::choose(old.people, "answer", 0);
         ChatSystem::choose(old.people, "assist", 0);
         advance(old, 10);
@@ -74,8 +76,8 @@ int main(int argc, char** argv) {
         choose(old, "bad");
         choose(old, "send");
         advance(old, 60);
-        WorkdaySystem::request_access(old.people, old.emails, old.pending_events,
-            old.files, old.network, actor, "missing-document", 60);
+        WorkdaySystem::request_access(old.people, old.emails, old.pending_events, old.files,
+                                      old.network, actor, "missing-document", 60);
         const auto lines = old.people["chat"]["transcript"].as_array()->size();
         const auto trust = ConversationRules::get(old.people, "engineer.trust");
         SaveSystem saves(temporary);
@@ -85,9 +87,9 @@ int main(int argc, char** argv) {
         verify_story(migrated);
         check(migrated.computer.time_seconds() == 60, "Migration reset clock");
         check(ConversationRules::get(migrated.people, "engineer.trust") == trust,
-            "Migration reset trust");
+              "Migration reset trust");
         check(migrated.people["chat"]["transcript"].as_array()->size() == lines,
-            "Migration shifted evidence identifiers");
+              "Migration shifted evidence identifiers");
         check(migrated.pending_events.empty(), "Retired events remain queued");
         ChatSystem::install(migrated, opening, false);
         advance(migrated, 10000);

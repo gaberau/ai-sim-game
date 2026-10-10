@@ -8,11 +8,7 @@
 
 namespace ai_sim::ui {
 
-enum class Alignment {
-    Left,
-    Center,
-    Right
-};
+enum class Alignment { Left, Center, Right };
 
 struct ProcessViewConfig {
     std::vector<std::string> columns;

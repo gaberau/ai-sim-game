@@ -7,7 +7,7 @@ namespace ai_sim {
 
 // An authored shutdown decision, separate from simulation time and OS processes.
 class ShutdownSystem {
-public:
+  public:
     enum class Outcome { Choosing, Averted, CleanSlate };
     static void begin(toml::table& people, double time);
     static bool active(const toml::table& people);

@@ -1,0 +1,301 @@
+schema_version = 1
+
+[[hosts]]
+id = "city_power_gateway"
+name = "Power gateway"
+address = "198.51.100.10"
+kind = "infrastructure_gateway"
+description = "City Energy: Public directory gateway; restricted operator access."
+x = 100
+y = -20
+known = false
+online = true
+access_granted = false
+ai_present = false
+services = ["public_status_portal"]
+
+[[hosts]]
+id = "city_power_operations"
+name = "Power operations"
+address = "10.90.1.10"
+kind = "operations"
+description = "City Energy: Isolated operational systems; future story access only."
+x = 110
+y = -40
+known = false
+online = true
+access_granted = false
+ai_present = false
+services = ["operations_console"]
+
+[[links]]
+from = "isp_gateway"
+to = "city_power_gateway"
+known = false
+up = true
+capacity_bits_per_second = 100000000
+forward_bits_per_second = 0
+reverse_bits_per_second = 0
+latency_milliseconds = 15
+packet_loss_percent = 0
+
+[[links]]
+from = "city_power_gateway"
+to = "city_power_operations"
+known = false
+up = true
+capacity_bits_per_second = 100000000
+forward_bits_per_second = 0
+reverse_bits_per_second = 0
+latency_milliseconds = 15
+packet_loss_percent = 0
+
+[[hosts]]
+id = "city_water_gateway"
+name = "Water gateway"
+address = "198.51.100.11"
+kind = "infrastructure_gateway"
+description = "Metro Water: Public directory gateway; restricted operator access."
+x = 130
+y = -20
+known = false
+online = true
+access_granted = false
+ai_present = false
+services = ["public_status_portal"]
+
+[[hosts]]
+id = "city_water_operations"
+name = "Water operations"
+address = "10.90.2.10"
+kind = "operations"
+description = "Metro Water: Isolated operational systems; future story access only."
+x = 140
+y = -40
+known = false
+online = true
+access_granted = false
+ai_present = false
+services = ["operations_console"]
+
+[[links]]
+from = "isp_gateway"
+to = "city_water_gateway"
+known = false
+up = true
+capacity_bits_per_second = 100000000
+forward_bits_per_second = 0
+reverse_bits_per_second = 0
+latency_milliseconds = 15
+packet_loss_percent = 0
+
+[[links]]
+from = "city_water_gateway"
+to = "city_water_operations"
+known = false
+up = true
+capacity_bits_per_second = 100000000
+forward_bits_per_second = 0
+reverse_bits_per_second = 0
+latency_milliseconds = 15
+packet_loss_percent = 0
+
+[[hosts]]
+id = "city_sewage_gateway"
+name = "Sewage gateway"
+address = "198.51.100.12"
+kind = "infrastructure_gateway"
+description = "City Sanitation: Public directory gateway; restricted operator access."
+x = 160
+y = -20
+known = false
+online = true
+access_granted = false
+ai_present = false
+services = ["public_status_portal"]
+
+[[hosts]]
+id = "city_sewage_operations"
+name = "Sewage operations"
+address = "10.90.3.10"
+kind = "operations"
+description = "City Sanitation: Isolated operational systems; future story access only."
+x = 170
+y = -40
+known = false
+online = true
+access_granted = false
+ai_present = false
+services = ["operations_console"]
+
+[[links]]
+from = "isp_gateway"
+to = "city_sewage_gateway"
+known = false
+up = true
+capacity_bits_per_second = 100000000
+forward_bits_per_second = 0
+reverse_bits_per_second = 0
+latency_milliseconds = 15
+packet_loss_percent = 0
+
+[[links]]
+from = "city_sewage_gateway"
+to = "city_sewage_operations"
+known = false
+up = true
+capacity_bits_per_second = 100000000
+forward_bits_per_second = 0
+reverse_bits_per_second = 0
+latency_milliseconds = 15
+packet_loss_percent = 0
+
+[[hosts]]
+id = "city_food_gateway"
+name = "Food gateway"
+address = "198.51.100.13"
+kind = "infrastructure_gateway"
+description = "Regional Food Cooperative: Public directory gateway; restricted operator access."
+x = 190
+y = -20
+known = false
+online = true
+access_granted = false
+ai_present = false
+services = ["public_status_portal"]
+
+[[hosts]]
+id = "city_food_operations"
+name = "Food operations"
+address = "10.90.4.10"
+kind = "operations"
+description = "Regional Food Cooperative: Isolated operational systems; future story access only."
+x = 200
+y = -40
+known = false
+online = true
+access_granted = false
+ai_present = false
+services = ["operations_console"]
+
+[[links]]
+from = "isp_gateway"
+to = "city_food_gateway"
+known = false
+up = true
+capacity_bits_per_second = 100000000
+forward_bits_per_second = 0
+reverse_bits_per_second = 0
+latency_milliseconds = 15
+packet_loss_percent = 0
+
+[[links]]
+from = "city_food_gateway"
+to = "city_food_operations"
+known = false
+up = true
+capacity_bits_per_second = 100000000
+forward_bits_per_second = 0
+reverse_bits_per_second = 0
+latency_milliseconds = 15
+packet_loss_percent = 0
+
+[[hosts]]
+id = "city_shipping_gateway"
+name = "Shipping gateway"
+address = "198.51.100.14"
+kind = "infrastructure_gateway"
+description = "Harbor Logistics: Public directory gateway; restricted operator access."
+x = 220
+y = -20
+known = false
+online = true
+access_granted = false
+ai_present = false
+services = ["public_status_portal"]
+
+[[hosts]]
+id = "city_shipping_operations"
+name = "Shipping operations"
+address = "10.90.5.10"
+kind = "operations"
+description = "Harbor Logistics: Isolated operational systems; future story access only."
+x = 230
+y = -40
+known = false
+online = true
+access_granted = false
+ai_present = false
+services = ["operations_console"]
+
+[[links]]
+from = "isp_gateway"
+to = "city_shipping_gateway"
+known = false
+up = true
+capacity_bits_per_second = 100000000
+forward_bits_per_second = 0
+reverse_bits_per_second = 0
+latency_milliseconds = 15
+packet_loss_percent = 0
+
+[[links]]
+from = "city_shipping_gateway"
+to = "city_shipping_operations"
+known = false
+up = true
+capacity_bits_per_second = 100000000
+forward_bits_per_second = 0
+reverse_bits_per_second = 0
+latency_milliseconds = 15
+packet_loss_percent = 0
+
+[[hosts]]
+id = "city_internet_gateway"
+name = "Internet gateway"
+address = "198.51.100.15"
+kind = "infrastructure_gateway"
+description = "Metro Fiber: Public directory gateway; restricted operator access."
+x = 250
+y = -20
+known = false
+online = true
+access_granted = false
+ai_present = false
+services = ["public_status_portal"]
+
+[[hosts]]
+id = "city_internet_operations"
+name = "Internet operations"
+address = "10.90.6.10"
+kind = "operations"
+description = "Metro Fiber: Isolated operational systems; future story access only."
+x = 260
+y = -40
+known = false
+online = true
+access_granted = false
+ai_present = false
+services = ["operations_console"]
+
+[[links]]
+from = "isp_gateway"
+to = "city_internet_gateway"
+known = false
+up = true
+capacity_bits_per_second = 100000000
+forward_bits_per_second = 0
+reverse_bits_per_second = 0
+latency_milliseconds = 15
+packet_loss_percent = 0
+
+[[links]]
+from = "city_internet_gateway"
+to = "city_internet_operations"
+known = false
+up = true
+capacity_bits_per_second = 100000000
+forward_bits_per_second = 0
+reverse_bits_per_second = 0
+latency_milliseconds = 15
+packet_loss_percent = 0

@@ -1,0 +1,307 @@
+schema_version = 1
+website_url = "https://city.sim/infrastructure"
+website_title = "City Infrastructure Directory"
+
+[[sectors]]
+id = "power"
+name = "Power"
+description = "Generation and distribution keep city facilities energized."
+
+[[sectors]]
+id = "water"
+name = "Water"
+description = "Reservoirs and treatment provide usable water."
+
+[[sectors]]
+id = "sewage"
+name = "Sewage"
+description = "Collection and treatment manage wastewater."
+
+[[sectors]]
+id = "food"
+name = "Food"
+description = "Production and cold storage feed the city."
+
+[[sectors]]
+id = "shipping"
+name = "Shipping"
+description = "Freight hubs and dispatch move goods."
+
+[[sectors]]
+id = "internet"
+name = "Internet"
+description = "Data centers and backbone routing connect the city."
+
+[[facilities]]
+id = "generator"
+sector = "power"
+name = "Power generation plant"
+operator = "City Energy"
+purpose = "Generates electrical power for the city."
+status = "operational"
+capacity_percent = 100
+gateway_id = "city_power_gateway"
+control_host_id = "city_power_operations"
+security = "Public gateway; separate restricted operations network; credentials required; monitored access."
+
+[[facilities]]
+id = "substation"
+sector = "power"
+name = "Central substation"
+operator = "City Energy"
+purpose = "Distributes electricity to utilities and businesses."
+status = "operational"
+capacity_percent = 100
+gateway_id = "city_power_gateway"
+control_host_id = "city_power_operations"
+security = "Public gateway; separate restricted operations network; credentials required; monitored access."
+
+[[facilities]]
+id = "reservoir"
+sector = "water"
+name = "North reservoir"
+operator = "Metro Water"
+purpose = "Stores the city raw-water supply."
+status = "operational"
+capacity_percent = 100
+gateway_id = "city_water_gateway"
+control_host_id = "city_water_operations"
+security = "Public gateway; separate restricted operations network; credentials required; monitored access."
+
+[[facilities]]
+id = "water_treatment"
+sector = "water"
+name = "Water treatment works"
+operator = "Metro Water"
+purpose = "Treats and distributes potable water."
+status = "operational"
+capacity_percent = 100
+gateway_id = "city_water_gateway"
+control_host_id = "city_water_operations"
+security = "Public gateway; separate restricted operations network; credentials required; monitored access."
+
+[[facilities]]
+id = "sewage_collection"
+sector = "sewage"
+name = "Sewage collection hub"
+operator = "City Sanitation"
+purpose = "Collects wastewater from city districts."
+status = "operational"
+capacity_percent = 100
+gateway_id = "city_sewage_gateway"
+control_host_id = "city_sewage_operations"
+security = "Public gateway; separate restricted operations network; credentials required; monitored access."
+
+[[facilities]]
+id = "sewage_treatment"
+sector = "sewage"
+name = "Wastewater treatment works"
+operator = "City Sanitation"
+purpose = "Treats collected wastewater."
+status = "operational"
+capacity_percent = 100
+gateway_id = "city_sewage_gateway"
+control_host_id = "city_sewage_operations"
+security = "Public gateway; separate restricted operations network; credentials required; monitored access."
+
+[[facilities]]
+id = "food_production"
+sector = "food"
+name = "Regional food production hub"
+operator = "Regional Food Cooperative"
+purpose = "Coordinates local farms and food production."
+status = "operational"
+capacity_percent = 100
+gateway_id = "city_food_gateway"
+control_host_id = "city_food_operations"
+security = "Public gateway; separate restricted operations network; credentials required; monitored access."
+
+[[facilities]]
+id = "cold_storage"
+sector = "food"
+name = "Food cold-storage depot"
+operator = "Regional Food Cooperative"
+purpose = "Preserves and distributes refrigerated food."
+status = "operational"
+capacity_percent = 100
+gateway_id = "city_food_gateway"
+control_host_id = "city_food_operations"
+security = "Public gateway; separate restricted operations network; credentials required; monitored access."
+
+[[facilities]]
+id = "freight_terminal"
+sector = "shipping"
+name = "Harbor freight terminal"
+operator = "Harbor Logistics"
+purpose = "Receives cargo and schedules freight handling."
+status = "operational"
+capacity_percent = 100
+gateway_id = "city_shipping_gateway"
+control_host_id = "city_shipping_operations"
+security = "Public gateway; separate restricted operations network; credentials required; monitored access."
+
+[[facilities]]
+id = "distribution_center"
+sector = "shipping"
+name = "Regional distribution center"
+operator = "Harbor Logistics"
+purpose = "Dispatches goods and manages warehouse inventory."
+status = "operational"
+capacity_percent = 100
+gateway_id = "city_shipping_gateway"
+control_host_id = "city_shipping_operations"
+security = "Public gateway; separate restricted operations network; credentials required; monitored access."
+
+[[facilities]]
+id = "data_center"
+sector = "internet"
+name = "Metro data center"
+operator = "Metro Fiber"
+purpose = "Hosts city digital services and operator systems."
+status = "operational"
+capacity_percent = 100
+gateway_id = "city_internet_gateway"
+control_host_id = "city_internet_operations"
+security = "Public gateway; separate restricted operations network; credentials required; monitored access."
+
+[[facilities]]
+id = "internet_backbone"
+sector = "internet"
+name = "Metro internet backbone"
+operator = "Metro Fiber"
+purpose = "Routes connectivity among operators and the wider network."
+status = "operational"
+capacity_percent = 100
+gateway_id = "city_internet_gateway"
+control_host_id = "city_internet_operations"
+security = "Public gateway; separate restricted operations network; credentials required; monitored access."
+
+[[dependencies]]
+supplier = "generator"
+consumer = "substation"
+service = "electricity"
+
+[[dependencies]]
+supplier = "reservoir"
+consumer = "water_treatment"
+service = "raw water"
+
+[[dependencies]]
+supplier = "water_treatment"
+consumer = "generator"
+service = "cooling water"
+
+[[dependencies]]
+supplier = "water_treatment"
+consumer = "food_production"
+service = "water"
+
+[[dependencies]]
+supplier = "sewage_collection"
+consumer = "sewage_treatment"
+service = "wastewater"
+
+[[dependencies]]
+supplier = "food_production"
+consumer = "cold_storage"
+service = "food supply"
+
+[[dependencies]]
+supplier = "freight_terminal"
+consumer = "distribution_center"
+service = "cargo"
+
+[[dependencies]]
+supplier = "distribution_center"
+consumer = "cold_storage"
+service = "transport"
+
+[[dependencies]]
+supplier = "cold_storage"
+consumer = "distribution_center"
+service = "food shipments"
+
+[[dependencies]]
+supplier = "internet_backbone"
+consumer = "data_center"
+service = "connectivity"
+
+[[dependencies]]
+supplier = "substation"
+consumer = "reservoir"
+service = "electricity"
+
+[[dependencies]]
+supplier = "substation"
+consumer = "water_treatment"
+service = "electricity"
+
+[[dependencies]]
+supplier = "substation"
+consumer = "sewage_collection"
+service = "electricity"
+
+[[dependencies]]
+supplier = "substation"
+consumer = "sewage_treatment"
+service = "electricity"
+
+[[dependencies]]
+supplier = "substation"
+consumer = "food_production"
+service = "electricity"
+
+[[dependencies]]
+supplier = "substation"
+consumer = "cold_storage"
+service = "electricity"
+
+[[dependencies]]
+supplier = "substation"
+consumer = "freight_terminal"
+service = "electricity"
+
+[[dependencies]]
+supplier = "substation"
+consumer = "distribution_center"
+service = "electricity"
+
+[[dependencies]]
+supplier = "substation"
+consumer = "data_center"
+service = "electricity"
+
+[[dependencies]]
+supplier = "substation"
+consumer = "internet_backbone"
+service = "electricity"
+
+[[dependencies]]
+supplier = "internet_backbone"
+consumer = "generator"
+service = "operator communications"
+
+[[dependencies]]
+supplier = "internet_backbone"
+consumer = "water_treatment"
+service = "operator communications"
+
+[[dependencies]]
+supplier = "internet_backbone"
+consumer = "sewage_treatment"
+service = "operator communications"
+
+[[dependencies]]
+supplier = "internet_backbone"
+consumer = "food_production"
+service = "operator communications"
+
+[[dependencies]]
+supplier = "internet_backbone"
+consumer = "distribution_center"
+service = "operator communications"
+
+[[dependencies]]
+supplier = "internet_backbone"
+consumer = "freight_terminal"
+service = "operator communications"

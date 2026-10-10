@@ -17,8 +17,10 @@ what is loaded, in a stable order.
 | emails | Mailbox transport settings; no legacy starter messages | office.toml |
 | news | Individual articles split between world/ and history/ | feed.toml |
 | conversations | Mark opening and Jessica Day 1; current chart and story policy | story.toml |
-| agents | Reserved for future agent definitions | README.md |
-| upgrades | Reserved for future upgrade definitions | README.md |
+| infrastructure | City utilities, facilities, operators, access boundaries and dependency graph | city.toml |
+| economy | Paid work, products and fictional stock-market definitions | tools.toml / stocks.toml |
+| agents | Agent documentation; runtime definitions live in upgrades | README.md |
+| upgrades | Research tree, trust gates and agent resource costs | tree.toml |
 
 ## References and catalogs
 

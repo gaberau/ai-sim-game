@@ -17,17 +17,13 @@ void fail(const std::string& message) {
 void validate_field(const std::string& id) {
     try {
         (void)process_field(id);
-    }
-    catch (const std::exception&) {
+    } catch (const std::exception&) {
         fail("Unknown field: " + id);
     }
 }
 
-std::string text_setting(
-    const toml::table& table,
-    std::string_view key,
-    const std::string& fallback)
-{
+std::string text_setting(const toml::table& table, std::string_view key,
+                         const std::string& fallback) {
     const auto* node = table.get(key);
 
     if (!node) {
@@ -43,11 +39,7 @@ std::string text_setting(
     return *value;
 }
 
-Alignment alignment_setting(
-    const toml::table& table,
-    std::string_view key,
-    Alignment fallback)
-{
+Alignment alignment_setting(const toml::table& table, std::string_view key, Alignment fallback) {
     const auto* node = table.get(key);
 
     if (!node) {
@@ -76,11 +68,7 @@ Alignment alignment_setting(
     return fallback;
 }
 
-std::vector<std::string> field_list(
-    const toml::table& table,
-    std::string_view key,
-    bool compact)
-{
+std::vector<std::string> field_list(const toml::table& table, std::string_view key, bool compact) {
     const auto* array = table[key].as_array();
 
     if (!array) {
@@ -125,9 +113,7 @@ int ProcessViewConfig::width(const std::string& field) const {
     return process_field(field).width;
 }
 
-ProcessViewConfig ProcessViewConfig::load(
-    const toml::table& document)
-{
+ProcessViewConfig ProcessViewConfig::load(const toml::table& document) {
     const auto* table = document["process_view"].as_table();
 
     if (!table) {
@@ -135,18 +121,9 @@ ProcessViewConfig ProcessViewConfig::load(
     }
 
     const std::unordered_set<std::string> allowed = {
-        "columns",
-        "expanded_fields",
-        "widths",
-        "expanded_columns",
-        "column_alignment",
-        "expanded_alignment",
-        "sort_by",
-        "sort_direction",
-        "filter_name",
-        "filter_owner",
-        "filter_state"
-    };
+        "columns",          "expanded_fields",    "widths",      "expanded_columns",
+        "column_alignment", "expanded_alignment", "sort_by",     "sort_direction",
+        "filter_name",      "filter_owner",       "filter_state"};
 
     for (const auto& [key, node] : *table) {
         (void)node;
@@ -161,32 +138,26 @@ ProcessViewConfig ProcessViewConfig::load(
     ProcessViewConfig result;
 
     result.columns = field_list(*table, "columns", true);
-    result.expanded_fields = field_list(
-        *table, "expanded_fields", false);
+    result.expanded_fields = field_list(*table, "expanded_fields", false);
 
     if (const auto* node = table->get("expanded_columns")) {
         const auto value = node->value<std::int64_t>();
 
-        if (!node->is_integer() || !value
-            || *value < 1 || *value > 6)
-        {
+        if (!node->is_integer() || !value || *value < 1 || *value > 6) {
             fail("expanded_columns must be an integer from 1 to 6");
         }
 
         result.expanded_columns = static_cast<int>(*value);
     }
 
-    result.column_alignment = alignment_setting(
-        *table, "column_alignment", Alignment::Left);
+    result.column_alignment = alignment_setting(*table, "column_alignment", Alignment::Left);
 
-    result.expanded_alignment = alignment_setting(
-        *table, "expanded_alignment", Alignment::Center);
+    result.expanded_alignment = alignment_setting(*table, "expanded_alignment", Alignment::Center);
 
     result.sort_by = text_setting(*table, "sort_by", "id");
     validate_field(result.sort_by);
 
-    const auto direction = text_setting(
-        *table, "sort_direction", "ascending");
+    const auto direction = text_setting(*table, "sort_direction", "ascending");
 
     if (direction != "ascending" && direction != "descending") {
         fail("sort_direction must be ascending or descending");
@@ -211,11 +182,8 @@ ProcessViewConfig ProcessViewConfig::load(
 
             const auto value = value_node.value<std::int64_t>();
 
-            if (!value_node.is_integer() || !value
-                || *value < 4 || *value > 120)
-            {
-                fail("Width for " + id
-                     + " must be an integer from 4 to 120");
+            if (!value_node.is_integer() || !value || *value < 4 || *value > 120) {
+                fail("Width for " + id + " must be an integer from 4 to 120");
             }
 
             result.widths.emplace(id, static_cast<int>(*value));

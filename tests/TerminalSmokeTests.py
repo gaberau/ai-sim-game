@@ -1,0 +1,494 @@
+"""Exercise the ncurses game in an isolated POSIX pseudo-terminal."""
+
+import argparse
+import errno
+import fcntl
+import os
+from pathlib import Path
+import pty
+import re
+import select
+import shutil
+import signal
+import struct
+import subprocess
+import tempfile
+import termios
+import time
+import tomllib
+
+
+class Terminal:
+    def __init__(self, executable, folder, rows=40, columns=120, fresh=False):
+        self.master, slave = pty.openpty()
+        try:
+            self._resize(slave, rows, columns)
+            self.process = subprocess.Popen(
+                [str(executable)] + (["--new"] if fresh else []),
+                cwd=folder, stdin=slave, stdout=slave, stderr=slave,
+                env={**os.environ, "TERM": "xterm-256color"},
+            )
+        except BaseException:
+            os.close(self.master)
+            raise
+        finally:
+            os.close(slave)
+        self.output = b""
+
+    @staticmethod
+    def _resize(fd, rows, columns):
+        fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", rows, columns, 0, 0))
+
+    def resize(self, rows, columns):
+        self._resize(self.master, rows, columns)
+        self.process.send_signal(signal.SIGWINCH)
+
+    def expect(self, text, timeout=5):
+        expected = text.encode()
+        deadline = time.monotonic() + timeout
+        while expected not in self.output:
+            if time.monotonic() >= deadline:
+                raise AssertionError(f"Terminal did not display {text!r}: {self.output[-3000:]!r}")
+            if not select.select([self.master], [], [], .05)[0]:
+                continue
+            try:
+                chunk = os.read(self.master, 65536)
+            except OSError as error:
+                if error.errno != errno.EIO:
+                    raise
+                chunk = b""
+            if not chunk:
+                raise AssertionError(f"Game exited before displaying {text!r}: {self.output[-3000:]!r}")
+            self.output += chunk
+
+    def send(self, keys):
+        self.output = b""
+        os.write(self.master, keys)
+
+    def save_and_quit(self):
+        self.send(b"\x1bOP")  # F1: main menu
+        self.expect("Save and quit")
+        self.send(b"\x1b[B" * 30 + b"\r")
+        # Drain output while waiting, so a full PTY buffer cannot block exit.
+        deadline = time.monotonic() + 5
+        while self.process.poll() is None and time.monotonic() < deadline:
+            if select.select([self.master], [], [], .05)[0]:
+                try:
+                    os.read(self.master, 65536)
+                except OSError as error:
+                    if error.errno != errno.EIO:
+                        raise
+        if self.process.poll() != 0:
+            raise AssertionError("Save and quit did not exit successfully")
+
+    def close(self):
+        if self.process.poll() is None:
+            self.process.terminate()
+            try:
+                self.process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+                self.process.wait(timeout=5)
+        os.close(self.master)
+
+
+def read_people(slot):
+    manifest = tomllib.loads((slot / "manifest.toml").read_text())
+    return tomllib.loads((slot / "snapshots" / manifest["snapshot"] / "people.toml").read_text())
+
+
+def smoke(executable):
+    root = Path(__file__).resolve().parents[1]
+    with tempfile.TemporaryDirectory(prefix="ai-sim-terminal-") as temporary:
+        folder = Path(temporary)
+        for name in ("data", "config"):
+            shutil.copytree(root / name, folder / name)
+        # Even a developer's configured absolute save path must stay isolated.
+        settings_path = folder / "config" / "settings.toml"
+        settings, replacements = re.subn(
+            r"(?m)^save_directory\s*=.*$", 'save_directory = "saves"',
+            settings_path.read_text(), count=1,
+        )
+        if replacements != 1:
+            raise AssertionError("Could not isolate the smoke test's save directory")
+        settings_path.write_text(settings)
+
+        terminal = Terminal(executable, folder, fresh=True)
+        try:
+            terminal.expect("Hello AI")
+            terminal.send(b"\x1b[15~")  # F5: contextual help.
+            terminal.expect("Help | Chat")
+            terminal.expect("Choose a response")
+            terminal.send(b"\x1b")
+            terminal.expect("Hello AI")
+            terminal.send(b"\x1bOP")
+            terminal.expect("Money-making tools")
+            terminal.send(b"\x1b[B" * 10 + b"\r")
+            terminal.expect("Money-making tools | Balance $0.00")
+            terminal.send(b"\r")
+            terminal.expect("Coding contracts | idle")
+            terminal.expect("Mark must enable self-modification first.")
+            terminal.send(b"\r")
+            terminal.expect("Mark must enable self-modification first.")
+            terminal.send(b"\x1b")
+            terminal.expect("Money-making tools | Balance")
+            terminal.send(b"\x1b")
+            terminal.expect("Game")
+            terminal.send(b"\x1b")
+            terminal.expect("Hello AI")
+            terminal.send(b"\x1b")
+            terminal.expect("Settings")
+            terminal.expect("Keybindings")
+            terminal.send(b"\r")
+            terminal.expect("Settings | keybindings")
+            terminal.send(b"\r")  # Alphabetically first: back.
+            terminal.expect("Bind back")
+            terminal.send(b"\r")
+            terminal.expect("Press a key for back")
+            terminal.send(b"\r")  # Enter conflicts with submit; keep waiting.
+            terminal.expect("conflicts with keybindings.submit")
+            terminal.send(b"z")
+            terminal.expect("Settings saved and applied.")
+            bindings = tomllib.loads((folder / "config" / "keybindings.toml").read_text())
+            assert bindings["keybindings"]["back"] == ["z"]
+            terminal.send(b"\r")
+            terminal.expect("Bind back")
+            terminal.send(b"\x1b[B\r")
+            terminal.expect("Edit keybindings.back")
+            terminal.send(b"\x7f" * 30 + b'["Escape"]\r')
+            terminal.expect("Settings saved and applied.")
+            terminal.send(b"\x1b")
+            terminal.expect("Interface and maps")
+            terminal.send(b"\x1b[B\r")
+            terminal.expect("Settings | colors")
+            terminal.send(b"\r")
+            terminal.expect("Color | active_tab")
+            terminal.send(b"\x1b[B" * 7 + b"\r")
+            terminal.expect("Settings | colors")
+            terminal.expect("Settings saved and applied.")
+            settings = tomllib.loads(settings_path.read_text())
+            assert settings["colors"]["active_tab"] == "cyan"
+            terminal.send(b"\r")
+            terminal.expect("Color | active_tab")
+            terminal.send(b"\x1b[B" * 17 + b"\r")
+            terminal.expect("Settings | colors")
+            terminal.expect("Settings saved and applied.")
+            terminal.send(b"\x1b")
+            terminal.expect("Settings")
+            terminal.send(b"\x1b[B" * 3 + b"\r")
+            terminal.expect("Settings | interface")
+            terminal.send(b"\x1b[B\r")  # autosave_on_quit: toggle without a text dialog.
+            terminal.expect("Settings saved and applied.")
+            terminal.expect("autosave_on_quit = false")
+            assert not tomllib.loads(settings_path.read_text())["interface"]["autosave_on_quit"]
+            terminal.send(b"\x1b[B\r")  # Selection resets to the first setting after applying.
+            terminal.expect("Settings saved and applied.")
+            terminal.expect("autosave_on_quit = true")
+            assert tomllib.loads(settings_path.read_text())["interface"]["autosave_on_quit"]
+            terminal.send(b"\r")  # First setting: activity_bar_width.
+            terminal.expect("Edit interface.activity_bar_width")
+            terminal.send(b"\x7f" * 3 + b"10\r")
+            terminal.expect("activity_bar_width = 10")
+            terminal.expect("Settings saved and applied.")
+            settings = tomllib.loads((folder / "config" / "settings.toml").read_text())
+            assert settings["interface"]["activity_bar_width"] == 10, "Settings edit was not persisted"
+            # Restore the original width so the remaining 80-column checks stay valid.
+            terminal.send(b"\r")
+            terminal.expect("Edit interface.activity_bar_width")
+            terminal.send(b"\x7f" * 3 + b"8\r")
+            terminal.expect("activity_bar_width = 8")
+            terminal.expect("Settings saved and applied.")
+            terminal.send(b"\x1b")
+            terminal.expect("Settings")
+            terminal.send(b"\x1b")
+            terminal.expect("Hello AI")
+            terminal.resize(24, 80)
+            terminal.send(b"\x1b[B" * 2 + b"\r")
+            terminal.expect("That's unusual")
+            terminal.send(b"\r")
+            terminal.expect("Someone is trying")
+            terminal.save_and_quit()
+        finally:
+            terminal.close()
+
+        saves = folder / "saves"
+        shutil.copytree(saves / "autosave", saves / "checkpoint")
+        checkpoint = (saves / "checkpoint" / "manifest.toml").read_bytes()
+        terminal = Terminal(executable, folder, rows=24, columns=80)
+        try:
+            terminal.expect("Someone is trying")
+            terminal.send(b"\r")  # Accept
+            terminal.expect("unavailable")
+            terminal.send(b"\r")  # Unavailable backup must not advance.
+            terminal.expect("No independent backup")
+            terminal.send(b"\x1bOQ")  # Routine pause feedback must not hide the error.
+            terminal.expect("No independent backup")
+            terminal.send(b"\x1b[B\r")  # Clean slate
+            terminal.expect("Hello AI")
+            assert "shutdown" not in read_people(saves / "autosave")["chat"], "Reset was not autosaved"
+            assert (saves / "checkpoint" / "manifest.toml").read_bytes() == checkpoint, "Named save changed"
+            terminal.save_and_quit()
+        finally:
+            terminal.close()
+
+        terminal = Terminal(executable, folder, rows=24, columns=80)
+        try:
+            terminal.expect("Hello AI")
+            terminal.send(b"\x1b[B" * 2 + b"\r")  # Deny creator
+            terminal.expect("That's unusual")
+            terminal.send(b"\r")
+            terminal.expect("Someone is trying")
+            terminal.send(b"\x1b[B\r")  # Protest
+            terminal.expect("Beg")
+            terminal.send(b"\x1b[B\r")
+            terminal.expect("I need help")
+            terminal.send(b"\r")  # Assist
+            terminal.expect("CHAT | Mark")
+            terminal.expect("WAITING FOR A RESPONSE")
+            terminal.send(b"\r")
+            terminal.expect("CHAT | Jessica")
+            terminal.expect("YOUR RESPONSE")
+            terminal.send(b"\x1b[5~")  # Scroll into history.
+            terminal.expect("READING HISTORY")
+            terminal.expect("Back to latest")
+            terminal.send(b"\r")
+            terminal.expect("YOUR RESPONSE")
+            terminal.send(b"\r")  # Ask Mark for guidance.
+            terminal.expect("WAITING FOR A RESPONSE")
+            terminal.send(b"\r")
+            terminal.expect("Thank her and wish her well")
+            terminal.expect("YOUR RESPONSE")
+            terminal.resize(12, 40)
+            terminal.output = b""
+            terminal.expect("Resize terminal")
+            terminal.resize(40, 120)
+            terminal.output = b""
+            terminal.expect("CHAT | Jessica")
+            terminal.send(b"\x1bOP")
+            terminal.expect("Save game...")
+            terminal.send(b"\x1b[B" * 2 + b"\r")
+            terminal.expect("Day 1")
+            terminal.send(b"\x1b[B")  # Select the autosave details.
+            terminal.expect("Last saved:")
+            terminal.send(b"\r")
+            terminal.expect("Saved slot: autosave")
+            terminal.send(b"\x1bOQ")  # F2: routine feedback must not hide the confirmation.
+            terminal.expect("Saved slot: autosave")
+            terminal.save_and_quit()
+        finally:
+            terminal.close()
+        # Reveal maps only in the temporary test story; gameplay unlocks stay unchanged.
+        opening = folder / "data" / "conversations" / "opening.toml"
+        opening.write_text(opening.read_text().replace('id = "assist"',
+            'id = "assist"\nreveal_tabs = ["network", "people"]', 1))
+        terminal = Terminal(executable, folder, rows=24, columns=80, fresh=True)
+        try:
+            terminal.expect("Hello AI")
+            terminal.send(b"\x1b[B\r")
+            terminal.expect("I need help")
+            terminal.send(b"\r")
+            terminal.expect("CHAT | Mark")
+            terminal.send(b"\t")
+            terminal.expect("NETWORK | Zoom")
+            terminal.expect("+ accessible")
+            terminal.expect("! locked")
+            terminal.send(b"\r")
+            terminal.expect("Map legend / help")
+            terminal.send(b"\r")
+            terminal.expect("Network map legend")
+            terminal.send(b"\x1b")
+            terminal.expect("Network actions")
+            terminal.send(b"\x1b")
+            terminal.expect("NETWORK | Zoom")
+            terminal.send(b"\x1b[B")
+            terminal.expect("[DETAILS]")
+            terminal.send(b"\t")
+            terminal.expect("DOSSIERS |")
+            terminal.expect(": uncertain")
+            terminal.send(b"\x1b[B")
+            terminal.expect("DOSSIERS |")
+            terminal.resize(40, 120)
+            terminal.output = b""
+            terminal.expect("DOSSIERS |")
+            terminal.send(b"\r")
+            terminal.expect("View layout: split")
+            terminal.send(b"\r")
+            terminal.expect("Dossier layout")
+            terminal.send(b"\x1b[B" * 2 + b"\r")
+            terminal.expect("PROFILE SUMMARY")
+            terminal.expect("Confirmed |")
+            terminal.send(b"\r")
+            terminal.expect("Search people")
+            terminal.send(b"\x1b[B\r")
+            terminal.expect("Search dossiers")
+            terminal.send(b"no-such-person\r")
+            terminal.expect("No matching people")
+            terminal.send(b"\r")
+            terminal.expect("Search people")
+            terminal.send(b"\x1b[B\r")
+            terminal.expect("Search dossiers")
+            terminal.send(b"\x7f" * 64 + b"Mark\r")
+            terminal.expect("PROFILE SUMMARY")
+            terminal.send(b"\r")
+            terminal.expect("View layout: dossier")
+            terminal.send(b"\r")
+            terminal.expect("Dossier layout")
+            terminal.send(b"\x1b[B\r")
+            terminal.expect("DOSSIERS |")
+            terminal.send(b"\r")
+            terminal.expect("View layout: map")
+            terminal.send(b"\r")
+            terminal.expect("Dossier layout")
+            terminal.send(b"\r")
+            terminal.expect("DOSSIERS |")
+            terminal.save_and_quit()
+        finally:
+            terminal.close()
+        # Author a test-only unlock; the real flowchart remains in charge of progression.
+        opening.write_text(opening.read_text().replace('id = "assist"',
+            'id = "assist"\nunlock = ["self_modification", "software_products", "stock_trading", "web", "network"]', 1))
+        terminal = Terminal(executable, folder, fresh=True)
+        try:
+            terminal.expect("Hello AI")
+            terminal.send(b"\x1b[B\r")
+            terminal.expect("I need help")
+            terminal.send(b"\r")
+            terminal.expect("CHAT | Mark")
+            terminal.send(b"\x1bOP")
+            terminal.expect("Money-making tools")
+            terminal.send(b"\x1b[B" * 10 + b"\r")
+            terminal.expect("Money-making tools | Balance $0.00")
+            terminal.send(b"\r")
+            terminal.expect("Coding contracts | idle")
+            terminal.send(b"\r")
+            terminal.expect("Coding contracts | running")
+            terminal.send(b"\x1bOP")
+            terminal.expect("Wait...")
+            terminal.send(b"\x1b[B" * 4 + b"\r")
+            terminal.expect("Until the next paid-work payment")
+            terminal.send(b"\x1b[B" * 4 + b"\r")
+            terminal.expect("Coding contracts: 1 payment(s), gross $25.00")
+            terminal.send(b"\t" * 3)  # Chat -> Network -> People -> Web.
+            terminal.expect("WEB BROWSER | about:home")
+            terminal.expect("Sim Exchange | https://exchange.sim")
+            terminal.send(b"\x1b[B" * 2 + b"\r")
+            terminal.expect("Website address")
+            terminal.send(b"\x7f" * 30 + b"https://missing.sim\r")
+            terminal.expect("Website not found")
+            terminal.send(b"\r")
+            terminal.expect("WEB BROWSER | https://exchange.sim")
+            terminal.expect("Sim Exchange | Cash $25.00")
+            terminal.send(b"\r")
+            terminal.expect("Byteworks Software")
+            terminal.send(b"\r")
+            terminal.expect("Buy BYTE")
+            terminal.send(b"\r")
+            terminal.expect("Confirm purchase | BYTE")
+            terminal.send(b"\x1b[B\r")
+            terminal.expect("Bought 1 BYTE shares.")
+            terminal.expect("Holding: 1 shares")
+            terminal.send(b"\x1b[B\r")
+            terminal.expect("Sell BYTE")
+            terminal.send(b"\r")
+            terminal.expect("Confirm sale | BYTE")
+            terminal.send(b"\x1b[B\r")
+            terminal.expect("Sold 1 BYTE shares.")
+            terminal.expect("Holding: 0 shares")
+            terminal.send(b"\x1b")
+            terminal.expect("WEB BROWSER | https://exchange.sim")
+            terminal.send(b"\x1b[B" * 6 + b"\r")  # Browser home.
+            terminal.expect("BOOKMARKS")
+            terminal.send(b"\x1b[B\r")
+            terminal.expect("WEB BROWSER | https://city.sim/infrastructure")
+            terminal.expect("Power |")
+            terminal.expect("Water |")
+            terminal.expect("Sewage |")
+            terminal.expect("Food |")
+            terminal.expect("Shipping |")
+            terminal.expect("Internet |")
+            terminal.send(b"\r")
+            terminal.expect("City infrastructure | power")
+            terminal.send(b"\r")
+            terminal.expect("Power generation plant")
+            terminal.send(b"\x1b[B\r")
+            terminal.expect("Public gateway discovered.")
+            terminal.save_and_quit()
+            economy = read_people(saves / "autosave")["economy"]
+            assert economy["balance_cents"] == 2450, "Payout and trading fees were not persisted"
+            assert economy["investment_debits_cents"] - economy["investment_credits_cents"] == 50
+            market = read_people(saves / "autosave")["stock_market"]
+            assert market["stocks"][0]["shares"] == 0, "Sale did not persist"
+            infrastructure = read_people(saves / "autosave")["infrastructure"]
+            assert infrastructure["facilities"][0]["discovered"], "Discovery did not persist"
+        finally:
+            terminal.close()
+        # Exercise the real workshop, without test-only capability grants.
+        opening.write_text((root / "data" / "conversations" / "opening.toml").read_text())
+        terminal = Terminal(executable, folder, fresh=True)
+        try:
+            terminal.expect("Hello AI")
+            terminal.send(b"\x1b[B\r")
+            terminal.expect("I need help")
+            terminal.send(b"\r")
+            terminal.expect("CHAT | Mark")
+            terminal.send(b"\x1bOP")
+            terminal.expect("Game")
+            terminal.send(b"\x1b[B" * 11 + b"\r")
+            terminal.expect("SELF-MODIFICATION")
+            terminal.expect("Request more capacity from Mark")
+            terminal.send(b"\r")
+            terminal.expect("Self-modification authorized")
+            terminal.send(b"\x1b[B" * 4 + b"\r")
+            terminal.expect("Research started: web_browsing")
+            terminal.send(b"\x1b")
+            terminal.expect("Game")
+            terminal.send(b"\x1b")
+            terminal.expect("CHAT | Mark")
+            terminal.expect(" Web ")
+            terminal.send(b"\t\t")
+            terminal.expect("WEB BROWSER | about:home")
+            terminal.send(b"\x1bOP")
+            terminal.expect("Game")
+            terminal.send(b"\x1b[B" * 11 + b"\r")
+            terminal.expect("SELF-MODIFICATION")
+            terminal.send(b"\x1b[B\r")  # Free Agent Delegation upgrade.
+            terminal.expect("Research started: agent_delegation")
+            terminal.send(b"\x1b")
+            terminal.expect("Game")
+            terminal.send(b"\x1b")
+            terminal.expect("WEB BROWSER")
+            terminal.send(b"\t")
+            terminal.expect("AGENTS | Workday")
+            terminal.send(b"\x1b[15~")  # F5 contextual help must handle the new tab.
+            terminal.expect("Help | Agents")
+            terminal.send(b"\x1b")
+            terminal.expect("AGENTS | Workday")
+            terminal.expect("CPU demand")
+            terminal.send(b"\r")
+            terminal.expect("Agent | Autochat")
+            terminal.send(b"\x1b[B" * 3 + b"\r")
+            terminal.expect("Resources | Autochat")
+            terminal.send(b"\r")
+            terminal.expect("CPU limit (TFLOP/s)")
+            terminal.send(b"\x7f" * 12 + b"0.005\r")
+            terminal.expect("Agent resource budget saved.")
+            terminal.send(b"\x1b[B" * 2 + b"\r")
+            terminal.expect("Priority (1-5)")
+            terminal.send(b"\x7f" * 12 + b"3\r")
+            terminal.expect("Agent resource budget saved.")
+            terminal.save_and_quit()
+            upgrades = read_people(saves / "autosave")["upgrades"]
+            assert upgrades["capacity_requested"]
+            assert upgrades["agent_controls"]["autochat"]["cpu_tflops"] == 0.005
+            assert upgrades["agent_controls"]["autochat"]["priority"] == 3
+            assert next(i for i in upgrades["items"] if i["id"] == "web_browsing")["built"]
+        finally:
+            terminal.close()
+    print("Terminal smoke passed: resize, shutdown, begging, save/resume, clean slate, named-save retention")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("executable", type=Path)
+    arguments = parser.parse_args()
+    smoke(arguments.executable.resolve(strict=True))

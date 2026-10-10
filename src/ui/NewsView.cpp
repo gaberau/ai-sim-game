@@ -10,8 +10,10 @@
 namespace ai_sim::ui {
 namespace {
 std::string clipped(const std::string& text, int width) {
-    if (width <= 0) return {};
-    if (text.size() <= static_cast<std::size_t>(width)) return text;
+    if (width <= 0)
+        return {};
+    if (text.size() <= static_cast<std::size_t>(width))
+        return text;
     return width > 3 ? text.substr(0, width - 3) + "..." : text.substr(0, width);
 }
 
@@ -31,14 +33,15 @@ std::vector<std::string> wrapped(const std::string& text, int width) {
                 lines.push_back(word.substr(0, width));
                 word.erase(0, width);
             }
-            if (!line.empty()) line += ' ';
+            if (!line.empty())
+                line += ' ';
             line += word;
         }
         lines.push_back(line);
     }
     return lines;
 }
-}
+} // namespace
 
 void TerminalUI::load_news() {
     const auto path = definitions_.news;
@@ -59,7 +62,8 @@ void TerminalUI::load_news() {
         if (const auto* rows = document["articles"].as_array()) {
             for (const auto& node : *rows) {
                 const auto* table = node.as_table();
-                if (!table) throw std::runtime_error("news.toml: articles must be tables");
+                if (!table)
+                    throw std::runtime_error("news.toml: articles must be tables");
                 const auto& row = *table;
                 NewsArticle article;
                 article.id = row["id"].value_or(std::string{});
@@ -69,9 +73,10 @@ void TerminalUI::load_news() {
                 article.date = row["date"].value_or(std::string{});
                 article.body = row["body"].value_or(std::string{});
                 article.release_seconds = row["release_seconds"].value_or(0.0);
-                if (article.id.empty() || !ids.insert(article.id).second || article.headline.empty()
-                    || (article.category != "world" && article.category != "history")
-                    || !std::isfinite(article.release_seconds) || article.release_seconds < 0.0)
+                if (article.id.empty() || !ids.insert(article.id).second ||
+                    article.headline.empty() ||
+                    (article.category != "world" && article.category != "history") ||
+                    !std::isfinite(article.release_seconds) || article.release_seconds < 0.0)
                     throw std::runtime_error("news.toml: invalid or duplicate article");
                 articles.push_back(std::move(article));
             }
@@ -88,8 +93,8 @@ void TerminalUI::load_news() {
 std::vector<const TerminalUI::NewsArticle*> TerminalUI::available_news() const {
     std::vector<const NewsArticle*> result;
     for (const auto& article : news_articles_)
-        if (article.release_seconds <= computer_.time_seconds()
-            && (news_filter_ == "all" || news_filter_ == article.category))
+        if (article.release_seconds <= computer_.time_seconds() &&
+            (news_filter_ == "all" || news_filter_ == article.category))
             result.push_back(&article);
     return result;
 }
@@ -97,7 +102,7 @@ std::vector<const TerminalUI::NewsArticle*> TerminalUI::available_news() const {
 void TerminalUI::select_news(int direction) {
     const auto articles = available_news();
     news_selected_ = std::clamp(news_selected_ + direction, 0,
-        std::max(0, static_cast<int>(articles.size()) - 1));
+                                std::max(0, static_cast<int>(articles.size()) - 1));
     news_body_offset_ = 0;
 }
 
@@ -109,7 +114,8 @@ void TerminalUI::draw_news(int top, int bottom, int width) {
         write(row, split, "|", Border);
     }
     write(top, 1, "NEWS / " + news_filter_, Heading, true);
-    write(top, split + 2, clipped(news_edition_, detail_width), news_details_focused_?ActiveTab:Heading, true);
+    write(top, split + 2, clipped(news_edition_, detail_width),
+          news_details_focused_ ? ActiveTab : Heading, true);
     if (articles.empty()) {
         write(top + 2, 1, "No published stories.");
         write(top + 2, split + 2, "Choose All stories in Actions, or wait for publication.");
@@ -122,34 +128,44 @@ void TerminalUI::draw_news(int top, int bottom, int width) {
         const int row = top + 2 + (i - first) * 3;
         const auto& article = *articles[i];
         const bool selected = i == news_selected_;
-        write(row, 1, clipped(std::string(selected ? "> " : "  ")
-            + article.category + " | " + article.source, split - 2), Footer, selected);
-        write(row + 1, 5, clipped(article.headline, split - 6),
-            selected ? ActiveTab : Plain, selected);
+        write(
+            row, 1,
+            clipped(std::string(selected ? "> " : "  ") + article.category + " | " + article.source,
+                    split - 2),
+            Footer, selected);
+        write(row + 1, 5, clipped(article.headline, split - 6), selected ? ActiveTab : Plain,
+              selected);
     }
     const auto& selected = *articles[news_selected_];
     // Keep the blue metadata header above the story even while scrolling it.
-    write(top + 2, split + 2, clipped(selected.category + " | " + selected.source
-        + (selected.date.empty() ? "" : " | " + selected.date), detail_width), Footer);
+    write(top + 2, split + 2,
+          clipped(selected.category + " | " + selected.source +
+                      (selected.date.empty() ? "" : " | " + selected.date),
+                  detail_width),
+          Footer);
     const int story_width = std::max(1, detail_width - 4);
     auto lines = wrapped(selected.headline, story_width);
     lines.push_back("");
     const auto body = wrapped(selected.body, story_width);
     lines.insert(lines.end(), body.begin(), body.end());
     const int visible = std::max(1, bottom - top - 4);
-    news_body_offset_ = std::clamp(news_body_offset_, 0,
-        std::max(0, static_cast<int>(lines.size()) - visible));
+    news_body_offset_ =
+        std::clamp(news_body_offset_, 0, std::max(0, static_cast<int>(lines.size()) - visible));
     for (int i = 0; i < visible && news_body_offset_ + i < static_cast<int>(lines.size()); ++i)
         write(top + 4 + i, split + 6, clipped(lines[news_body_offset_ + i], story_width));
-    write(bottom, 1, clipped("Select: " + settings_.binding_label(KeyAction::SelectPrevious)
-        + "/" + settings_.binding_label(KeyAction::SelectNext)
-        + " | Read: " + settings_.binding_label(KeyAction::ScrollUp)
-        + "/" + settings_.binding_label(KeyAction::ScrollDown)
-        + " | " + settings_.binding_label(KeyAction::Submit) + ": filters", width - 2), Footer);
+    write(bottom, 1,
+          clipped("Select: " + settings_.binding_label(KeyAction::SelectPrevious) + "/" +
+                      settings_.binding_label(KeyAction::SelectNext) +
+                      " | Read: " + settings_.binding_label(KeyAction::ScrollUp) + "/" +
+                      settings_.binding_label(KeyAction::ScrollDown) + " | " +
+                      settings_.binding_label(KeyAction::Submit) + ": filters",
+                  width - 2),
+          Footer);
 }
 
 void TerminalUI::draw_news_ticker(int row, int column, int width) {
-    if (width <= 0) return;
+    if (width <= 0)
+        return;
     std::vector<const NewsArticle*> stories;
     for (const auto& article : news_articles_)
         if (article.category == "world" && article.release_seconds <= computer_.time_seconds())
@@ -159,7 +175,8 @@ void TerminalUI::draw_news_ticker(int row, int column, int width) {
         write(row, column + width - static_cast<int>(text.size()), text, Footer);
         return;
     }
-    const auto index = static_cast<std::size_t>(computer_.time_seconds() / news_ticker_seconds_) % stories.size();
+    const auto index =
+        static_cast<std::size_t>(computer_.time_seconds() / news_ticker_seconds_) % stories.size();
     const auto text = clipped("NEWS | " + stories[index]->headline, width);
     write(row, column + width - static_cast<int>(text.size()), text, Footer);
 }

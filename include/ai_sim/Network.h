@@ -45,7 +45,7 @@ struct NetworkLink {
 };
 
 class Network {
-public:
+  public:
     static Network load(const std::filesystem::path& path);
     void save_snapshot(const std::filesystem::path& path) const;
 
@@ -56,8 +56,11 @@ public:
 
     // Tests connectivity through known, operational links.
     bool reachable(std::size_t target) const;
+    void grant_access(const std::string& id);
+    void discover_host(const std::string& id);
+    void import_missing(const Network& source);
 
-private:
+  private:
     std::vector<NetworkHost> hosts_;
     std::vector<NetworkLink> links_;
     std::size_t local_host_index_ = 0;

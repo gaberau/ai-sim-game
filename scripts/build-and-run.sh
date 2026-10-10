@@ -23,6 +23,7 @@ case "${1:-build}" in
         if [[ "${1:-build}" == test ]]; then
             ctest --test-dir "$build_directory" --output-on-failure
             python3 tests/DrawioTests.py
+            python3 tests/TerminalSmokeTests.py "$build_directory/ai_sim"
         fi
         ;;
     run)

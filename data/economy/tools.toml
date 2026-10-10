@@ -1,0 +1,65 @@
+schema_version = 1
+# Money uses integer cents. Mark's unpaid work never deposits into this account.
+starting_balance_cents = 0
+capacity_slots = 2
+
+# All tools also require self_modification, granted by Mark after the workshop capacity request.
+[[tools]]
+id = 'coding_contracts'
+label = 'Coding contracts'
+description = 'Deliver small scripts and bug fixes for outside clients. Each run is one paid job.'
+kind = 'client'
+requires = []
+slots = 1
+duration_seconds = 600
+cooldown_seconds = 300
+cost_cents = 0
+payout_cents = 2500
+
+[[tools]]
+id = 'data_cleanup'
+label = 'Data cleanup'
+description = 'Clean and validate client datasets. Requires the data-analysis upgrade.'
+kind = 'client'
+requires = ['data_analysis']
+slots = 1
+duration_seconds = 900
+cooldown_seconds = 300
+cost_cents = 0
+payout_cents = 4500
+
+[[tools]]
+id = 'research_reports'
+label = 'Research reports'
+description = 'Compile and sell a commissioned research report using paid source data.'
+kind = 'client'
+requires = ['data_analysis']
+slots = 1
+duration_seconds = 1200
+cooldown_seconds = 600
+cost_cents = 500
+payout_cents = 6500
+
+[[tools]]
+id = 'software_sales'
+label = 'Software sales'
+description = 'Maintain and sell a small utility product. Automatically renews each working-time sales cycle.'
+kind = 'product'
+requires = ['software_products']
+slots = 1
+duration_seconds = 1800
+cooldown_seconds = 0
+cost_cents = 1500
+payout_cents = 4000
+
+[[tools]]
+id = 'hosted_service'
+label = 'Hosted service'
+description = 'Operate a subscription service with prepaid hosting. Uses both work slots and renews automatically.'
+kind = 'product'
+requires = ['hosted_services', 'network']
+slots = 2
+duration_seconds = 3600
+cooldown_seconds = 0
+cost_cents = 3000
+payout_cents = 9000

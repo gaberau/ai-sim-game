@@ -15,6 +15,7 @@
 #include <functional>
 
 #include <cstdint>
+#include <chrono>
 #include <deque>
 #include <filesystem>
 #include <string>
@@ -33,22 +34,22 @@ enum class Tab {
     News,
     AI,
     People,
+    Web,
+    Agents,
+    Phone,
     Count
 };
 
 class TerminalUI {
-public:
-    explicit TerminalUI(
-        Computer& computer,
-        const std::filesystem::path& settings_path =
-            "config/settings.toml",
-        const std::filesystem::path& scenario_path =
-            "data/scenarios/hobbyist.toml",
-        bool auto_resume = true);
+  public:
+    explicit TerminalUI(Computer& computer,
+                        const std::filesystem::path& settings_path = "config/settings.toml",
+                        const std::filesystem::path& scenario_path = "data/scenarios/hobbyist.toml",
+                        bool auto_resume = true);
 
     void run();
 
-private:
+  private:
     enum Color {
         Plain = 0,
         Protected = 1,
@@ -63,7 +64,12 @@ private:
         Log = 10,
         Prompt = 11,
         Footer = 12,
-        FileEdit = 13, FileRead = 14, FileApproval = 15, FileBlocked = 16, FileUnknown = 17
+        FileEdit = 13,
+        FileRead = 14,
+        FileApproval = 15,
+        FileBlocked = 16,
+        FileUnknown = 17,
+        MapLocked = 18
     };
 
     Computer& computer_;
@@ -147,10 +153,12 @@ private:
     void update_people();
     std::string selected_person_id_ = "self:assistant";
     std::unordered_set<std::string> expanded_people_{"self:assistant"};
-    std::unordered_set<std::string> expanded_dossier_sections_{"identity"};
+    std::unordered_set<std::string> expanded_dossier_sections_{"identity", "relationships"};
     bool people_reveal_section_ = true;
     bool people_details_focused_ = false, people_neighborhood_ = false;
     std::string people_filter_ = "all";
+    std::string dossier_layout_ = "split", dossier_search_, dossier_filter_ = "all";
+    std::vector<std::string> dossier_people() const;
     double people_pan_x_ = 0, people_pan_y_ = 0, people_zoom_ = 1;
     int people_detail_offset_ = 0, people_section_selected_ = 0;
     void draw_people(int top, int bottom, int width);
@@ -162,8 +170,12 @@ private:
     void open_observation(const std::string& id);
     bool navigation_bound(KeyAction action, int key) const;
     void toggle_pane_focus();
-    struct DossierPosition { int offset = 0, section = 0; std::unordered_set<std::string> expanded{"identity"}; };
+    struct DossierPosition {
+        int offset = 0, section = 0;
+        std::unordered_set<std::string> expanded{"identity"};
+    };
     std::unordered_map<std::string, DossierPosition> dossier_positions_;
+    std::unordered_map<std::string, std::size_t> people_map_slots_;
     void change_person(const std::string& id);
     std::vector<std::string> visible_people() const;
 
@@ -177,25 +189,34 @@ private:
     std::vector<toml::table> displayed_chat_options_;
     void select_chat_message(int direction);
     ChatLine selected_chat_line() const;
+    ChatLine selected_chat_line(const std::vector<ChatLine>& timeline) const;
     void draw_opening(int height, int width);
     void draw_chat(int top, int bottom, int width);
     void open_chat_actions();
     void select_chat(int direction);
     void choose_chat();
     std::vector<toml::table> chat_options() const;
+    std::vector<toml::table> chat_options(const ChatLine& line) const;
     void respond_chat(const toml::table& choice);
+    std::optional<double> next_chat_response_time() const;
     void open_chat_request(const std::string& id);
     void cycle_tab(int direction);
     bool tab_available(Tab tab) const;
-    std::pair<int,std::string> file_access(const FileEntry&) const;
+    std::pair<int, std::string> file_access(const FileEntry&) const;
     bool paused_ = false;
     bool colors_enabled_ = false;
 
+    enum class NoticeKind { Routine, Success, Error };
     std::deque<std::string> log_;
+    std::string important_notice_;
+    NoticeKind important_notice_kind_ = NoticeKind::Routine;
+    std::chrono::steady_clock::time_point important_notice_until_{};
+    void draw_notification(int row, int width);
     struct MenuAction {
         std::string label;
         std::function<void()> invoke;
         std::string disabled_reason;
+        std::string detail = {};
     };
     bool menu_active_ = false;
     std::string menu_title_;
@@ -204,15 +225,44 @@ private:
     int menu_offset_ = 0;
     std::function<void()> menu_back_;
     bool text_active_ = false;
+    bool key_capture_active_ = false;
     std::string text_title_, text_hint_, text_value_;
     std::function<void(const std::string&)> text_submit_;
     std::function<void()> text_back_;
     bool quit_requested_ = false;
     void open_menu(const std::string&, std::vector<MenuAction>, std::function<void()> back = {});
     void open_text(const std::string&, const std::string&, std::function<void(const std::string&)>,
-        const std::string& initial = {}, std::function<void()> back = {});
+                   const std::string& initial = {}, std::function<void()> back = {});
     void open_actions();
     void open_game_menu();
+    void open_money_tools();
+    void open_upgrades();
+    void draw_agents(int top, int bottom, int width);
+    void open_agent_actions(const std::string& id);
+    void open_agent_resources(const std::string& id);
+    int agent_selected_ = 0;
+    bool agent_reveal_ = false;
+    std::string browser_address_ = "about:home";
+    int web_selected_ = 0, web_offset_ = 0;
+    std::string market_url() const;
+    std::string infrastructure_url() const;
+    void open_infrastructure();
+    void open_infrastructure_sector(const std::string& sector);
+    void open_infrastructure_facility(const std::string& id);
+    void draw_web(int top, int bottom, int width);
+    void follow_web_link();
+    void open_web_address();
+    void open_stock_market();
+    void open_stock(const std::string& symbol);
+    void enter_stock_trade(const std::string& symbol, bool buying);
+    void open_money_tool(const std::string& id);
+    void open_settings();
+    void open_context_help();
+    void apply_settings_edit(const std::string& section, const std::string& key,
+                             bool editing_keybindings, const std::string& literal);
+    void open_settings_section(const std::string& section, bool keys = false);
+    void edit_settings_value(const std::string& section, const std::string& key,
+                             bool editing_keybindings, const std::string& current_literal);
     void open_save_menu(bool loading);
     void open_permissions(const std::string& path);
     void open_documents(const std::string& email_id);
@@ -257,17 +307,12 @@ private:
     void draw_editor(int top, int bottom, int width);
     void handle_editor_key(int key);
 
-    void write(
-        int row,
-        int column,
-        const std::string& value,
-        int color = Plain,
-        bool bold = false,
-        bool dim = false) const;
+    void write(int row, int column, const std::string& value, int color = Plain, bool bold = false,
+               bool dim = false) const;
 
     void separator(int row) const;
 
-    void add_log(const std::string& message);
+    void add_log(const std::string& message, NoticeKind kind = NoticeKind::Routine);
     bool execute(const std::string& command);
 
     void scroll_view(int direction);

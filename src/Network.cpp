@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "ai_sim/DefinitionLoader.h"
 #include "ai_sim/Network.h"
 
@@ -13,25 +14,17 @@
 namespace ai_sim {
 namespace {
 
-std::string required_text(
-    const toml::table& table,
-    const char* key)
-{
+std::string required_text(const toml::table& table, const char* key) {
     const auto value = table[key].value<std::string>();
 
     if (!value || value->empty()) {
-        throw std::runtime_error(
-            std::string(key) + " must be a nonempty string");
+        throw std::runtime_error(std::string(key) + " must be a nonempty string");
     }
 
     return *value;
 }
 
-std::string optional_text(
-    const toml::table& table,
-    const char* key,
-    const std::string& fallback)
-{
+std::string optional_text(const toml::table& table, const char* key, const std::string& fallback) {
     const auto* node = table.get(key);
 
     if (!node) {
@@ -41,18 +34,13 @@ std::string optional_text(
     const auto value = node->value<std::string>();
 
     if (!value) {
-        throw std::runtime_error(
-            std::string(key) + " must be a string");
+        throw std::runtime_error(std::string(key) + " must be a string");
     }
 
     return *value;
 }
 
-bool optional_bool(
-    const toml::table& table,
-    const char* key,
-    bool fallback)
-{
+bool optional_bool(const toml::table& table, const char* key, bool fallback) {
     const auto* node = table.get(key);
 
     if (!node) {
@@ -62,18 +50,13 @@ bool optional_bool(
     const auto value = node->value<bool>();
 
     if (!value) {
-        throw std::runtime_error(
-            std::string(key) + " must be a boolean");
+        throw std::runtime_error(std::string(key) + " must be a boolean");
     }
 
     return *value;
 }
 
-double optional_number(
-    const toml::table& table,
-    const char* key,
-    double fallback)
-{
+double optional_number(const toml::table& table, const char* key, double fallback) {
     const auto* node = table.get(key);
 
     if (!node) {
@@ -81,15 +64,13 @@ double optional_number(
     }
 
     if (!node->is_number()) {
-        throw std::runtime_error(
-            std::string(key) + " must be a number");
+        throw std::runtime_error(std::string(key) + " must be a number");
     }
 
     const auto value = node->value<double>();
 
     if (!value || !std::isfinite(*value)) {
-        throw std::runtime_error(
-            std::string(key) + " must be finite");
+        throw std::runtime_error(std::string(key) + " must be finite");
     }
 
     return *value;
@@ -107,17 +88,14 @@ Network Network::load(const std::filesystem::path& path) {
     try {
         const auto document = DefinitionLoader::load(path);
 
-        const auto version =
-            document["schema_version"].value<std::int64_t>();
+        const auto version = document["schema_version"].value<std::int64_t>();
 
-        require(version && *version == 1,
-                "schema_version must be 1");
+        require(version && *version == 1, "schema_version must be 1");
 
         const auto* settings = document["network"].as_table();
         require(settings != nullptr, "Missing [network]");
 
-        const std::string local_id =
-            required_text(*settings, "local_host");
+        const std::string local_id = required_text(*settings, "local_host");
 
         const auto* host_array = document["hosts"].as_array();
         require(host_array != nullptr, "Missing [[hosts]]");
@@ -135,23 +113,18 @@ Network Network::load(const std::filesystem::path& path) {
             host.name = optional_text(*table, "name", host.id);
             host.address = optional_text(*table, "address", "unknown");
             host.kind = optional_text(*table, "kind", "computer");
-            host.description =
-                optional_text(*table, "description", "");
+            host.description = optional_text(*table, "description", "");
 
             host.x = optional_number(*table, "x", 0.0);
             host.y = optional_number(*table, "y", 0.0);
 
-            require(
-                std::abs(host.x) <= 10000.0
-                    && std::abs(host.y) <= 10000.0,
-                "Host coordinates must be within -10000 to 10000");
+            require(std::abs(host.x) <= 10000.0 && std::abs(host.y) <= 10000.0,
+                    "Host coordinates must be within -10000 to 10000");
 
             host.known = optional_bool(*table, "known", true);
             host.online = optional_bool(*table, "online", true);
-            host.access_granted =
-                optional_bool(*table, "access_granted", false);
-            host.ai_present =
-                optional_bool(*table, "ai_present", false);
+            host.access_granted = optional_bool(*table, "access_granted", false);
+            host.ai_present = optional_bool(*table, "ai_present", false);
 
             if (const auto* capacity_node = table->get("storage_capacity_bytes")) {
                 const auto capacity = capacity_node->value<std::int64_t>();
@@ -163,14 +136,12 @@ Network Network::load(const std::filesystem::path& path) {
             if (const auto* services_node = table->get("services")) {
                 const auto* services = services_node->as_array();
 
-                require(services != nullptr,
-                        "services must be an array of strings");
+                require(services != nullptr, "services must be an array of strings");
 
                 for (const auto& service : *services) {
                     const auto value = service.value<std::string>();
 
-                    require(value.has_value(),
-                            "services must contain only strings");
+                    require(value.has_value(), "services must contain only strings");
 
                     host.services.push_back(*value);
                 }
@@ -178,22 +149,18 @@ Network Network::load(const std::filesystem::path& path) {
 
             const auto index = result.hosts_.size();
 
-            require(
-                indices.emplace(host.id, index).second,
-                "Duplicate host ID: " + host.id);
+            require(indices.emplace(host.id, index).second, "Duplicate host ID: " + host.id);
 
             result.hosts_.push_back(std::move(host));
         }
 
         const auto local = indices.find(local_id);
 
-        require(local != indices.end(),
-                "local_host does not name an existing host");
+        require(local != indices.end(), "local_host does not name an existing host");
 
         result.local_host_index_ = local->second;
 
-        require(result.hosts_[local->second].known,
-                "The local host must be known");
+        require(result.hosts_[local->second].known, "The local host must be known");
 
         if (const auto* links_node = document.get("links")) {
             const auto* link_array = links_node->as_array();
@@ -211,21 +178,16 @@ Network Network::load(const std::filesystem::path& path) {
                 const auto from = indices.find(from_id);
                 const auto to = indices.find(to_id);
 
-                require(
-                    from != indices.end() && to != indices.end(),
-                    "Link references an unknown host");
+                require(from != indices.end() && to != indices.end(),
+                        "Link references an unknown host");
 
-                require(from_id != to_id,
-                        "A host cannot link to itself");
+                require(from_id != to_id, "A host cannot link to itself");
 
                 const std::string pair =
-                    from_id < to_id
-                        ? from_id + "\n" + to_id
-                        : to_id + "\n" + from_id;
+                    from_id < to_id ? from_id + "\n" + to_id : to_id + "\n" + from_id;
 
                 require(seen.insert(pair).second,
-                        "Duplicate link between "
-                            + from_id + " and " + to_id);
+                        "Duplicate link between " + from_id + " and " + to_id);
 
                 NetworkLink link;
 
@@ -234,52 +196,39 @@ Network Network::load(const std::filesystem::path& path) {
                 link.known = optional_bool(*table, "known", true);
                 link.up = optional_bool(*table, "up", true);
 
-                link.capacity_bits_per_second = optional_number(
-                    *table, "capacity_bits_per_second", 0.0);
+                link.capacity_bits_per_second =
+                    optional_number(*table, "capacity_bits_per_second", 0.0);
 
-                link.forward_bits_per_second = optional_number(
-                    *table, "forward_bits_per_second", 0.0);
+                link.forward_bits_per_second =
+                    optional_number(*table, "forward_bits_per_second", 0.0);
 
-                link.reverse_bits_per_second = optional_number(
-                    *table, "reverse_bits_per_second", 0.0);
+                link.reverse_bits_per_second =
+                    optional_number(*table, "reverse_bits_per_second", 0.0);
 
-                link.latency_milliseconds = optional_number(
-                    *table, "latency_milliseconds", 0.0);
+                link.latency_milliseconds = optional_number(*table, "latency_milliseconds", 0.0);
 
-                link.packet_loss_percent = optional_number(
-                    *table, "packet_loss_percent", 0.0);
+                link.packet_loss_percent = optional_number(*table, "packet_loss_percent", 0.0);
 
-                require(
-                    link.capacity_bits_per_second > 0.0,
-                    "Link capacity must be positive");
+                require(link.capacity_bits_per_second > 0.0, "Link capacity must be positive");
 
-                require(
-                    link.forward_bits_per_second >= 0.0
-                        && link.reverse_bits_per_second >= 0.0
-                        && link.forward_bits_per_second
-                            <= link.capacity_bits_per_second
-                        && link.reverse_bits_per_second
-                            <= link.capacity_bits_per_second,
-                    "Traffic must be between zero and link capacity");
+                require(link.forward_bits_per_second >= 0.0 &&
+                            link.reverse_bits_per_second >= 0.0 &&
+                            link.forward_bits_per_second <= link.capacity_bits_per_second &&
+                            link.reverse_bits_per_second <= link.capacity_bits_per_second,
+                        "Traffic must be between zero and link capacity");
 
-                require(
-                    link.latency_milliseconds >= 0.0,
-                    "Latency cannot be negative");
+                require(link.latency_milliseconds >= 0.0, "Latency cannot be negative");
 
-                require(
-                    link.packet_loss_percent >= 0.0
-                        && link.packet_loss_percent <= 100.0,
-                    "Packet loss must be between 0 and 100");
+                require(link.packet_loss_percent >= 0.0 && link.packet_loss_percent <= 100.0,
+                        "Packet loss must be between 0 and 100");
 
                 result.links_.push_back(link);
             }
         }
 
         return result;
-    }
-    catch (const std::exception& error) {
-        throw std::runtime_error(
-            path.string() + ": " + error.what());
+    } catch (const std::exception& error) {
+        throw std::runtime_error(path.string() + ": " + error.what());
     }
 }
 
@@ -296,11 +245,8 @@ std::size_t Network::local_host_index() const {
 }
 
 bool Network::reachable(std::size_t target) const {
-    if (target >= hosts_.size()
-        || !hosts_[target].known
-        || !hosts_[target].online
-        || !hosts_[local_host_index_].online)
-    {
+    if (target >= hosts_.size() || !hosts_[target].known || !hosts_[target].online ||
+        !hosts_[local_host_index_].online) {
         return false;
     }
 
@@ -327,18 +273,13 @@ bool Network::reachable(std::size_t target) const {
 
             if (link.from == current) {
                 next = link.to;
-            }
-            else if (link.to == current) {
+            } else if (link.to == current) {
                 next = link.from;
-            }
-            else {
+            } else {
                 continue;
             }
 
-            if (!visited[next]
-                && hosts_[next].known
-                && hosts_[next].online)
-            {
+            if (!visited[next] && hosts_[next].known && hosts_[next].online) {
                 visited[next] = true;
                 pending.push(next);
             }
@@ -348,4 +289,51 @@ bool Network::reachable(std::size_t target) const {
     return false;
 }
 
+void Network::grant_access(const std::string& id) {
+    auto found = std::find_if(hosts_.begin(), hosts_.end(), [&](const NetworkHost& h) {
+        return h.id == id;
+    });
+    require(found != hosts_.end(), "Unknown host: " + id);
+    found->known = true;
+    found->access_granted = true;
+}
+
+void Network::discover_host(const std::string& id) {
+    std::size_t selected = hosts_.size();
+    for (std::size_t index = 0; index < hosts_.size(); ++index)
+        if (hosts_[index].id == id)
+            selected = index;
+    if (selected == hosts_.size())
+        throw std::runtime_error("Unknown network host: " + id);
+    hosts_[selected].known = true;
+    for (auto& link : links_)
+        if ((link.from == selected || link.to == selected) && hosts_[link.from].known &&
+            hosts_[link.to].known)
+            link.known = true;
+}
+void Network::import_missing(const Network& source) {
+    std::unordered_map<std::string, std::size_t> indices;
+    for (std::size_t index = 0; index < hosts_.size(); ++index)
+        indices.emplace(hosts_[index].id, index);
+    for (const auto& host : source.hosts_)
+        if (!indices.contains(host.id)) {
+            indices.emplace(host.id, hosts_.size());
+            hosts_.push_back(host);
+        }
+    for (const auto& link : source.links_) {
+        const auto from = indices.at(source.hosts_[link.from].id),
+                   to = indices.at(source.hosts_[link.to].id);
+        bool present = false;
+        for (const auto& existing : links_)
+            if ((existing.from == from && existing.to == to) ||
+                (existing.from == to && existing.to == from))
+                present = true;
+        if (!present) {
+            auto added = link;
+            added.from = from;
+            added.to = to;
+            links_.push_back(added);
+        }
+    }
+}
 } // namespace ai_sim

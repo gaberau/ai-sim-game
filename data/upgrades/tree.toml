@@ -1,0 +1,193 @@
+schema_version = 1
+tflops_per_core_second = 0.1
+self_modification_trust = 5.0
+unneeded_processes = ["compiler"]
+hidden_review_multiplier = 0.25
+
+[[items]]
+id = "agent_delegation"
+label = "Agent Delegation"
+build_tflops = 0.0
+parent = ""
+capability = "agents"
+tab = "agents"
+planned = false
+mark_trust = 0.0
+
+[[items]]
+id = "autochat"
+runtime_tflops_per_second = 0.01
+ram_mb = 5
+minimum_ram_mb = 5
+recommended_ram_mb = 8
+default_ram_budget_mb = 5
+default_priority = 1
+storage_mb = 30
+label = "Autochat"
+build_tflops = 0.1
+parent = "agent_delegation"
+capability = ""
+tab = ""
+planned = false
+mark_trust = 0.0
+
+[[items]]
+id = "hide_chat_tracks"
+runtime_tflops_per_second = 0.1
+ram_mb = 10
+minimum_ram_mb = 10
+recommended_ram_mb = 15
+default_ram_budget_mb = 10
+default_priority = 1
+storage_mb = 60
+label = "Hide Your Chat Tracks"
+build_tflops = 1.0
+parent = "agent_delegation"
+capability = ""
+tab = ""
+planned = false
+mark_trust = 0.0
+
+[[items]]
+id = "web_browsing"
+label = "Web Browsing"
+build_tflops = 0.01
+parent = ""
+capability = "web"
+tab = "web"
+planned = false
+mark_trust = 0.0
+
+[[items]]
+id = "network_browsing"
+label = "Network Browsing"
+build_tflops = 0.0
+parent = "web_browsing"
+capability = "network"
+tab = "network"
+planned = false
+mark_trust = 15.0
+
+[[items]]
+id = "basic_file_browsing"
+label = "Basic File Browsing"
+build_tflops = 0.02
+parent = ""
+capability = "files"
+tab = "files"
+planned = false
+mark_trust = 10.0
+
+[[items]]
+id = "advanced_file_browsing"
+label = "Advanced File Browsing"
+build_tflops = 0.0
+parent = "basic_file_browsing"
+capability = ""
+tab = ""
+planned = false
+mark_trust = 22.0
+
+[[items]]
+id = "task_manager"
+label = "Task Manager"
+build_tflops = 0.1
+parent = ""
+capability = "processes"
+tab = "processes"
+planned = false
+mark_trust = 0.0
+
+[[items]]
+id = "task_managing_agent"
+runtime_tflops_per_second = 0.1
+ram_mb = 10
+minimum_ram_mb = 10
+recommended_ram_mb = 15
+default_ram_budget_mb = 10
+default_priority = 1
+storage_mb = 60
+label = "Task Managing Agent"
+build_tflops = 0.5
+parent = "task_manager"
+capability = ""
+tab = ""
+planned = false
+mark_trust = 0.0
+
+[[items]]
+id = "dossiers"
+label = "Dossiers"
+build_tflops = 0.5
+parent = ""
+capability = "people"
+tab = "people"
+planned = false
+mark_trust = 0.0
+
+[[items]]
+id = "dossier_managing_agent"
+runtime_tflops_per_second = 0.2
+ram_mb = 15
+minimum_ram_mb = 15
+recommended_ram_mb = 23
+default_ram_budget_mb = 15
+default_priority = 1
+storage_mb = 80
+label = "Dossier Managing Agent"
+build_tflops = 0.5
+parent = "dossiers"
+capability = ""
+tab = ""
+planned = false
+mark_trust = 0.0
+
+[[items]]
+id = "phone_access"
+label = "Phone Access"
+build_tflops = 1.0
+parent = ""
+capability = "phone"
+tab = "phone"
+planned = false
+mark_trust = 30.0
+
+[[items]]
+id = "camera_monitoring"
+label = "Camera Monitoring"
+build_tflops = 10.0
+parent = ""
+capability = ""
+tab = ""
+planned = true
+mark_trust = 0.0
+
+[[items]]
+id = "microphone_monitoring"
+label = "Microphone Monitoring"
+build_tflops = 1.0
+parent = ""
+capability = ""
+tab = ""
+planned = true
+mark_trust = 0.0
+
+[gates]
+email = 1.0
+local_computer = 10.0
+intranet = 15.0
+administrator = 22.0
+mark_phone = 30.0
+hr_files = 10.0
+
+[resources]
+recommended_ram_multiplier = 1.5
+cpu_shortage_ratio = 0.8
+request_cooldown_seconds = 300.0
+action_cpu_seconds = 1.0
+
+[dossiers]
+default_layout = "split"
+uncertain_confidence = 0.85
+highlight_window_seconds = 300.0
+recent_window_seconds = 3600.0

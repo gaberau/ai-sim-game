@@ -148,7 +148,7 @@ kind = "end"
 speaker = "engineer"
 text = "Excellent"
 reveal_interface = true
-unlock = [ "company_chat", "network" ]
+unlock = [ "company_chat" ]
 set_flag = "company_chat"
 
 [[nodes]]

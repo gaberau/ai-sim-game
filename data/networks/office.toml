@@ -5,7 +5,8 @@ sources = [
     '../computers/hosts/office_router.toml',
     '../computers/hosts/file_server.toml',
     '../computers/hosts/printer.toml',
-    '../computers/hosts/isp_gateway.toml'
+    '../computers/hosts/isp_gateway.toml',
+    'infrastructure.toml'
 ]
 
 [network]

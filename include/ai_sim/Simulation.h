@@ -12,18 +12,19 @@ struct SimulationState {
     toml::table& emails;
     toml::array& pending_events;
     FileSystem& files;
-    const Network& network;
+    Network& network;
 };
 
 enum class SimulationEvent { EngineerReviewStarted, JessicaDiscovered };
 
 struct SimulationUpdate {
     std::vector<std::string> messages;
+    std::vector<std::string> payments;
     std::vector<SimulationEvent> events;
 };
 
 class Simulation {
-public:
+  public:
     // Synchronize work, discovery and conversations at the current world clock.
     static SimulationUpdate update(SimulationState state);
     static SimulationUpdate update(WorldState& world);

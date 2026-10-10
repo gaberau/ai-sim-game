@@ -3,10 +3,11 @@
 #include <optional>
 namespace ai_sim {
 class PhaseWorkSystem {
-public:
+  public:
     static void install(WorldState&, const std::filesystem::path&);
     static void validate(const toml::table&);
-    static std::optional<double> next_due(const toml::table&, double limit, bool include_commitments = true);
+    static std::optional<double> next_due(const toml::table&, double limit,
+                                          bool include_commitments = true);
     static void advance(toml::table&, toml::table& emails, double time);
 };
-}
+} // namespace ai_sim
