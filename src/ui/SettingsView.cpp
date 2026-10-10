@@ -5,48 +5,52 @@
 
 namespace ai_sim::ui {
 void TerminalUI::open_settings() {
-    open_menu("Settings", {
-                              {"Keybindings",
-                               [this] {
-                                   open_settings_section("keybindings", true);
-                               },
-                               {}},
-                              {"Colors",
-                               [this] {
-                                   open_settings_section("colors");
-                               },
-                               {}},
-                              {"Background colors",
-                               [this] {
-                                   open_settings_section("backgrounds");
-                               },
-                               {}},
-                              {"Interface and maps",
-                               [this] {
-                                   open_settings_section("interface");
-                               },
-                               {}},
-                              {"Process view",
-                               [this] {
-                                   open_settings_section("process_view");
-                               },
-                               {}},
-                              {"Process column widths",
-                               [this] {
-                                   open_settings_section("process_view.widths");
-                               },
-                               {}},
-                              {"Reload TOML settings",
-                               [this] {
-                                   run_action("reload");
-                                   open_settings();
-                               },
-                               {}},
-                              {"Return to game",
-                               [] {
-                               },
-                               {}},
-                          });
+    open_menu("Settings",
+              {
+                  {"Keybindings",
+                   [this] {
+                       open_settings_section("keybindings", true);
+                   },
+                   {}},
+                  {"Colors",
+                   [this] {
+                       open_settings_section("colors");
+                   },
+                   {}},
+                  {"Background colors",
+                   [this] {
+                       open_settings_section("backgrounds");
+                   },
+                   {}},
+                  {"Interface and maps",
+                   [this] {
+                       open_settings_section("interface");
+                   },
+                   {}},
+                  {"Process view",
+                   [this] {
+                       open_settings_section("process_view");
+                   },
+                   {}},
+                  {"Process column widths",
+                   [this] {
+                       open_settings_section("process_view.widths");
+                   },
+                   {}},
+                  {"Reload TOML settings",
+                   [this] {
+                       run_action("reload");
+                       open_settings();
+                   },
+                   {}},
+                  {"Return to game",
+                   [] {
+                   },
+                   {}},
+              },
+              [this] {
+                  open_game_menu();
+              });
 }
 
 void TerminalUI::open_settings_section(const std::string& section, bool editing_keybindings) {
@@ -213,13 +217,14 @@ void TerminalUI::open_context_help() {
         control(KeyAction::EditorCancel, "discard edits");
         control(KeyAction::EditorFocus, "switch editor pane");
     } else {
-        const char* names[] = {"Chat", "Processes", "Activity", "Network", "Files", "News",
-                               "AI",   "Dossiers",  "Web",      "Agents",  "Phone"};
+        const char* names[] = {"Chat",  "Processes", "Activity",     "Network", "Files",
+                               "News",  "AI",        "Dossiers",     "Web",     "Agents",
+                               "Phone", "Money",     "Modifications"};
         title += " | " + std::string(names[static_cast<int>(selected_tab_)]);
         switch (selected_tab_) {
         case Tab::Chat:
             explain("Choose a response at the bottom. Waiting advances to a pending reply.");
-            explain("Browse history, then choose Back to latest to resume responding.");
+            control(KeyAction::ToggleFocus, "switch contacts / conversation");
             control(KeyAction::Submit, "send the selected response or open a contact");
             break;
         case Tab::Network:
@@ -230,7 +235,7 @@ void TerminalUI::open_context_help() {
             break;
         case Tab::People:
             explain("Select a person to read their dossier and relationship evidence.");
-            explain("Dotted relationships are uncertain; highlighted lines touch the selection.");
+            explain("Yellow relationships are uncertain; highlighted lines touch the selection.");
             control(KeyAction::ToggleExpanded, "expand dossier sections");
             control(KeyAction::Submit, "person actions and map legend");
             break;
@@ -251,7 +256,7 @@ void TerminalUI::open_context_help() {
             break;
         case Tab::AI:
             explain("Inspect the AI's current capabilities and state.");
-            explain("Actions -> Money-making tools: outside client jobs and recurring products.");
+            explain("Money tab: outside client jobs and recurring products.");
             explain("Mark must authorize self-modification first; each tool has its own unlocks.");
             break;
         case Tab::Web:
@@ -270,20 +275,31 @@ void TerminalUI::open_context_help() {
             explain("Mark trust 30 and Phone Access research authenticate his phone.");
             explain("Text/2FA, GPS and battery telemetry require additional authored data.");
             break;
+        case Tab::Money:
+            explain("Manage unlocked client jobs and AI-run products. Mark's tasks remain unpaid.");
+            control(KeyAction::Submit, "manage money-making tools");
+            break;
+        case Tab::Modifications:
+            explain("Request self-modification authorization, then research upgrades using "
+                    "allocated CPU.");
+            control(KeyAction::Submit, "open research and capacity controls");
+            break;
         case Tab::Count:
             break;
         }
         control(KeyAction::SelectPrevious, "previous selection");
         control(KeyAction::SelectNext, "next selection");
-        control(KeyAction::FocusLeft, "focus the left pane");
-        control(KeyAction::FocusRight, "focus the right pane");
-        control(KeyAction::ScrollUp, "scroll up / older history");
-        control(KeyAction::ScrollDown, "scroll down / newer history");
+        if (selected_tab_ != Tab::Chat) {
+            control(KeyAction::FocusLeft, "focus the left pane");
+            control(KeyAction::FocusRight, "focus the right pane");
+            control(KeyAction::ScrollUp, "scroll up / older history");
+            control(KeyAction::ScrollDown, "scroll down / newer history");
+        }
         control(KeyAction::NextTab, "next unlocked screen");
         control(KeyAction::Pause, "pause or resume simulation time");
     }
-    explain("Escape: close help; Escape during play: settings.");
-    control(KeyAction::GameMenu, "save, load, wait, and other game actions");
+    explain("Escape: back; Escape or F1 during play: game menu.");
+    control(KeyAction::GameMenu, "open the game menu, including settings and help");
     lines.push_back({"Return to game",
                      [] {
                      },

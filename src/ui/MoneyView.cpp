@@ -1,9 +1,47 @@
 #include "ai_sim/ui/TerminalUI.h"
 #include "ai_sim/EconomySystem.h"
+#include "ai_sim/UpgradeSystem.h"
 #include <algorithm>
 #include <stdexcept>
 
 namespace ai_sim::ui {
+void TerminalUI::draw_progression(int top, int bottom, int width) {
+    std::vector<std::string> rows;
+    if (selected_tab_ == Tab::Money) {
+        rows.push_back("MONEY-MAKING TOOLS | Balance " +
+                       EconomySystem::money(EconomySystem::balance(people_)));
+        for (const auto& tool : EconomySystem::tools(people_, computer_.time_seconds())) {
+            rows.push_back(tool.label + " | " + tool.status + " | " +
+                           EconomySystem::money(tool.payout_cents));
+            if (!tool.unavailable.empty())
+                rows.push_back("  " + tool.unavailable);
+        }
+    } else {
+        rows.push_back("MODIFICATIONS | " +
+                       people_["upgrades"]["pending"].value_or(std::string{"Ready"}));
+        rows.push_back(people_["upgrades"]["capacity_requested"].value_or(false)
+                           ? "Self-modification authorized"
+                           : "Request more capacity from Mark to authorize self-modification.");
+        if (const auto* items = people_["upgrades"]["items"].as_array())
+            for (const auto& row : *items) {
+                const auto& item = *row.as_table();
+                const auto id = item["id"].value_or(std::string{});
+                const auto reason = UpgradeSystem::unavailable(people_, id);
+                rows.push_back(item["label"].value_or(id) + " | " +
+                               (reason.empty() ? "Ready to research" : reason));
+            }
+    }
+    ai_offset_ =
+        std::clamp(ai_offset_, 0, std::max(0, static_cast<int>(rows.size()) - (bottom - top)));
+    for (int row = top; row < bottom && ai_offset_ + row - top < static_cast<int>(rows.size());
+         ++row)
+        write(row, 1, rows[ai_offset_ + row - top].substr(0, std::max(0, width - 2)),
+              row == top ? Heading : Plain);
+    write(bottom, 1,
+          settings_.binding_label(KeyAction::Submit) + ": " +
+              (selected_tab_ == Tab::Money ? "manage tools" : "research and capacity"),
+          Footer);
+}
 void TerminalUI::open_money_tools() {
     std::vector<MenuAction> actions;
     const auto time = computer_.time_seconds();
@@ -26,9 +64,7 @@ void TerminalUI::open_money_tools() {
         actions.push_back({"No money-making tools configured", {}, {}});
     open_menu("Money-making tools | Balance " +
                   EconomySystem::money(EconomySystem::balance(people_)),
-              std::move(actions), [this] {
-                  open_game_menu();
-              });
+              std::move(actions));
 }
 void TerminalUI::open_money_tool(const std::string& id) {
     const auto tools = EconomySystem::tools(people_, computer_.time_seconds());

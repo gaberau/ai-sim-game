@@ -162,7 +162,7 @@ void TerminalUI::draw_editor(int top, int bottom, int width) {
         text_column = split + 2;
         text_width = width - split - 4;
         for (int row = top; row < bottom; ++row)
-            write(row, split, "|", Border);
+            line_cell(row, split, '|', Border);
         write(top, 2, email_original_focused_ ? "[ ORIGINAL ]" : "ORIGINAL",
               email_original_focused_ ? ActiveTab : Heading, true);
         draw_original_email(top + 1, bottom - 1, 2, split - 4);

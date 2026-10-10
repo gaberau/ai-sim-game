@@ -1,4 +1,5 @@
 #include "ai_sim/MessageReviewSystem.h"
+#include "ai_sim/ConversationRules.h"
 #include "ai_sim/ui/TerminalUI.h"
 #include "ai_sim/ShutdownSystem.h"
 #include "ai_sim/WorkdaySystem.h"
@@ -41,11 +42,20 @@ std::string fit(const std::string& text, int width) {
 }
 } // namespace
 bool TerminalUI::tab_available(Tab tab) const {
+    if (tab == Tab::Modifications)
+        return ChatSystem::interface_visible(people_) && ChatSystem::connected(people_) &&
+               people_["upgrades"].is_table() &&
+               ConversationRules::get(people_, "engineer.trust") >=
+                   people_["upgrades"]["self_modification_trust"].value_or(5.0);
+    if (tab == Tab::Money)
+        return ChatSystem::interface_visible(people_) && ChatSystem::connected(people_) &&
+               people_["economy"].is_table() && ChatSystem::available(people_, "self_modification");
     if (tab == Tab::Web)
         return ChatSystem::interface_visible(people_) && ChatSystem::connected(people_) &&
                ChatSystem::available(people_, people_.contains("upgrades") ? "web" : "network");
-    const char* names[] = {"chat", "processes", "activity", "network", "files", "news",
-                           "ai",   "people",    "web",      "agents",  "phone"};
+    const char* names[] = {"chat",  "processes", "activity",     "network", "files",
+                           "news",  "ai",        "people",       "web",     "agents",
+                           "phone", "money",     "modifications"};
     return tab != Tab::Count && ChatSystem::tab_visible(people_, names[static_cast<int>(tab)]);
 }
 void TerminalUI::cycle_tab(int direction) {
@@ -349,12 +359,14 @@ void TerminalUI::draw_opening(int height, int width) {
         bool dim = false;
     };
     std::vector<Row> rows;
-    rows.push_back({displayed_chat_line_.speaker == "system" ? "SYSTEM" : "Mark", Heading, true});
-    rows.push_back({"", Plain, false});
-    const auto message = wrap(displayed_chat_line_.text, wrap_width);
-    for (const auto& line : message)
-        rows.push_back({line, Plain, false});
-    rows.push_back({"", Plain, false});
+    // System notes remain in the authored transcript for the editor.
+    if (displayed_chat_line_.speaker != "system") {
+        rows.push_back({"Mark", Heading, true});
+        rows.push_back({"", Plain, false});
+        for (const auto& line : wrap(displayed_chat_line_.text, wrap_width))
+            rows.push_back({line, Plain, false});
+        rows.push_back({"", Plain, false});
+    }
     int selected_row = static_cast<int>(rows.size());
     for (int i = 0; i < static_cast<int>(options.size()); ++i) {
         const bool active = i == chat_choice_selected_;
@@ -390,9 +402,8 @@ void TerminalUI::draw_opening(int height, int width) {
     const std::string controls = settings_.binding_label(KeyAction::SelectPrevious) + "/" +
                                  settings_.binding_label(KeyAction::SelectNext) + ": select | " +
                                  settings_.binding_label(KeyAction::Submit) + ": choose | " +
-                                 settings_.binding_label(KeyAction::GameMenu) +
-                                 ": game | Esc: settings | " +
-                                 settings_.binding_label(KeyAction::Help) + ": help";
+                                 "Esc/" + settings_.binding_label(KeyAction::GameMenu) +
+                                 ": menu | " + settings_.binding_label(KeyAction::Help) + ": help";
     draw_notification(height - 2, width);
     write(height - 1, 1, fit(controls, width - 2), Footer);
     ChatSystem::mark_read(people_, "engineer");
@@ -409,7 +420,7 @@ void TerminalUI::draw_chat(int top, int bottom, int width) {
         write(top, 1, chat_contacts_focused_ ? "[ PEOPLE ]" : "PEOPLE",
               chat_contacts_focused_ ? ActiveTab : Heading, true);
         for (int row = top + 1; row < bottom; ++row)
-            write(row, split, "|", Border);
+            line_cell(row, split, '|', Border);
         auto selected = std::find_if(contacts.begin(), contacts.end(), [this](const auto& c) {
             return c.id == chat_contact_id_;
         });
@@ -450,10 +461,11 @@ void TerminalUI::draw_chat(int top, int bottom, int width) {
     displayed_chat_line_ = selected_line;
     int selected_row = 0;
     for (const auto& line : timeline) {
+        if (line.speaker == "system")
+            continue;
         if (line.id == selected_line.id)
             selected_row = static_cast<int>(rows.size());
-        const auto author = line.outgoing              ? std::string{"YOU"}
-                            : line.speaker == "system" ? std::string{"SYSTEM"}
+        const auto author = line.outgoing ? std::string{"YOU"}
                             : line.speaker == chat_contact_id_
                                 ? name
                                 : PeopleSystem::name(people_, line.speaker);
@@ -504,7 +516,7 @@ void TerminalUI::draw_chat(int top, int bottom, int width) {
                                                          : "YOUR RESPONSE";
         const auto controls =
             chat_contacts_focused_
-                ? settings_.binding_label(KeyAction::FocusRight) + ": focus conversation"
+                ? settings_.binding_label(KeyAction::Submit) + ": open conversation"
                 : settings_.binding_label(KeyAction::SelectPrevious) + "/" +
                       settings_.binding_label(KeyAction::SelectNext) + ": select | " +
                       settings_.binding_label(KeyAction::Submit) + ": choose";
@@ -535,12 +547,9 @@ void TerminalUI::draw_chat(int top, int bottom, int width) {
         }
     } else
         write(bottom - choice_rows, left, "NO RESPONSE NEEDED", Heading, true);
-    const std::string hint = settings_.binding_label(KeyAction::FocusLeft) + "/" +
-                             settings_.binding_label(KeyAction::FocusRight) + ": panes | " +
-                             settings_.binding_label(KeyAction::ScrollLeft) + "/" +
-                             settings_.binding_label(KeyAction::ScrollRight) + ": messages | " +
-                             settings_.binding_label(KeyAction::ScrollUp) + "/" +
-                             settings_.binding_label(KeyAction::ScrollDown) + ": scroll";
+    const std::string hint = local ? ""
+                                   : settings_.binding_label(KeyAction::ToggleFocus) +
+                                         ": switch contacts / conversation";
     write(bottom, 1, fit(hint, width - 2), Footer);
     if (chat_follow_latest_)
         ChatSystem::mark_read(people_, chat_contact_id_);

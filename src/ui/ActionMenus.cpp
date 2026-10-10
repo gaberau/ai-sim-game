@@ -302,7 +302,7 @@ void TerminalUI::open_save_menu(bool loading) {
 }
 void TerminalUI::open_game_menu() {
     open_menu(
-        "Game",
+        "Game menu",
         {
             {"Continue",
              [] {
@@ -468,16 +468,16 @@ void TerminalUI::open_game_menu() {
                            });
              },
              {}},
-            {"Money-making tools",
+            {"Settings...",
              [this] {
-                 open_money_tools();
+                 open_settings();
              },
              {}},
-            {"Self-modification workshop",
+            {"Help...",
              [this] {
-                 open_upgrades();
+                 open_context_help();
              },
-             people_["upgrades"].is_table() ? "" : "Unavailable in this scenario"},
+             {}},
             {"Save and quit",
              [this] {
                  saves_.save("autosave", capture_world());
@@ -588,6 +588,14 @@ void TerminalUI::open_attachments(const std::string& id) {
     });
 }
 void TerminalUI::open_actions() {
+    if (selected_tab_ == Tab::Money) {
+        open_money_tools();
+        return;
+    }
+    if (selected_tab_ == Tab::Modifications) {
+        open_upgrades();
+        return;
+    }
     if (selected_tab_ == Tab::Web) {
         follow_web_link();
         return;
@@ -751,7 +759,7 @@ void TerminalUI::open_actions() {
                                "are required. Red x means offline or unreachable. A star marks AI "
                                "presence; a dot marks a moved label's original position. Braces "
                                "and bold text mark selection. Cyan links connect the selected "
-                               "server; red dotted links are down. Other links are gray. The "
+                               "server; red links are down. Other links are gray. The "
                                "details pane explains the selected server's status and links.");
                            menu_back_ = [this] {
                                open_actions();

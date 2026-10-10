@@ -64,8 +64,6 @@ void TerminalUI::open_upgrades() {
         }
     open_menu("SELF-MODIFICATION | " +
                   people_["upgrades"]["pending"].value_or(std::string{"Ready"}),
-              std::move(actions), [this] {
-                  open_game_menu();
-              });
+              std::move(actions));
 }
 } // namespace ai_sim::ui

@@ -366,7 +366,7 @@ void TerminalUI::open_people_actions() {
          [this] {
              show_message(
                  "People map legend",
-                 "Cyan lines connect the selected person; gray lines connect other people. Dotted "
+                 "Cyan lines connect the selected person; gray lines connect other people. Yellow "
                  "lines indicate uncertain relationships. A dot marks a moved label's original "
                  "position. Bold labels mark selection. Open Connections and interactions to "
                  "inspect relationship types, confidence and supporting evidence.");
@@ -516,7 +516,7 @@ void TerminalUI::draw_people(int top, int bottom, int width) {
                   right),
               Footer);
         for (int y = top; y < bottom; ++y)
-            write(y, divider, "|", Border);
+            line_cell(y, divider, '|', Border);
         const double cx = (left + right) / 2.0, cy = (map_top + map_bottom) / 2.0;
         std::map<std::string, std::pair<double, double>> positions;
         std::vector<std::string> others;
@@ -547,7 +547,7 @@ void TerminalUI::draw_people(int top, int bottom, int width) {
         auto plot = [&](double x, double y, char c, int color) {
             const int px = static_cast<int>(std::lround(x)), py = static_cast<int>(std::lround(y));
             if (px >= left && px <= right && py >= map_top && py <= map_bottom)
-                write(py, px, std::string(1, c), color);
+                line_cell(py, px, c, color);
         };
         if (auto* edges = people_["known_relationships"].as_array())
             for (const auto& n : *edges) {
@@ -568,12 +568,14 @@ void TerminalUI::draw_people(int top, int bottom, int width) {
                     computer_.time_seconds() - e["last_seen_seconds"].value_or(0.0) < 90;
                 const bool selected_connection =
                     from == selected_person_id_ || to == selected_person_id_;
-                const int color = selected_connection ? Heading : Footer;
-                const char c = confidence < settings_.uncertain_relationship_threshold ? ':'
-                               : std::abs(y1 - y0) < 1                                 ? '-'
-                               : std::abs(x1 - x0) < 1                                 ? '|'
-                               : (x1 - x0) * (y1 - y0) >= 0                            ? '\\'
-                                                                                       : '/';
+                const int color = confidence < settings_.uncertain_relationship_threshold
+                                      ? MapLocked
+                                  : selected_connection ? Heading
+                                                        : Footer;
+                const char c = std::abs(y1 - y0) < 1        ? '-'
+                               : std::abs(x1 - x0) < 1      ? '|'
+                               : (x1 - x0) * (y1 - y0) >= 0 ? '\\'
+                                                            : '/';
                 for (int i = 0; i <= steps; ++i)
                     plot(x0 + (x1 - x0) * i / steps, y0 + (y1 - y0) * i / steps, c, color);
                 const double f = recent
@@ -646,7 +648,8 @@ void TerminalUI::draw_people(int top, int bottom, int width) {
                       right),
                   people_details_focused_ ? Heading : ActiveTab, true);
         write(bottom - 2, left, "Selected connections", Heading);
-        write(bottom - 1, left, fit(": uncertain | . moved label", right - left + 1), Footer);
+        write(bottom - 1, left, fit("Yellow: uncertain | . moved label", right - left + 1),
+              MapLocked);
     }
     if (dossier_layout_ == "map") {
         write(bottom, 1, "Up/Down: person | Enter: dossier actions and view layouts", Footer);

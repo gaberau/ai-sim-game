@@ -155,7 +155,7 @@ void TerminalUI::draw_network(int top, int bottom, int width) {
     }
 
     for (int row = top; row < bottom; ++row) {
-        write(row, divider, "|", Border);
+        line_cell(row, divider, '|', Border);
     }
 
     const double center_x = (map_left + map_right) / 2.0;
@@ -172,7 +172,7 @@ void TerminalUI::draw_network(int top, int bottom, int width) {
 
     const auto plot = [&](int x, int y, char symbol, int color) {
         if (x >= map_left && x <= map_right && y >= map_top && y <= map_bottom) {
-            write(y, x, std::string(1, symbol), color);
+            line_cell(y, x, symbol, color);
         }
     };
 
@@ -210,8 +210,7 @@ void TerminalUI::draw_network(int top, int bottom, int width) {
         const int steps =
             std::max(1, static_cast<int>(std::ceil(std::max(std::abs(dx), std::abs(dy)))));
 
-        const char symbol = !operational         ? ':'
-                            : std::abs(dy) < 0.5 ? '-'
+        const char symbol = std::abs(dy) < 0.5   ? '-'
                             : std::abs(dx) < 0.5 ? '|'
                             : dx * dy >= 0.0     ? '\\'
                                                  : '/';

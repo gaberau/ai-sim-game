@@ -111,7 +111,7 @@ void TerminalUI::draw_news(int top, int bottom, int width) {
     const int split = width * 2 / 5;
     const int detail_width = std::max(1, width - split - 4);
     for (int row = top; row <= bottom; ++row) {
-        write(row, split, "|", Border);
+        line_cell(row, split, '|', Border);
     }
     write(top, 1, "NEWS / " + news_filter_, Heading, true);
     write(top, split + 2, clipped(news_edition_, detail_width),

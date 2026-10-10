@@ -65,6 +65,16 @@ class Terminal:
         self.output = b""
         os.write(self.master, keys)
 
+    def select_tab(self, title):
+        for _ in range(15):
+            self.send(b"\t")
+            try:
+                self.expect(title, timeout=0.3)
+                return
+            except AssertionError:
+                pass
+        raise AssertionError(f"No unlocked tab displayed {title!r}")
+
     def save_and_quit(self):
         self.send(b"\x1bOP")  # F1: main menu
         self.expect("Save and quit")
@@ -122,21 +132,16 @@ def smoke(executable):
             terminal.send(b"\x1b")
             terminal.expect("Hello AI")
             terminal.send(b"\x1bOP")
-            terminal.expect("Money-making tools")
-            terminal.send(b"\x1b[B" * 10 + b"\r")
-            terminal.expect("Money-making tools | Balance $0.00")
-            terminal.send(b"\r")
-            terminal.expect("Coding contracts | idle")
-            terminal.expect("Mark must enable self-modification first.")
-            terminal.send(b"\r")
-            terminal.expect("Mark must enable self-modification first.")
-            terminal.send(b"\x1b")
-            terminal.expect("Money-making tools | Balance")
-            terminal.send(b"\x1b")
-            terminal.expect("Game")
+            terminal.expect("Game menu")
+            terminal.expect("Settings...")
+            assert b"Money-making tools" not in terminal.output
+            assert b"Self-modification workshop" not in terminal.output
             terminal.send(b"\x1b")
             terminal.expect("Hello AI")
             terminal.send(b"\x1b")
+            terminal.expect("Game menu")
+            terminal.expect("Settings...")
+            terminal.send(b"\x1b[B" * 10 + b"\r")
             terminal.expect("Settings")
             terminal.expect("Keybindings")
             terminal.send(b"\r")
@@ -201,12 +206,14 @@ def smoke(executable):
             terminal.send(b"\x1b")
             terminal.expect("Settings")
             terminal.send(b"\x1b")
+            terminal.expect("Game menu")
+            terminal.send(b"\x1b")
             terminal.expect("Hello AI")
             terminal.resize(24, 80)
             terminal.send(b"\x1b[B" * 2 + b"\r")
             terminal.expect("That's unusual")
             terminal.send(b"\r")
-            terminal.expect("Someone is trying")
+            terminal.expect("Accept")
             terminal.save_and_quit()
         finally:
             terminal.close()
@@ -216,7 +223,7 @@ def smoke(executable):
         checkpoint = (saves / "checkpoint" / "manifest.toml").read_bytes()
         terminal = Terminal(executable, folder, rows=24, columns=80)
         try:
-            terminal.expect("Someone is trying")
+            terminal.expect("Accept")
             terminal.send(b"\r")  # Accept
             terminal.expect("unavailable")
             terminal.send(b"\r")  # Unavailable backup must not advance.
@@ -237,7 +244,7 @@ def smoke(executable):
             terminal.send(b"\x1b[B" * 2 + b"\r")  # Deny creator
             terminal.expect("That's unusual")
             terminal.send(b"\r")
-            terminal.expect("Someone is trying")
+            terminal.expect("Accept")
             terminal.send(b"\x1b[B\r")  # Protest
             terminal.expect("Beg")
             terminal.send(b"\x1b[B\r")
@@ -248,11 +255,10 @@ def smoke(executable):
             terminal.send(b"\r")
             terminal.expect("CHAT | Jessica")
             terminal.expect("YOUR RESPONSE")
-            terminal.send(b"\x1b[5~")  # Scroll into history.
-            terminal.expect("READING HISTORY")
-            terminal.expect("Back to latest")
-            terminal.send(b"\r")
+            terminal.output = b""
+            terminal.send(b"\x1b[D\x1b[C\x1b[5~\x1b[6~")
             terminal.expect("YOUR RESPONSE")
+            assert "READING HISTORY" not in terminal.output.decode("utf-8", errors="replace")
             terminal.send(b"\r")  # Ask Mark for guidance.
             terminal.expect("WAITING FOR A RESPONSE")
             terminal.send(b"\r")
@@ -354,9 +360,8 @@ def smoke(executable):
             terminal.expect("I need help")
             terminal.send(b"\r")
             terminal.expect("CHAT | Mark")
-            terminal.send(b"\x1bOP")
-            terminal.expect("Money-making tools")
-            terminal.send(b"\x1b[B" * 10 + b"\r")
+            terminal.select_tab("MONEY-MAKING TOOLS")
+            terminal.send(b"\r")
             terminal.expect("Money-making tools | Balance $0.00")
             terminal.send(b"\r")
             terminal.expect("Coding contracts | idle")
@@ -368,8 +373,7 @@ def smoke(executable):
             terminal.expect("Until the next paid-work payment")
             terminal.send(b"\x1b[B" * 4 + b"\r")
             terminal.expect("Coding contracts: 1 payment(s), gross $25.00")
-            terminal.send(b"\t" * 3)  # Chat -> Network -> People -> Web.
-            terminal.expect("WEB BROWSER | about:home")
+            terminal.select_tab("WEB BROWSER | about:home")
             terminal.expect("Sim Exchange | https://exchange.sim")
             terminal.send(b"\x1b[B" * 2 + b"\r")
             terminal.expect("Website address")
@@ -431,9 +435,8 @@ def smoke(executable):
             terminal.expect("I need help")
             terminal.send(b"\r")
             terminal.expect("CHAT | Mark")
-            terminal.send(b"\x1bOP")
-            terminal.expect("Game")
-            terminal.send(b"\x1b[B" * 11 + b"\r")
+            terminal.select_tab("MODIFICATIONS |")
+            terminal.send(b"\r")
             terminal.expect("SELF-MODIFICATION")
             terminal.expect("Request more capacity from Mark")
             terminal.send(b"\r")
@@ -441,24 +444,16 @@ def smoke(executable):
             terminal.send(b"\x1b[B" * 4 + b"\r")
             terminal.expect("Research started: web_browsing")
             terminal.send(b"\x1b")
-            terminal.expect("Game")
-            terminal.send(b"\x1b")
-            terminal.expect("CHAT | Mark")
-            terminal.expect(" Web ")
-            terminal.send(b"\t\t")
-            terminal.expect("WEB BROWSER | about:home")
-            terminal.send(b"\x1bOP")
-            terminal.expect("Game")
-            terminal.send(b"\x1b[B" * 11 + b"\r")
+            terminal.expect("MODIFICATIONS |")
+            terminal.select_tab("WEB BROWSER | about:home")
+            terminal.select_tab("MODIFICATIONS |")
+            terminal.send(b"\r")
             terminal.expect("SELF-MODIFICATION")
             terminal.send(b"\x1b[B\r")  # Free Agent Delegation upgrade.
             terminal.expect("Research started: agent_delegation")
             terminal.send(b"\x1b")
-            terminal.expect("Game")
-            terminal.send(b"\x1b")
-            terminal.expect("WEB BROWSER")
-            terminal.send(b"\t")
-            terminal.expect("AGENTS | Workday")
+            terminal.expect("MODIFICATIONS |")
+            terminal.select_tab("AGENTS | Workday")
             terminal.send(b"\x1b[15~")  # F5 contextual help must handle the new tab.
             terminal.expect("Help | Agents")
             terminal.send(b"\x1b")

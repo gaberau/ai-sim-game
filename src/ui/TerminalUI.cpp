@@ -291,6 +291,20 @@ void TerminalUI::write(int row, int column, const std::string& value, int color,
     attroff(attributes);
 }
 
+void TerminalUI::line_cell(int row, int column, char symbol, int color) const {
+    int height, width;
+    getmaxyx(stdscr, height, width);
+    if (row < 0 || row >= height || column < 0 || column >= width)
+        return;
+    const int attributes = colors_enabled_ ? COLOR_PAIR(color + 1) : A_NORMAL;
+    const chtype glyph = symbol == '-'   ? ACS_HLINE
+                         : symbol == '|' ? ACS_VLINE
+                                         : static_cast<unsigned char>(symbol);
+    attron(attributes);
+    mvaddch(row, column, glyph);
+    attroff(attributes);
+}
+
 void TerminalUI::separator(int row) const {
     int height;
     int width;
@@ -300,9 +314,7 @@ void TerminalUI::separator(int row) const {
         const int attributes = colors_enabled_ ? COLOR_PAIR(Border + 1) : A_NORMAL;
 
         attron(attributes);
-        // Plain border characters avoid alternate-character-set sequences
-        // that some Windows/WSL bridges and terminal emulators mishandle.
-        mvhline(row, 0, settings_.full_redraw ? '-' : ACS_HLINE, width);
+        mvhline(row, 0, ACS_HLINE, width);
         attroff(attributes);
     }
 }
@@ -429,11 +441,19 @@ void TerminalUI::draw() {
         const char* name;
     };
 
-    const TabEntry tabs[] = {
-        {Tab::Chat, "Chat"},       {Tab::Processes, "Processes"}, {Tab::Activity, "Activity"},
-        {Tab::Network, "Network"}, {Tab::Files, "Files"},         {Tab::News, "News"},
-        {Tab::AI, "AI"},           {Tab::People, "Dossiers"},     {Tab::Web, "Web"},
-        {Tab::Agents, "Agents"},   {Tab::Phone, "Phone"}};
+    const TabEntry tabs[] = {{Tab::Chat, "Chat"},
+                             {Tab::Processes, "Processes"},
+                             {Tab::Activity, "Activity"},
+                             {Tab::Network, "Network"},
+                             {Tab::Files, "Files"},
+                             {Tab::News, "News"},
+                             {Tab::AI, "AI"},
+                             {Tab::People, "Dossiers"},
+                             {Tab::Web, "Web"},
+                             {Tab::Agents, "Agents"},
+                             {Tab::Phone, "Phone"},
+                             {Tab::Money, "Money"},
+                             {Tab::Modifications, "Modifications"}};
 
     int tab_column = 1;
 
@@ -503,6 +523,10 @@ void TerminalUI::draw() {
         case Tab::Web:
             draw_web(content_top, content_bottom, width);
             break;
+        case Tab::Money:
+        case Tab::Modifications:
+            draw_progression(content_top, content_bottom, width);
+            break;
         case Tab::Count:
             break;
         }
@@ -515,12 +539,12 @@ void TerminalUI::draw() {
                            settings_.binding_label(KeyAction::Back) + ": cancel"
         : menu_active_ ? settings_.binding_label(KeyAction::Submit) + ": choose | " +
                              settings_.binding_label(KeyAction::Back) + ": back | " +
-                             settings_.binding_label(KeyAction::GameMenu) + ": game"
+                             settings_.binding_label(KeyAction::GameMenu) + ": menu"
         : editor_active_ ? settings_.binding_label(KeyAction::EditorSave) + ": keep | " +
                                settings_.binding_label(KeyAction::EditorCancel) + ": discard | " +
                                settings_.binding_label(KeyAction::Submit) + ": newline"
-                         : settings_.binding_label(KeyAction::Help) + ": help | Esc: settings | " +
-                               settings_.binding_label(KeyAction::GameMenu) + ": game | " +
+                         : settings_.binding_label(KeyAction::Help) + ": help | Esc/" +
+                               settings_.binding_label(KeyAction::GameMenu) + ": menu | " +
                                settings_.binding_label(KeyAction::Submit) +
                                (selected_tab_ == Tab::Chat ? ": choose | " : ": actions | ") +
                                settings_.binding_label(KeyAction::NextTab) + ": tabs | " +
@@ -563,14 +587,11 @@ void TerminalUI::scroll_view(int direction) {
         } else {
             pan_network(0, direction);
         }
-    } else if (selected_tab_ == Tab::Chat) {
-        chat_message_id_ = selected_chat_line().id;
-        chat_follow_latest_ = false;
-        chat_offset_ = std::clamp(chat_offset_ + amount, 0, 1000000);
     } else if (selected_tab_ == Tab::News) {
         news_body_offset_ = std::clamp(news_body_offset_ + amount, 0, 1000000);
     } else if (selected_tab_ == Tab::AI || selected_tab_ == Tab::Agents ||
-               selected_tab_ == Tab::Phone) {
+               selected_tab_ == Tab::Phone || selected_tab_ == Tab::Money ||
+               selected_tab_ == Tab::Modifications) {
         ai_offset_ = std::clamp(ai_offset_ + amount, 0, 1000000);
     } else if (selected_tab_ == Tab::Files) {
         file_content_offset_ = std::clamp(file_content_offset_ + amount, 0, 1000000);
@@ -926,7 +947,7 @@ void TerminalUI::run() {
                 if (menu_active_ || text_active_)
                     handle_modal_key(key);
                 else if (key == 27)
-                    open_settings();
+                    open_game_menu();
                 else if (settings_.bound(KeyAction::Help, key))
                     open_context_help();
                 else if (editor_active_) {
@@ -934,9 +955,7 @@ void TerminalUI::run() {
                 } else if (settings_.bound(KeyAction::FocusLeft, key) ||
                            settings_.bound(KeyAction::FocusRight, key)) {
                     const bool right = settings_.bound(KeyAction::FocusRight, key);
-                    if (selected_tab_ == Tab::Chat)
-                        chat_contacts_focused_ = ChatSystem::contacts_visible(people_) && !right;
-                    else if (selected_tab_ == Tab::People)
+                    if (selected_tab_ == Tab::People)
                         people_details_focused_ = right;
                     else if (selected_tab_ == Tab::Network)
                         network_details_focused_ = right;
@@ -998,11 +1017,13 @@ void TerminalUI::run() {
                     if (!people_details_focused_)
                         people_pan_x_ += settings_.scroll_step / people_zoom_;
                 } else if ((selected_tab_ == Tab::AI || selected_tab_ == Tab::Agents ||
-                            selected_tab_ == Tab::Phone) &&
+                            selected_tab_ == Tab::Phone || selected_tab_ == Tab::Money ||
+                            selected_tab_ == Tab::Modifications) &&
                            navigation_bound(KeyAction::SelectPrevious, key)) {
                     ai_offset_ = std::max(0, ai_offset_ - 1);
                 } else if ((selected_tab_ == Tab::AI || selected_tab_ == Tab::Agents ||
-                            selected_tab_ == Tab::Phone) &&
+                            selected_tab_ == Tab::Phone || selected_tab_ == Tab::Money ||
+                            selected_tab_ == Tab::Modifications) &&
                            navigation_bound(KeyAction::SelectNext, key)) {
                     ai_offset_ = std::min(1000000, ai_offset_ + 1);
                 } else if (selected_tab_ == Tab::Chat &&
@@ -1011,13 +1032,7 @@ void TerminalUI::run() {
                 else if (selected_tab_ == Tab::Chat && navigation_bound(KeyAction::SelectNext, key))
                     select_chat(1);
                 else if (selected_tab_ == Tab::Chat &&
-                         navigation_bound(KeyAction::ScrollLeft, key)) {
-                    select_chat_message(-1);
-                } else if (selected_tab_ == Tab::Chat &&
-                           navigation_bound(KeyAction::ScrollRight, key)) {
-                    select_chat_message(1);
-                } else if (selected_tab_ == Tab::Chat &&
-                           settings_.bound(KeyAction::ToggleExpanded, key))
+                         settings_.bound(KeyAction::ToggleExpanded, key))
                     choose_chat();
                 else if (selected_tab_ == Tab::News &&
                          navigation_bound(KeyAction::SelectPrevious, key)) {

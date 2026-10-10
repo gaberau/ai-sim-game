@@ -179,7 +179,7 @@ void TerminalUI::draw_files(int top, int bottom, int width) {
     const int divider = std::clamp(width / 3, 26, 42), right = divider + 2,
               content_width = std::max(1, width - right - 2);
     for (int row = top + 1; row < bottom; ++row)
-        write(row, divider, "|", Border);
+        line_cell(row, divider, '|', Border);
     const auto entries = file_system_.category_files(network_, file_identity(), file_category_);
     if (entries.empty()) {
         selected_file_path_.clear();

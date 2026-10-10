@@ -223,8 +223,7 @@ void load_keybindings(UISettings& settings, const toml::table& table) {
             binding.labels.push_back(*name);
 
             for (const int code : codes) {
-                require(code != 27 || action_name == "back",
-                        "Escape is reserved for settings/back");
+                require(code != 27 || action_name == "back", "Escape is reserved for menu/back");
                 const auto found = assigned.find(code);
 
                 if (found != assigned.end()) {

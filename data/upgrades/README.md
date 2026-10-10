@@ -1,6 +1,6 @@
 # Self-modification workshop
 
-Open the actions menu and choose **Self-modification workshop**. Request more capacity from Mark after connecting and reaching trust 5. This records the capacity request and authorizes self-modification without changing trust or paying the AI.
+Open the unlocked **Modifications tab** and press Enter for research controls. Request more capacity from Mark after connecting and reaching trust 5. This records the capacity request and authorizes self-modification without changing trust or paying the AI.
 
 `tree.toml` defines labels, prerequisite IDs, build costs, Mark trust thresholds, capabilities and tabs. Research creates a real finite CPU process. `tflops_per_core_second` converts allocated core seconds to TFLOP work; CPU contention slows research. Only one build runs at a time. Saves retain the catalog, completed upgrades, pending research and actual consumed CPU work. Close menus to advance time.
 

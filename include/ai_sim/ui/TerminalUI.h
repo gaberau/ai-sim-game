@@ -37,6 +37,8 @@ enum class Tab {
     Web,
     Agents,
     Phone,
+    Money,
+    Modifications,
     Count
 };
 
@@ -235,6 +237,7 @@ class TerminalUI {
                    const std::string& initial = {}, std::function<void()> back = {});
     void open_actions();
     void open_game_menu();
+    void draw_progression(int top, int bottom, int width);
     void open_money_tools();
     void open_upgrades();
     void draw_agents(int top, int bottom, int width);
@@ -311,6 +314,7 @@ class TerminalUI {
                bool dim = false) const;
 
     void separator(int row) const;
+    void line_cell(int row, int column, char symbol, int color) const;
 
     void add_log(const std::string& message, NoticeKind kind = NoticeKind::Routine);
     bool execute(const std::string& command);

@@ -19,7 +19,7 @@ A choice can also reveal the existing AI management screen:
 reveal_tabs = ['ai']
 ```
 
-Money-making tools can always be previewed in F1 -> Money-making tools. Their
+The **Money tab** appears after Mark authorizes self-modification. Press Enter to manage tools. Their
 start actions explain missing unlocks, funding, capacity, or client cooldowns.
 F1 -> Wait -> Until the next paid-work payment advances to the earliest payment
 within the current workday. AI management shows balance and tool status.

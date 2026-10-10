@@ -35,12 +35,12 @@ Only those conversations are active; older office jobs, delegation offers,
 source-version discussions, complaint dialogue and review follow-ups are retired.
 
 Use arrows and Enter to select replies. Tab switches available views, Q/E focuses
-panes, F1 opens the game menu, and F2 pauses/resumes time. F1 offers saving, loading,
-waiting, restarting and quitting. Preferences remain in `config/`.
+panes, Escape or F1 opens the shared game menu, and F2 pauses/resumes time.
+The menu offers settings, help, saving, loading, waiting, restarting and quitting. Preferences remain in `config/`.
 
-Chat shows a continuous history with the current choices below it. Left/Right
-browses messages; PageUp/PageDown scrolls. Choose **Back to latest** to return to
-the current conversation. A visible **Wait for the next response** action advances
+Chat shows a continuous history with the current choices below it. Up/Down selects
+responses and Enter submits them. Left/Right and PageUp/PageDown have no chat action.
+System remarks remain in editor data and are hidden during play. A visible **Wait for the next response** action advances
 to the next scheduled conversation or review event. Control hints follow your
 configured keybindings, and contact names show unread message counts.
 
@@ -57,7 +57,7 @@ a dot marks the original position when a label moves to a nearby row.
 Map legends pair colors with symbols: green **+** means an accessible server,
 yellow **!** means credentials are required, red **x** means offline or unreachable,
 and an orange **\*** marks AI presence. Selected connections are cyan; uncertain
-people relationships are dotted. Map actions include **Map legend / help**.
+people relationships are yellow. All separators and connection lines are solid. Map actions include **Map legend / help**.
 Selected-server details explain status; relationship details show type, confidence,
 and the number of supporting evidence records. Colors follow UI settings; the
 optional `colors.map_locked` setting controls the yellow credential indicator.
@@ -98,13 +98,14 @@ Current-story tests check new games and old-save retirement. Historical backend
 and draw.io converter tests use `tests/fixtures/legacy-game`, never the playable
 scenario. These retain coverage for permissions, work queues, delegation and saves.
 
-Press **Escape** during play to open Settings. Escape goes back within settings
-and other menus; F1 continues to open the game menu. Settings can edit keybindings,
+Press **Escape** or **F1** during play to open the same game menu. Choose **Settings**
+to edit preferences, or **Help** for the current screen. Escape goes back within settings
+and other menus. Settings can edit keybindings,
 foreground/background colors, interface and map options, and process-view options.
 Enter values using TOML syntax: `true`, `100`, `"cyan"`, or `["r", "R"]`.
 Changes apply immediately and persist in `config/settings.toml` or
 `config/keybindings.toml`. Invalid values and conflicting keys are rejected.
-Escape remains reserved for settings/back; selection and submit keys cannot be empty.
+Escape remains reserved for menu/back; selection and submit keys cannot be empty.
 The first edit preserves the original file as `.bak`. Files are rewritten as
 formatted TOML; original comments remain in the backup.
 
@@ -130,12 +131,11 @@ or TOML editing for multiple keys; Escape cancels capture, and conflicts remain
 rejected. Press F5 during play for help specific to the current screen or file
 editor. The `help` action is configurable in `config/keybindings.toml`.
 
-Paid work is available under **F1 -> Money-making tools**, with balance and running
+Paid work is available under the unlocked **Money tab**, with balance and running
 jobs also shown in AI management. Coding contracts provide the first outside
 income; data cleanup, research reports, software sales, and hosted services have
 additional unlock requirements. Mark's work remains unpaid. All tools require
-Mark's explicit self-modification authorization. In **F1 -> Self-modification
-workshop**, request more capacity after reaching trust 5. Costs, durations, payouts, cooldowns, capacity, and prerequisites are
+Mark's explicit self-modification authorization. In the **Modifications tab**, request more capacity after reaching trust 5. Costs, durations, payouts, cooldowns, capacity, and prerequisites are
 editable in [data/economy/tools.toml](data/economy/tools.toml); see
 [data/economy/README.md](data/economy/README.md) for story integration and save behavior.
 
