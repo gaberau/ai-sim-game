@@ -1,0 +1,16 @@
+schema_version = 1
+
+[[hosts]]
+access_granted = true
+address = '192.168.10.42'
+ai_present = true
+description = "The engineer's computer, where the AI runs."
+id = 'engineer_pc'
+kind = 'workstation'
+known = true
+name = 'AI workstation'
+online = true
+services = [ 'Local filesystem', 'Email client', 'Web browser' ]
+storage_capacity_bytes = 536870912000
+x = 0
+y = 0

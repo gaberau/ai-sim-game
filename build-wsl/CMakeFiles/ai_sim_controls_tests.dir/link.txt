@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG -Wl,--dependency-file=CMakeFiles/ai_sim_controls_tests.dir/link.d CMakeFiles/ai_sim_controls_tests.dir/tests/ControlsTests.cpp.o CMakeFiles/ai_sim_controls_tests.dir/src/ui/UISettings.cpp.o CMakeFiles/ai_sim_controls_tests.dir/src/ui/ProcessViewConfig.cpp.o -o ai_sim_controls_tests  libai_sim_core.a -lncurses /usr/lib/x86_64-linux-gnu/libform.so

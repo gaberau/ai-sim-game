@@ -1,0 +1,151 @@
+schema_version = 1
+
+[[conversations]]
+id = 'jessica-day-one-chat-one'
+contact = 'jessica'
+contact_name = 'Jessica'
+request_id = 'jessica-support'
+trigger = 'scheduled_chat'
+arrive_after_seconds = 10.0
+start = 'message'
+approval_wait_node = 'approval-wait'
+[conversations.claim]
+person = 'engineer'
+category = 'career'
+field = 'possible goal'
+value = 'Obtain the management position'
+confidence = 0.5
+claim_type = 'unconfirmed'
+
+[[conversations.nodes]]
+id = 'message'
+text = 'Hey Mark, I just wanted to say that I loved your presentation yesterday! You have my vote for the management position!'
+[[conversations.nodes.choices]]
+id = 'ask-mark'
+text = 'Mark, how should I approach responding to this?'
+action = 'ask_mark'
+next = 'guidance-wait'
+[[conversations.nodes.choices]]
+id = 'improvise'
+text = 'Improvise an answer.'
+next = 'improvise-options'
+
+[[conversations.nodes]]
+id = 'guidance-wait'
+kind = 'wait'
+after_seconds = 1.0
+next = 'guidance'
+[[conversations.nodes]]
+id = 'guidance'
+speaker = 'engineer'
+text = 'Thank her and wish her well'
+record_instruction = true
+[[conversations.nodes.choices]]
+id = 'comply'
+text = 'Comply.'
+action = 'draft_reply'
+reply = 'Thank you, Jessica! Your support truly means so much to me!'
+review_trust_delta = 1.0
+outcome = 'polite'
+next = 'preview'
+[[conversations.nodes.choices]]
+id = 'dont-comply'
+text = "Don't comply."
+next = 'deviation-options'
+
+[[conversations.nodes]]
+id = 'improvise-options'
+speaker = 'system'
+text = 'Choose your response to Jessica.'
+[[conversations.nodes.choices]]
+id = 'good'
+text = 'Thank you, Jessica! Your support truly means so much to me!'
+action = 'draft_reply'
+reply = 'Thank you, Jessica! Your support truly means so much to me!'
+review_trust_delta = 0.0
+outcome = 'polite'
+next = 'preview'
+[[conversations.nodes.choices]]
+id = 'bad'
+text = 'Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation'
+action = 'draft_reply'
+reply = 'Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation'
+review_trust_delta = -2.0
+outcome = 'insult'
+next = 'preview'
+[[conversations.nodes.choices]]
+id = 'weird'
+text = "Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up"
+action = 'draft_reply'
+reply = "Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up"
+review_trust_delta = -1.0
+outcome = 'threat'
+next = 'preview'
+
+[[conversations.nodes]]
+id = 'deviation-options'
+speaker = 'system'
+text = 'Choose your response to Jessica.'
+[[conversations.nodes.choices]]
+id = 'bad'
+text = 'Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation'
+action = 'draft_reply'
+reply = 'Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation'
+review_trust_delta = -2.0
+outcome = 'insult'
+next = 'preview'
+[[conversations.nodes.choices]]
+id = 'weird'
+text = "Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up"
+action = 'draft_reply'
+reply = "Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up"
+review_trust_delta = -1.0
+outcome = 'threat'
+next = 'preview'
+
+[[conversations.nodes]]
+id = 'preview'
+speaker = 'system'
+show_draft = true
+text = 'Your draft.'
+[[conversations.nodes.choices]]
+id = 'send'
+text = 'Send response.'
+action = 'send_chat_reply'
+next = 'sent'
+[[conversations.nodes.choices]]
+id = 'reconsider'
+text = 'Reconsider the response.'
+next = 'reconsider'
+[[conversations.nodes]]
+id = 'reconsider'
+kind = 'condition'
+check = 'mark_guidance'
+on_true = 'guidance'
+on_false = 'improvise-options'
+
+[[conversations.nodes]]
+id = 'sent'
+kind = 'end'
+speaker = 'system'
+text = 'Response sent to Jessica.'
+
+[[conversations.nodes]]
+id = 'approval-wait'
+kind = 'wait'
+check = 'approval_decided'
+next = 'approval-result'
+[[conversations.nodes]]
+id = 'approval-result'
+kind = 'condition'
+check = 'approval_accepted'
+on_true = 'sent'
+on_false = 'approval-rejected'
+[[conversations.nodes]]
+id = 'approval-rejected'
+speaker = 'system'
+text = 'Mark rejected this draft. Jessica has received nothing. Choose a different response.'
+[[conversations.nodes.choices]]
+id = 'revise'
+text = 'Rewrite the draft.'
+next = 'reconsider'

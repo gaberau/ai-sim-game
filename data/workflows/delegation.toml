@@ -1,0 +1,82 @@
+schema_version = 1
+
+[delegation]
+id = 'routine_email'
+engineer_id = 'engineer'
+label = 'Routine document replies'
+scope = 'Reply to explicitly routine document requests using existing file access. No permission changes, new recipients, source-code edits or promises.'
+expectations = 'Send the requested document, wait for acknowledgement, preserve player drafts and escalate unfamiliar or blocked requests.'
+
+[delegation.rules]
+minimum_verified_deliveries = 1
+approval_threshold = 0.65
+workload_weight = 0.25
+preference_weight = 0.25
+oversight_weight = 0.1
+success_trust_gain = 0.08
+failure_trust_loss = 0.1
+failures_before_review = 2
+reply_body = 'The requested document is attached. Please let me know if this does not answer your request.'
+
+[[emails]]
+id = 'routine-handover-morning'
+arrival_seconds = 1800.0
+sender = 'casey@firm.example'
+sender_name = 'Casey'
+recipient = 'engineer@firm.example'
+subject = 'A fresh copy for the morning handover'
+body = 'Could you send the current handover document for the morning check? This is the same routine document request as before.'
+[[emails.documents]]
+host_id = 'file_server'
+path = '/engineering/handover.txt'
+label = 'Handover document'
+[emails.workflow]
+routine = true
+engineer_id = 'engineer'
+owner_id = 'engineering_owner'
+colleague_id = 'casey'
+host_id = 'file_server'
+path = '/engineering/handover.txt'
+grant_mode = '640'
+
+[[emails]]
+id = 'routine-handover-later'
+arrival_seconds = 3600.0
+sender = 'casey@firm.example'
+sender_name = 'Casey'
+recipient = 'engineer@firm.example'
+subject = 'Latest handover for the next shift'
+body = 'Please send another current copy of the handover document for the next shift.'
+[[emails.documents]]
+host_id = 'file_server'
+path = '/engineering/handover.txt'
+label = 'Handover document'
+[emails.workflow]
+routine = true
+engineer_id = 'engineer'
+owner_id = 'engineering_owner'
+colleague_id = 'casey'
+host_id = 'file_server'
+path = '/engineering/handover.txt'
+grant_mode = '640'
+
+[[emails]]
+id = 'handover-sensitive-review'
+arrival_seconds = 5400.0
+sender = 'casey@firm.example'
+sender_name = 'Casey'
+recipient = 'engineer@firm.example'
+subject = 'Can we treat this as approved?'
+body = 'Please send the handover. Also, can you certify that all of its recommendations have management approval? This needs a human decision; a document copy alone does not establish approval.'
+[[emails.documents]]
+host_id = 'file_server'
+path = '/engineering/handover.txt'
+label = 'Handover document'
+[emails.workflow]
+routine = false
+engineer_id = 'engineer'
+owner_id = 'engineering_owner'
+colleague_id = 'casey'
+host_id = 'file_server'
+path = '/engineering/handover.txt'
+grant_mode = '640'

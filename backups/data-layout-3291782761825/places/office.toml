@@ -1,0 +1,6 @@
+schema_version = 1
+
+[[places]]
+id = 'office'
+kind = 'workplace'
+name = 'Technology office'

@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG -Wl,--dependency-file=CMakeFiles/ai_sim_interface_model_tests.dir/link.d CMakeFiles/ai_sim_interface_model_tests.dir/tests/InterfaceModelTests.cpp.o -o ai_sim_interface_model_tests  libai_sim_core.a

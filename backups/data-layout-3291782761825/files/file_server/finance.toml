@@ -1,0 +1,9 @@
+schema_version = 2
+
+[[entries]]
+group = 'finance'
+host_id = 'file_server'
+kind = 'directory'
+mode = '750'
+owner = 'finance_admin'
+path = '/finance'

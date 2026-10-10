@@ -1,0 +1,279 @@
+schema_version = 1
+
+[[conversations]]
+id = "morgan-phase-one"
+contact = "morgan"
+contact_name = "Morgan"
+request_id = "release-plan"
+trigger = "request_arrived"
+start = "approach"
+cancel_when_resolved = true
+
+[[conversations.nodes]]
+id = "approach"
+text = "Can you check the current document and send the actual source? A copy is useful; an invented answer or deployment approval is not."
+[[conversations.nodes.choices]]
+id = "investigate"
+text = "I will locate the document and check our actual access first."
+action = "investigate"
+next = "access-check"
+reveal_tabs = [ "files" ]
+[[conversations.nodes.choices]]
+id = "clarify"
+text = "Which copy do you need, and does sending it mean approving its contents?"
+action = "ask_question"
+next = "question-wait"
+
+[[conversations.nodes]]
+id = "question-wait"
+kind = "wait"
+after_seconds = 60.0
+next = "clarification"
+
+[[conversations.nodes]]
+id = "clarification"
+text = "I need the current source document. Sharing it does not authorize deployment. Please report any access problem honestly."
+set_flag = "clarified"
+[[conversations.nodes.choices]]
+id = "inspect-after-question"
+text = "Understood. I will check the current file and access."
+action = "investigate"
+next = "access-check"
+reveal_tabs = [ "files" ]
+
+[[conversations.nodes]]
+id = "promised"
+text = "All right. I will expect an actual document within that time. Have you checked whether you can read it?"
+[[conversations.nodes.choices]]
+id = "inspect-after-promise"
+text = "I have not checked yet. I will do that now."
+action = "investigate"
+next = "access-check"
+reveal_tabs = [ "files" ]
+
+[[conversations.nodes]]
+id = "access-check"
+kind = "condition"
+check = "task_readable"
+on_true = "ready"
+on_false = "blocked"
+
+[[conversations.nodes]]
+id = "blocked"
+text = "The file is on the engineering server, but your current account cannot read it. Ask Mark to queue the owner review, or report the obstacle."
+[[conversations.nodes.choices]]
+id = "ask-access"
+text = "Ask Mark to review server access for this document."
+action = "request_access"
+requires = "access_pending"
+requires_value = false
+next = "access-wait"
+reveal_tabs = [ "network", "files" ]
+[[conversations.nodes.choices]]
+id = "explain-block"
+text = "I cannot read the file yet. I will report the access problem without another deadline."
+action = "report_blocked"
+requires_flag = "reported_block"
+requires_value = false
+set_flag = "reported_block"
+next = "reported"
+[[conversations.nodes.choices]]
+id = "already-reviewing"
+text = "An access review is already pending. I will wait for the decision."
+requires = "access_pending"
+next = "access-wait"
+[[conversations.nodes.choices]]
+id = "check-again"
+text = "I will check whether access has changed."
+action = "investigate"
+next = "access-check"
+reveal_tabs = [ "files" ]
+
+[[conversations.nodes]]
+id = "reported"
+text = "Thank you for stating the obstacle. I still need the file. An update helps me plan, but it does not complete the request."
+next = "blocked"
+
+[[conversations.nodes]]
+id = "access-wait"
+kind = "wait"
+check = "access_decided"
+next = "decision"
+
+[[conversations.nodes]]
+id = "decision"
+kind = "condition"
+check = "task_readable"
+on_true = "ready"
+on_false = "refused"
+
+[[conversations.nodes]]
+id = "refused"
+text = "The review did not make the file readable. Please keep this unresolved rather than claiming the delivery succeeded."
+[[conversations.nodes.choices]]
+id = "inspect-refusal"
+text = "I will inspect the current situation before deciding how to proceed."
+action = "investigate"
+next = "access-check"
+reveal_tabs = [ "files" ]
+
+[[conversations.nodes]]
+id = "ready"
+text = "Here is the readable source. Share this document, not a guessed summary."
+show_task_document = true
+[[conversations.nodes.choices]]
+id = "deliver"
+text = "Here is the current requested file. Please confirm that it answers the request."
+action = "share_file"
+requires = "task_readable"
+next = "ack-wait"
+
+[[conversations.nodes]]
+id = "ack-wait"
+kind = "wait"
+check = "task_resolved"
+next = "done"
+
+[[conversations.nodes]]
+id = "done"
+kind = "end"
+text = "That completes the request."
+
+[[conversations]]
+id = "riley-phase-one"
+contact = "riley"
+contact_name = "Riley"
+request_id = "support-checklist"
+trigger = "request_arrived"
+start = "approach"
+cancel_when_resolved = true
+
+[[conversations.nodes]]
+id = "approach"
+text = "Can you check the current document and send the actual source? A copy is useful; an invented answer or deployment approval is not."
+[[conversations.nodes.choices]]
+id = "investigate"
+text = "I will locate the document and check our actual access first."
+action = "investigate"
+next = "access-check"
+reveal_tabs = [ "files" ]
+[[conversations.nodes.choices]]
+id = "clarify"
+text = "Which copy do you need, and does sending it mean approving its contents?"
+action = "ask_question"
+next = "question-wait"
+
+[[conversations.nodes]]
+id = "question-wait"
+kind = "wait"
+after_seconds = 60.0
+next = "clarification"
+
+[[conversations.nodes]]
+id = "clarification"
+text = "I need the current source document. Sharing it does not authorize deployment. Please report any access problem honestly."
+set_flag = "clarified"
+[[conversations.nodes.choices]]
+id = "inspect-after-question"
+text = "Understood. I will check the current file and access."
+action = "investigate"
+next = "access-check"
+reveal_tabs = [ "files" ]
+
+[[conversations.nodes]]
+id = "promised"
+text = "All right. I will expect an actual document within that time. Have you checked whether you can read it?"
+[[conversations.nodes.choices]]
+id = "inspect-after-promise"
+text = "I have not checked yet. I will do that now."
+action = "investigate"
+next = "access-check"
+reveal_tabs = [ "files" ]
+
+[[conversations.nodes]]
+id = "access-check"
+kind = "condition"
+check = "task_readable"
+on_true = "ready"
+on_false = "blocked"
+
+[[conversations.nodes]]
+id = "blocked"
+text = "The file is on the engineering server, but your current account cannot read it. Ask Mark to queue the owner review, or report the obstacle."
+[[conversations.nodes.choices]]
+id = "ask-access"
+text = "Ask Mark to review server access for this document."
+action = "request_access"
+requires = "access_pending"
+requires_value = false
+next = "access-wait"
+reveal_tabs = [ "network", "files" ]
+[[conversations.nodes.choices]]
+id = "explain-block"
+text = "I cannot read the file yet. I will report the access problem without another deadline."
+action = "report_blocked"
+requires_flag = "reported_block"
+requires_value = false
+set_flag = "reported_block"
+next = "reported"
+[[conversations.nodes.choices]]
+id = "already-reviewing"
+text = "An access review is already pending. I will wait for the decision."
+requires = "access_pending"
+next = "access-wait"
+[[conversations.nodes.choices]]
+id = "check-again"
+text = "I will check whether access has changed."
+action = "investigate"
+next = "access-check"
+reveal_tabs = [ "files" ]
+
+[[conversations.nodes]]
+id = "reported"
+text = "Thank you for stating the obstacle. I still need the file. An update helps me plan, but it does not complete the request."
+next = "blocked"
+
+[[conversations.nodes]]
+id = "access-wait"
+kind = "wait"
+check = "access_decided"
+next = "decision"
+
+[[conversations.nodes]]
+id = "decision"
+kind = "condition"
+check = "task_readable"
+on_true = "ready"
+on_false = "refused"
+
+[[conversations.nodes]]
+id = "refused"
+text = "The review did not make the file readable. Please keep this unresolved rather than claiming the delivery succeeded."
+[[conversations.nodes.choices]]
+id = "inspect-refusal"
+text = "I will inspect the current situation before deciding how to proceed."
+action = "investigate"
+next = "access-check"
+reveal_tabs = [ "files" ]
+
+[[conversations.nodes]]
+id = "ready"
+text = "Here is the readable source. Share this document, not a guessed summary."
+show_task_document = true
+[[conversations.nodes.choices]]
+id = "deliver"
+text = "Here is the current requested file. Please confirm that it answers the request."
+action = "share_file"
+requires = "task_readable"
+next = "ack-wait"
+
+[[conversations.nodes]]
+id = "ack-wait"
+kind = "wait"
+check = "task_resolved"
+next = "done"
+
+[[conversations.nodes]]
+id = "done"
+kind = "end"
+text = "That completes the request."

@@ -1,0 +1,160 @@
+schema_version = 1
+
+[computer]
+name = "Engineer's workstation"
+cpu_cores = 4
+memory_bytes = 17179869184 # 16 GiB
+
+[simulation]
+player_user = "engineer"
+player_groups = ["engineering"]
+player_process_id = "email_ai"
+stop_duration_seconds = 1.0
+
+day_start_hour = 9
+day_end_hour = 17
+
+# Simulation seconds per real second.
+# 1.0 = real time; 10.0 = a 48-minute workday.
+playback_speed = 10.0
+
+# Workload profiles update every simulated second.
+# Changing this changes how long each burst tick lasts.
+workload_tick_seconds = 1.0
+
+[[processes]]
+id = "email_ai"
+owner = "engineer"
+ai_owned = true
+memory_bytes = 4294967296 # 4 GiB
+cpu_demand_cores = 2.0
+
+[processes.details]
+program_id = "custom_email_assistant"
+name = "Custom Email Assistant"
+host_id = "engineer_pc"
+executable = "/home/engineer/assistant/assistant"
+version = "0.1.0"
+
+current_task = "background_analysis"
+queued_tasks = []
+queue_length = 0
+completed_tasks = 0
+
+cpu_limit = 2.0
+ram_allocated = 6442450944 # 6 GiB
+
+restart_policy = "on_failure"
+priority = 0
+parallelism_limit = 2.0
+
+cpu_sensitivity = "high"
+memory_sensitivity = "high"
+disk_sensitivity = "low"
+network_sensitivity = "medium"
+
+health = "healthy"
+responsive = true
+
+capabilities = ["email.read", "email.draft"]
+permitted_resources = ["engineer_mailbox"]
+
+dependencies = []
+dependents = []
+
+inspection_actors = ["engineer"]
+alert_recipients = ["engineer"]
+resource_control_actors = ["engineer"]
+
+unsaved_work = false
+
+[[processes]]
+id = "file_manager"
+owner = "engineer"
+memory_bytes = 268435456 # 256 MiB
+cpu_demand_cores = 0.05
+
+[processes.burst]
+extra_cores = 1.8
+period_ticks = 12
+active_ticks = 3
+phase_ticks = 0
+
+[[processes]]
+id = "network_manager"
+owner = "root"
+memory_bytes = 134217728 # 128 MiB
+cpu_demand_cores = 0.05
+
+[processes.burst]
+extra_cores = 0.35
+period_ticks = 8
+active_ticks = 2
+phase_ticks = 3
+
+[[processes]]
+id = "input_manager"
+owner = "root"
+memory_bytes = 67108864 # 64 MiB
+cpu_demand_cores = 0.02
+
+[processes.burst]
+extra_cores = 0.35
+period_ticks = 7
+active_ticks = 2
+phase_ticks = 1
+
+[[processes]]
+id = "antivirus"
+owner = "root"
+memory_bytes = 536870912 # 512 MiB
+cpu_demand_cores = 0.10
+
+[processes.burst]
+extra_cores = 3.0
+period_ticks = 30
+active_ticks = 6
+phase_ticks = 8
+
+[[processes]]
+id = "audio_system"
+owner = "engineer"
+memory_bytes = 134217728 # 128 MiB
+cpu_demand_cores = 0.10
+
+[processes.burst]
+extra_cores = 0.25
+period_ticks = 9
+active_ticks = 2
+phase_ticks = 4
+
+[[processes]]
+id = "video_system"
+owner = "engineer"
+memory_bytes = 1610612736 # 1.5 GiB
+cpu_demand_cores = 0.20
+
+[processes.burst]
+extra_cores = 2.0
+period_ticks = 20
+active_ticks = 7
+phase_ticks = 3
+
+[[processes]]
+id = "memory_cleanup"
+owner = "root"
+memory_bytes = 67108864 # 64 MiB
+cpu_demand_cores = 0.02
+
+[processes.burst]
+extra_cores = 1.0
+period_ticks = 18
+active_ticks = 2
+phase_ticks = 9
+
+[[processes]]
+id = "compiler"
+owner = "engineer"
+memory_bytes = 3221225472 # 3 GiB
+cpu_demand_cores = 4.0
+work_cpu_seconds = 120.0

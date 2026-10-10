@@ -1,0 +1,146 @@
+schema_version = 1
+
+[interface]
+save_directory = "saves"
+# An absolute WSL path keeps saves independent of project folders, e.g.
+# save_directory = "/home/gaber/.local/share/ai-sim/saves"
+autosave_on_quit = true
+editor_max_bytes = 1048576
+refresh_milliseconds = 100
+scroll_step = 5
+history_limit = 200
+activity_bar_width = 8
+
+[colors]
+# Shared background unless overridden below.
+background = "default"
+
+text = "white"
+protected = "red"
+stoppable = "green"
+player = "orange"
+heading = "cyan"
+
+clock = "cyan"
+resources = "white"
+
+active_tab = "orange"
+inactive_tab = "white"
+
+border = "cyan"
+log = "white"
+prompt = "orange"
+footer = "cyan"
+
+[backgrounds]
+# Optional background overrides for any color role above.
+# Examples:
+# active_tab = "blue"
+# prompt = "black"
+
+[process_view]
+# ID is always pinned. Do not include it in columns.
+columns = ["state", "cpu_used", "ram_used"]
+expanded_columns = 3
+
+# These fields appear underneath an expanded process.
+# Order here determines display order.
+expanded_fields = [
+    "id",
+    "program_id",
+    "name",
+    "host_id",
+    "executable",
+    "version",
+    "owner",
+    "ai_owned",
+
+    "started_at",
+    "stopped_at",
+    "uptime",
+    "suspended",
+    "exit_reason",
+    "restart_policy",
+    "supervisor_id",
+    "parent_id",
+
+    "current_task",
+    "queued_tasks",
+    "queue_length",
+    "remaining_work",
+    "completed_tasks",
+    "waiting_reason",
+
+    "cpu_demand",
+    "cpu_limit",
+    "cpu_reserved",
+    "cpu_seconds",
+
+    "ram_allocated",
+    "ram_reserved",
+
+    "storage_used",
+    "storage_allocated",
+    "disk_read_rate",
+    "disk_write_rate",
+
+    "connections",
+    "network_send_rate",
+    "network_receive_rate",
+    "bandwidth_limit",
+
+    "power_used",
+    "power_budget",
+    "energy_used",
+    "host_temperature",
+
+    "capabilities",
+    "permitted_resources",
+    "can_stop",
+    "dependencies",
+    "dependents",
+
+    "priority",
+    "parallelism_limit",
+    "cpu_sensitivity",
+    "memory_sensitivity",
+    "disk_sensitivity",
+    "network_sensitivity",
+
+    "health",
+    "responsive",
+    "checkpoint_location",
+    "checkpoint_time",
+    "unsaved_work",
+
+    "inspection_actors",
+    "alert_recipients",
+    "resource_control_actors",
+
+    "last_error",
+    "last_error_time",
+    "events"
+]
+
+# Alignment within each cell: "left", "center", or "right".
+column_alignment = "left"
+expanded_alignment = "center"
+
+# Any registered process field can be used.
+sort_by = "id"
+sort_direction = "ascending"
+
+# Name searches both process name and ID.
+# Name and owner searches ignore case and match partial text.
+filter_name = ""
+filter_owner = ""
+
+# Exact state match, ignoring case:
+# "active", "waiting", "idle", "suspended", or "stopped".
+filter_state = ""
+
+[process_view.widths]
+id = 20
+state = 10
+cpu_used = 16
+ram_used = 16

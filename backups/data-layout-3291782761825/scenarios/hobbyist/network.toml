@@ -1,0 +1,135 @@
+schema_version = 1
+
+[network]
+local_host = "engineer_pc"
+
+[[hosts]]
+id = "engineer_pc"
+name = "AI workstation"
+address = "192.168.10.42"
+kind = "workstation"
+storage_capacity_bytes = 536870912000 # 500 GiB
+description = "The engineer's computer, where the AI runs."
+x = 0
+y = 0
+known = true
+online = true
+access_granted = true
+ai_present = true
+services = ["Local filesystem", "Email client", "Web browser"]
+
+[[hosts]]
+id = "engineer_phone"
+name = "Engineer phone"
+address = "192.168.10.67"
+kind = "phone"
+description = "A phone connected to the office Wi-Fi."
+x = -24
+y = -5
+known = true
+online = true
+access_granted = false
+ai_present = false
+services = ["No authenticated services"]
+
+[[hosts]]
+id = "office_router"
+name = "Office router"
+address = "192.168.10.1"
+kind = "router"
+description = "Connects the office network to its internet provider."
+x = 24
+y = 0
+known = true
+online = true
+access_granted = false
+ai_present = false
+services = ["Gateway", "DNS", "DHCP", "HTTPS administration"]
+
+[[hosts]]
+id = "file_server"
+name = "File server"
+address = "192.168.10.12"
+kind = "server"
+storage_capacity_bytes = 2199023255552 # 2 TiB
+description = "Shared documents and departmental folders."
+x = 48
+y = -5
+known = true
+online = true
+access_granted = true
+ai_present = false
+services = ["SMB: engineering share", "SMB: public share"]
+
+[[hosts]]
+id = "printer"
+name = "Office printer"
+address = "192.168.10.90"
+kind = "printer"
+description = "A network printer near the engineering department."
+x = 48
+y = 5
+known = true
+online = true
+access_granted = false
+ai_present = false
+services = ["IPP printing", "HTTP status page"]
+
+[[hosts]]
+id = "isp_gateway"
+name = "ISP gateway"
+address = "203.0.113.1"
+kind = "provider"
+description = "The first observed hop beyond the office."
+x = 74
+y = 0
+known = true
+online = true
+access_granted = false
+ai_present = false
+services = ["Internet transit"]
+
+[[links]]
+from = "engineer_pc"
+to = "office_router"
+capacity_bits_per_second = 1000000000
+forward_bits_per_second = 2400000
+reverse_bits_per_second = 8600000
+latency_milliseconds = 0.4
+packet_loss_percent = 0
+
+[[links]]
+from = "office_router"
+to = "engineer_phone"
+capacity_bits_per_second = 300000000
+forward_bits_per_second = 5400000
+reverse_bits_per_second = 700000
+latency_milliseconds = 3.2
+packet_loss_percent = 0.1
+
+[[links]]
+from = "office_router"
+to = "file_server"
+capacity_bits_per_second = 1000000000
+forward_bits_per_second = 1800000
+reverse_bits_per_second = 12000000
+latency_milliseconds = 0.3
+packet_loss_percent = 0
+
+[[links]]
+from = "office_router"
+to = "printer"
+capacity_bits_per_second = 100000000
+forward_bits_per_second = 120000
+reverse_bits_per_second = 8000
+latency_milliseconds = 0.8
+packet_loss_percent = 0
+
+[[links]]
+from = "office_router"
+to = "isp_gateway"
+capacity_bits_per_second = 100000000
+forward_bits_per_second = 4200000
+reverse_bits_per_second = 18000000
+latency_milliseconds = 12.0
+packet_loss_percent = 0.2

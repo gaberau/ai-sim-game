@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG -Wl,--dependency-file=CMakeFiles/ai_sim_delegation_tests.dir/link.d CMakeFiles/ai_sim_delegation_tests.dir/tests/DelegationTests.cpp.o -o ai_sim_delegation_tests  libai_sim_core.a

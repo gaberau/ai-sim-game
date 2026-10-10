@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG -Wl,--dependency-file=CMakeFiles/ai_sim_day_one_tests.dir/link.d CMakeFiles/ai_sim_day_one_tests.dir/tests/DayOneTests.cpp.o -o ai_sim_day_one_tests  libai_sim_core.a

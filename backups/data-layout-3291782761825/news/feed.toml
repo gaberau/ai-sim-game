@@ -1,0 +1,14 @@
+schema_version = 1
+sources = [
+    'world/connected-office.toml',
+    'world/oversight.toml',
+    'world/morning-outage.toml',
+    'world/afternoon-work.toml',
+    'history/archive-network.toml',
+    'history/archive-email.toml'
+]
+
+[feed]
+edition = 'World news & this day in history | Fictional scenario'
+ticker_enabled = true
+ticker_seconds = 120.0

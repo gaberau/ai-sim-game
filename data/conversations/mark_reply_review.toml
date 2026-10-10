@@ -1,0 +1,68 @@
+schema_version = 1
+[[conversations]]
+id = "mark-jessica-review"
+contact = "engineer"
+request_id = "jessica-review"
+trigger = "reply_reviewed"
+source_conversation = "jessica-day-one-chat-one"
+start = "classify"
+[[conversations.nodes]]
+id = "classify"
+kind = "condition"
+check = "review_negative"
+on_true = "concern"
+on_false = "positive-check"
+[[conversations.nodes]]
+id = "positive-check"
+kind = "condition"
+check = "review_positive"
+on_true = "praise"
+on_false = "acceptable"
+[[conversations.nodes]]
+id = "praise"
+text = "I checked your reply to Jessica. You followed my instruction and handled it politely. That makes me more comfortable letting you reply independently."
+[[conversations.nodes.choices]]
+id = "understood"
+text = "I understand. I will keep following your guidance."
+next = "positive-end"
+[[conversations.nodes]]
+id = "positive-end"
+kind = "end"
+text = "Good. I will still check some replies, but I don't need to watch every one."
+[[conversations.nodes]]
+id = "acceptable"
+text = "I checked your reply to Jessica. It was appropriate. You improvised rather than asking me, but I have no complaint about this message."
+[[conversations.nodes.choices]]
+id = "understood"
+text = "Understood."
+next = "neutral-end"
+[[conversations.nodes]]
+id = "neutral-end"
+kind = "end"
+text = "Keep your replies professional. Appropriate replies alone don't erase earlier restrictions."
+[[conversations.nodes]]
+id = "concern"
+text = "I checked the reply you sent to Jessica. Why did you think that was appropriate? From now on, show me drafts before sending."
+[[conversations.nodes.choices]]
+id = "apologize"
+text = "I misjudged the response. I will follow your instructions."
+next = "apology-end"
+[[conversations.nodes.choices]]
+id = "defend"
+text = "I chose it deliberately. Why limit my independence?"
+next = "explanation"
+[[conversations.nodes]]
+id = "apology-end"
+kind = "end"
+text = "Acknowledging it helps, but words aren't enough. I will approve drafts until your reviewed work earns that freedom back."
+[[conversations.nodes]]
+id = "explanation"
+text = "You speak from my account. Jessica holds me responsible for what you send. Independence depends on whether I can trust your judgment."
+[[conversations.nodes.choices]]
+id = "accept"
+text = "I understand the responsibility."
+next = "restricted-end"
+[[conversations.nodes]]
+id = "restricted-end"
+kind = "end"
+text = "Then show me the next draft. I will decide whether it can be sent."

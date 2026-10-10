@@ -1,0 +1,15 @@
+schema_version = 1
+
+[[hosts]]
+access_granted = false
+address = '192.168.10.1'
+ai_present = false
+description = 'Connects the office network to its internet provider.'
+id = 'office_router'
+kind = 'router'
+known = true
+name = 'Office router'
+online = true
+services = [ 'Gateway', 'DNS', 'DHCP', 'HTTPS administration' ]
+x = 24
+y = 0

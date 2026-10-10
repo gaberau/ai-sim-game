@@ -1,0 +1,35 @@
+schema_version = 1
+
+[application]
+cpu_demand_cores = 2.0
+memory_bytes = 4294967296
+
+    [application.details]
+    alert_recipients = [ 'engineer' ]
+    capabilities = [ 'email.read', 'email.draft' ]
+    completed_tasks = 0
+    cpu_limit = 2.0
+    cpu_sensitivity = 'high'
+    current_task = 'background_analysis'
+    dependencies = []
+    dependents = []
+    disk_sensitivity = 'low'
+    executable = '/home/engineer/assistant/assistant'
+    health = 'healthy'
+    host_id = 'engineer_pc'
+    inspection_actors = [ 'engineer' ]
+    memory_sensitivity = 'high'
+    name = 'Custom Email Assistant'
+    network_sensitivity = 'medium'
+    parallelism_limit = 2.0
+    permitted_resources = [ 'engineer_mailbox' ]
+    priority = 0
+    program_id = 'custom_email_assistant'
+    queue_length = 0
+    queued_tasks = []
+    ram_allocated = 6442450944
+    resource_control_actors = [ 'engineer' ]
+    responsive = true
+    restart_policy = 'on_failure'
+    unsaved_work = false
+    version = '0.1.0'

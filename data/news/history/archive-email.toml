@@ -1,0 +1,15 @@
+schema_version = 1
+
+[[articles]]
+body = '''An early support tool sorted messages by department and suggested replies for review. It had no permission to send messages or open private documents.
+
+The original design note asked a question that still matters: who is responsible when an automated assistant acts with a person's credentials?
+
+This archive entry is fictional scenario material.
+'''
+category = 'history'
+date = 'On this day, three years earlier'
+headline = 'Archive: the first automated support mailbox'
+id = 'archive-email'
+release_seconds = 0.0
+source = 'Company Archive (fictional)'

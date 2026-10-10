@@ -1,0 +1,16 @@
+schema_version = 1
+
+[[hosts]]
+access_granted = true
+address = '192.168.10.12'
+ai_present = false
+description = 'Shared documents and departmental folders.'
+id = 'file_server'
+kind = 'server'
+known = true
+name = 'File server'
+online = true
+services = [ 'SMB: engineering share', 'SMB: public share' ]
+storage_capacity_bytes = 2199023255552
+x = 48
+y = -5

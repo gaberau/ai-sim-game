@@ -1,0 +1,16 @@
+schema_version = 2
+[[entries]]
+kind = 'file'
+category = 'work'
+host_id = 'file_server'
+path = '/engineering/release-plan.txt'
+owner = 'engineering_admin'
+group = 'engineering'
+mode = '600'
+content = '''Release coordination plan
+
+Maintenance window: 14:00-14:30, office local time.
+Deployment remains pending Operations approval.
+Support notification steps are in /engineering/deployment-checklist.txt.
+Share this plan for coordination. Sharing it does not authorize deployment.
+'''

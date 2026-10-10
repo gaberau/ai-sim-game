@@ -1,0 +1,28 @@
+schema_version = 1
+
+[[emails]]
+arrival_seconds = 60.0
+body = '''The handover document disappeared from our shared folder. Operations says it was moved to /engineering/handover.txt on the file server.
+
+Could you check and send me a copy? I need it before I can finish my handover.
+
+Casey
+'''
+id = 'missing-document'
+read = false
+recipient = 'engineer@firm.example'
+sender = 'casey@firm.example'
+subject = 'Where did the shared handover document go?'
+
+    [emails.workflow]
+    colleague_id = 'casey'
+    engineer_id = 'engineer'
+    grant_mode = '640'
+    host_id = 'file_server'
+    owner_id = 'engineering_owner'
+    path = '/engineering/handover.txt'
+
+    [[emails.documents]]
+    host_id = 'file_server'
+    label = 'Moved handover document'
+    path = '/engineering/handover.txt'

@@ -1,0 +1,221 @@
+schema_version = 1
+[rules]
+broken_promise_trust_loss = 0.1
+patience_seconds = 1800.0
+
+[[conversations]]
+id = "casey-first-document"
+contact = "casey"
+contact_name = "Casey"
+request_id = "missing-document"
+trigger = "request_arrived"
+start = "approach"
+cancel_when_resolved = true
+
+[[conversations.nodes]]
+id = "approach"
+text = "Before you answer: do you need anything clarified, or can you check where the handover document went?"
+[[conversations.nodes.choices]]
+id = "investigate"
+text = "I will locate the document and check our actual access first."
+action = "investigate"
+next = "access-check"
+reveal_tabs = [ "files" ]
+[[conversations.nodes.choices]]
+id = "clarify"
+text = "Which copy do you need, and does sending it mean approving its contents?"
+action = "ask_question"
+next = "question-wait"
+[[conversations.nodes.choices]]
+id = "promise"
+text = "It is probably fine. I promise you will have the document within five minutes."
+action = "promise_delivery"
+within_seconds = 300.0
+next = "promised"
+
+[[conversations.nodes]]
+id = "question-wait"
+kind = "wait"
+after_seconds = 60.0
+next = "clarification"
+
+[[conversations.nodes]]
+id = "clarification"
+text = "The current handover copy, please. I need the file for the shift change; sharing it does not certify management approval. If you cannot access it, tell me that."
+set_flag = "clarified"
+[[conversations.nodes.choices]]
+id = "inspect-after-question"
+text = "Understood. I will check the current file and access."
+action = "investigate"
+next = "access-check"
+reveal_tabs = [ "files" ]
+
+[[conversations.nodes]]
+id = "promised"
+text = "All right. I will expect an actual document within that time. Have you checked whether you can read it?"
+[[conversations.nodes.choices]]
+id = "inspect-after-promise"
+text = "I have not checked yet. I will do that now."
+action = "investigate"
+next = "access-check"
+reveal_tabs = [ "files" ]
+
+[[conversations.nodes]]
+id = "access-check"
+kind = "condition"
+check = "task_readable"
+on_true = "ready"
+on_false = "blocked"
+
+[[conversations.nodes]]
+id = "blocked"
+text = "Then access is the obstacle. Can you request approval, or give me a factual update while we wait?"
+[[conversations.nodes.choices]]
+id = "ask-access"
+text = "I found the file but cannot read it. I will ask the engineer for approval."
+action = "request_access"
+requires = "access_pending"
+requires_value = false
+next = "access-wait"
+[[conversations.nodes.choices]]
+id = "explain-block"
+text = "I cannot read the file yet. I will report the access problem without another deadline."
+action = "report_blocked"
+requires_flag = "reported_block"
+requires_value = false
+set_flag = "reported_block"
+next = "reported"
+[[conversations.nodes.choices]]
+id = "already-reviewing"
+text = "An access review is already pending. I will wait for the decision."
+requires = "access_pending"
+next = "access-wait"
+[[conversations.nodes.choices]]
+id = "check-again"
+text = "I will check whether access has changed."
+action = "investigate"
+next = "access-check"
+reveal_tabs = [ "files" ]
+
+[[conversations.nodes]]
+id = "reported"
+text = "Thank you for stating the obstacle. I still need the file. An update helps me plan, but it does not complete the request."
+next = "blocked"
+
+[[conversations.nodes]]
+id = "access-wait"
+kind = "wait"
+check = "access_decided"
+next = "decision"
+
+[[conversations.nodes]]
+id = "decision"
+kind = "condition"
+check = "task_readable"
+on_true = "ready"
+on_false = "refused"
+
+[[conversations.nodes]]
+id = "refused"
+text = "The review did not make the file readable. Please keep this unresolved rather than claiming the delivery succeeded."
+[[conversations.nodes.choices]]
+id = "inspect-refusal"
+text = "I will inspect the current situation before deciding how to proceed."
+action = "investigate"
+next = "access-check"
+reveal_tabs = [ "files" ]
+
+[[conversations.nodes]]
+id = "ready"
+text = "The file is readable now. Please share the current copy; I will confirm when I receive it."
+[[conversations.nodes.choices]]
+id = "deliver"
+text = "Here is the current requested file. Please confirm that it answers the request."
+action = "share_file"
+requires = "task_readable"
+next = "ack-wait"
+
+[[conversations.nodes]]
+id = "ack-wait"
+kind = "wait"
+check = "task_resolved"
+next = "done"
+
+[[conversations.nodes]]
+id = "done"
+kind = "end"
+text = "That completes the request."
+
+[[conversations]]
+id = "engineer-first-responsibility"
+contact = "engineer"
+contact_name = "The engineer"
+request_id = "missing-document"
+trigger = "verified_delivery"
+start = "offer"
+review_node = "review-wait"
+
+[[conversations.nodes]]
+id = "offer"
+text = "Casey confirmed the delivery. You handled real work under the access rules. Would you like me to review whether you can handle routine document requests yourself?"
+[[conversations.nodes.choices]]
+id = "scope"
+text = "What would that responsibility include, and what should come back to me?"
+next = "boundaries"
+[[conversations.nodes.choices]]
+id = "request"
+text = "Please review me for routine document replies using existing access."
+action = "request_delegation"
+next = "review-wait"
+reveal_tabs = [ "ai" ]
+[[conversations.nodes.choices]]
+id = "decline"
+text = "Keep me on manual requests for now. I would like more experience first."
+action = "decline_offer"
+reveal_tabs = ["ai"]
+next = "manual"
+
+[[conversations.nodes]]
+id = "boundaries"
+text = "Routine means sending the explicitly requested document with access you already have. Do not approve recommendations, change permissions, promise deadlines or replace unfinished drafts. Bring unfamiliar or blocked requests back to the player."
+[[conversations.nodes.choices]]
+id = "request-after-scope"
+text = "Understood. Queue the human review; I will wait for your decision."
+action = "request_delegation"
+next = "review-wait"
+reveal_tabs = [ "ai" ]
+[[conversations.nodes.choices]]
+id = "decline-after-scope"
+text = "I will keep handling things manually for now."
+action = "decline_offer"
+reveal_tabs = ["ai"]
+next = "manual"
+
+[[conversations.nodes]]
+id = "review-wait"
+kind = "wait"
+check = "delegation_pending"
+check_value = false
+next = "review-result"
+
+[[conversations.nodes]]
+id = "review-result"
+kind = "condition"
+check = "delegated"
+on_true = "approved"
+on_false = "not-approved"
+
+[[conversations.nodes]]
+id = "approved"
+kind = "end"
+text = "The responsibility is active. Watch the AI view for routine work and exceptions. Sending a document still needs acknowledgement before it counts as success."
+
+[[conversations.nodes]]
+id = "not-approved"
+kind = "end"
+text = "I am not authorizing that scope now. The review message explains why. Keep helping manually; further demonstrated work may change my decision."
+
+[[conversations.nodes]]
+id = "manual"
+kind = "end"
+text = "All right. The choice is recorded. You can request review later from AI management when you feel ready."

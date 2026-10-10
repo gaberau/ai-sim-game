@@ -1,0 +1,15 @@
+schema_version = 1
+
+[[hosts]]
+access_granted = false
+address = '203.0.113.1'
+ai_present = false
+description = 'The first observed hop beyond the office.'
+id = 'isp_gateway'
+kind = 'provider'
+known = true
+name = 'ISP gateway'
+online = true
+services = [ 'Internet transit' ]
+x = 74
+y = 0

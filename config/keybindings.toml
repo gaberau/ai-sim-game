@@ -1,0 +1,23 @@
+schema_version = 1
+
+[keybindings]
+select_previous = ["Up"]
+select_next = ["Down"]
+toggle_expanded = ["Space"]
+scroll_left = ["Left"]
+scroll_right = ["Right"]
+next_tab = ["Tab"]
+previous_tab = ["Shift+Tab"]
+
+pause = ["F2"]
+
+scroll_up = ["PageUp"]
+scroll_down = ["PageDown"]
+
+submit = ["Enter"]
+backspace = ["Backspace"]
+
+quit = ["Ctrl+C", "Ctrl+D"]
+
+editor_save = ["F3"]
+editor_cancel = ["F4"]

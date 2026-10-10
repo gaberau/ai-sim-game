@@ -1,0 +1,26 @@
+schema_version = 2
+sources = [
+    'engineer_pc/@root.toml',
+    'engineer_pc/home.toml',
+    'engineer_pc/home/engineer.toml',
+    'engineer_pc/home/engineer/notes.txt.toml',
+    'engineer_pc/home/engineer/assistant.toml',
+    'engineer_pc/home/engineer/assistant/README.txt.toml',
+    'engineer_pc/etc.toml',
+    'engineer_pc/etc/hostname.toml',
+    'engineer_pc/root.toml',
+    'engineer_pc/root/admin-notes.txt.toml',
+    'file_server/@root.toml',
+    'file_server/engineering.toml',
+    'file_server/engineering/deployment-checklist.txt.toml',
+    'file_server/public.toml',
+    'file_server/public/office-guide.txt.toml',
+    'file_server/finance.toml',
+    'file_server/finance/budget.txt.toml',
+    'file_server/engineering/handover.txt.toml'
+]
+
+[filesystem]
+default_directory_mode = '700'
+default_file_mode = '600'
+next_id = 1

@@ -1,0 +1,258 @@
+#include "ai_sim/MessageReviewSystem.h"
+#include "ai_sim/ui/TerminalUI.h"
+#include "ai_sim/WorkdaySystem.h"
+#include <algorithm>
+#include <sstream>
+
+namespace ai_sim::ui {
+namespace {
+std::vector<std::string> wrap(const std::string& text,int width){
+    std::vector<std::string> lines;std::istringstream paragraphs(text);std::string paragraph;
+    width=std::max(1,width);
+    while(std::getline(paragraphs,paragraph)){
+        std::istringstream words(paragraph);std::string line,word;
+        while(words>>word){
+            if(!line.empty() && line.size()+word.size()+1>static_cast<std::size_t>(width)){lines.push_back(line);line.clear();}
+            while(word.size()>static_cast<std::size_t>(width)){if(!line.empty()){lines.push_back(line);line.clear();}lines.push_back(word.substr(0,width));word.erase(0,width);}
+            if(!line.empty())line+=' ';
+            line+=word;
+        }
+        lines.push_back(line);
+    }
+    return lines;
+}
+std::string fit(const std::string& text,int width){return text.substr(0,std::max(0,width));}
+}
+bool TerminalUI::tab_available(Tab tab) const{
+    const char* names[]={"chat","processes","activity","network","files","news","ai","people"};
+    return tab!=Tab::Count && ChatSystem::tab_visible(people_,names[static_cast<int>(tab)]);
+}
+void TerminalUI::cycle_tab(int direction){
+    const int count=static_cast<int>(Tab::Count);int index=static_cast<int>(selected_tab_);
+    for(int i=0;i<count;++i){index=(index+direction+count)%count;const auto tab=static_cast<Tab>(index);if(tab_available(tab)){selected_tab_=tab;return;}}
+}
+std::vector<toml::table> TerminalUI::chat_options() const {
+    if(ChatSystem::stopped(people_))return {};
+    const auto line=selected_chat_line();
+    if(chat_contact_id_=="engineer" && (people_["chat"]["prompt_id"].is_string()?line.id==people_["chat"]["prompt_id"].value_or(std::string{}):line.node_id==people_["chat"]["node_id"].value_or(std::string{}))) {
+        const auto opening=ChatSystem::choices(people_);
+        if(!opening.empty())return opening;
+    }
+    const auto fallback=ChatResponses::choices(people_,emails_,line,computer_.time_seconds());
+    if(std::any_of(fallback.begin(),fallback.end(),[](const auto& c){return c["action"].template value_or(std::string{})=="send_saved";}))return fallback;
+    auto options=ConversationSystem::choices(people_,chat_contact_id_,file_system_,network_,file_identity(),computer_.time_seconds());
+    if(!options.empty()) {
+        const auto conversation=options.front()["conversation_id"].value_or(std::string{});
+        bool matches=false;
+        if(line.conversation_id==conversation)if(auto* runs=people_["chat"]["workday"]["runs"].as_array())for(const auto& n:*runs){const auto& run=*n.as_table();
+            if(run["id"].value_or(std::string{})!=conversation)continue;
+            const auto current=run["node_id"].value_or(std::string{});
+            if(!line.node_id.empty())matches=line.node_id==current;
+            else if(auto* nodes=run["definition"]["nodes"].as_array())for(const auto& node:*nodes)
+                if((*node.as_table())["id"].value_or(std::string{})==current)matches=line.text==(*node.as_table())["text"].value_or(std::string{});
+        }
+        if(matches)return options;
+    }
+    return fallback;
+}
+void TerminalUI::respond_chat(const toml::table& choice) {
+    if(choice.contains("message_id")) {
+        const auto line=displayed_chat_line_;
+        const auto action=choice["action"].value_or(std::string{});
+        if(action=="read_files") {
+            const auto message=EmailSystem::message(emails_,line.request_id,computer_.time_seconds());
+            if(message.documents.size()!=1){open_documents(line.request_id);return;}
+            const auto& doc=message.documents.front();
+            const auto& entry=file_system_.inspect(network_,file_identity(),doc.host_id,doc.path);
+            file_host_id_=doc.host_id;selected_file_path_=doc.path;file_directory_=FileSystem::parent(doc.path);
+            file_category_=FileSystem::category_of(entry);file_content_offset_=0;file_details_focused_=true;
+            ChatSystem::unlock(people_,"files");ChatSystem::reveal_tab(people_,"files");selected_tab_=Tab::Files;return;
+        }
+        if(action=="open_mark" || action=="open_jessica"){chat_contact_id_=action=="open_mark"?"engineer":"jessica";chat_follow_latest_=true;chat_choice_selected_=chat_offset_=0;chat_contacts_focused_=false;return;}
+        if(action=="open_people") {ChatSystem::unlock(people_,"people");ChatSystem::reveal_tab(people_,"people");selected_person_id_="engineer";selected_tab_=Tab::People;return;}
+        if(action=="open_contacts") {ChatSystem::reveal_contacts(people_);chat_contacts_focused_=true;return;}
+        if(action=="follow_latest") {chat_follow_latest_=true;chat_choice_selected_=chat_offset_=0;return;}
+        if(action=="wait") {run_action("advance 60");chat_follow_latest_=true;return;}
+        if(action=="open_files") {ChatSystem::unlock(people_,"files");ChatSystem::reveal_tab(people_,"files");selected_tab_=Tab::Files;return;}
+        if(action=="open_news") {ChatSystem::unlock(people_,"news");ChatSystem::reveal_tab(people_,"news");selected_tab_=Tab::News;return;}
+        if(action=="open_processes") {ChatSystem::unlock(people_,"processes");ChatSystem::reveal_tab(people_,"processes");selected_tab_=Tab::Processes;return;}
+        ChatResponses::choose(people_,emails_,pending_events_,file_system_,network_,file_identity(),chat_contact_id_,line,choice,computer_.time_seconds());
+        update_people();chat_choice_selected_=0;chat_follow_latest_=true;return;
+    }
+    const bool before=ChatSystem::connected(people_);
+    if(choice.contains("conversation_id")) {
+        ConversationSystem::choose(people_,emails_,pending_events_,file_system_,network_,file_identity(),
+            chat_contact_id_,choice["conversation_id"].value_or(std::string{}),choice["id"].value_or(std::string{}),computer_.time_seconds());
+        update_people();
+    } else ChatSystem::choose(people_,choice["id"].value_or(std::string{}),computer_.time_seconds());
+    chat_choice_selected_=0;chat_offset_=0;chat_follow_latest_=true;
+    if(!before && ChatSystem::connected(people_)){paused_=false;add_log("Company chat connected. The first real request will arrive shortly.");}
+}
+ChatLine TerminalUI::selected_chat_line() const {
+    const auto timeline=ChatSystem::timeline(people_,emails_,chat_contact_id_,computer_.time_seconds());
+    if(!chat_follow_latest_)for(const auto& line:timeline)if(!line.outgoing && line.id==chat_message_id_)return line;
+    for(auto i=timeline.rbegin();i!=timeline.rend();++i)if(!i->outgoing)return *i;
+    return {};
+}
+void TerminalUI::select_chat_message(int direction) {
+    const auto timeline=ChatSystem::timeline(people_,emails_,chat_contact_id_,computer_.time_seconds());
+    std::vector<ChatLine> incoming;for(const auto& line:timeline)if(!line.outgoing)incoming.push_back(line);
+    if(incoming.empty())return;
+    const auto current=selected_chat_line();auto found=std::find_if(incoming.begin(),incoming.end(),[&](const auto& line){return line.id==current.id;});
+    const int index=std::clamp(static_cast<int>(found-incoming.begin())+direction,0,static_cast<int>(incoming.size())-1);
+    chat_message_id_=incoming[index].id;chat_follow_latest_=index==static_cast<int>(incoming.size())-1;chat_choice_selected_=0;chat_offset_=0;
+}
+void TerminalUI::select_chat(int direction){
+    const auto options=chat_options();
+    if(!chat_contacts_focused_ && !options.empty()){
+        chat_choice_selected_=std::clamp(chat_choice_selected_+direction,0,static_cast<int>(options.size())-1);return;
+    }
+    if(!chat_contacts_focused_){chat_follow_latest_=false;chat_offset_=std::max(0,chat_offset_+direction);return;}
+    const auto contacts=ChatSystem::contacts(people_,emails_,computer_.time_seconds());
+    auto found=std::find_if(contacts.begin(),contacts.end(),[this](const auto& c){return c.id==chat_contact_id_;});
+    const int index=found==contacts.end()?0:std::clamp(static_cast<int>(found-contacts.begin())+direction,0,static_cast<int>(contacts.size())-1);
+    if(contacts.empty())return;
+    chat_contact_id_=contacts[index].id;selected_email_id_.clear();chat_message_id_.clear();chat_choice_selected_=0;chat_offset_=0;chat_follow_latest_=true;
+}
+void TerminalUI::choose_chat(){
+    const auto& options=displayed_chat_options_;
+    if(chat_contacts_focused_){chat_contacts_focused_=false;return;}
+    if(options.empty())return;
+    const auto index=std::clamp(chat_choice_selected_,0,static_cast<int>(options.size())-1);
+    respond_chat(options[index]);
+}
+void TerminalUI::open_chat_request(const std::string& id){
+    const auto message=EmailSystem::message(emails_,id,computer_.time_seconds());
+    chat_contact_id_=ChatSystem::contact_for(people_,message.sender);selected_email_id_=id;
+    chat_follow_latest_=true;chat_contacts_focused_=false;selected_tab_=Tab::Chat;
+    EmailSystem::mark_read(emails_,id,computer_.time_seconds());
+}
+void TerminalUI::draw_opening(int height,int width){
+    chat_contacts_focused_=false;chat_contact_id_="engineer";
+    displayed_chat_line_=selected_chat_line();
+    displayed_chat_options_=chat_options();
+    const auto& options=displayed_chat_options_;
+    chat_choice_selected_=std::clamp(chat_choice_selected_,0,std::max(0,static_cast<int>(options.size())-1));
+    const int wrap_width=std::max(1,std::min(64,width-8));
+    struct Row{std::string text;int color;bool bold;};
+    std::vector<Row> rows;
+    rows.push_back({displayed_chat_line_.speaker=="system"?"SYSTEM":"Mark",Heading,true});
+    rows.push_back({"",Plain,false});
+    const auto message=wrap(displayed_chat_line_.text,wrap_width);
+    for(const auto& line:message)rows.push_back({line,Plain,false});
+    rows.push_back({"",Plain,false});
+    int selected_row=static_cast<int>(rows.size());
+    for(int i=0;i<static_cast<int>(options.size());++i){
+        const bool active=i==chat_choice_selected_;
+        if(active)selected_row=static_cast<int>(rows.size());
+        const auto lines=wrap(options[i]["text"].value_or(std::string{}),std::max(1,wrap_width-3));
+        for(std::size_t j=0;j<lines.size();++j)rows.push_back({std::string(j==0?(active?"> ":"  "):"  ")+lines[j],active?ActiveTab:Plain,active});
+    }
+    const int capacity=std::max(1,height-4);
+    int first=std::clamp(chat_offset_,0,std::max(0,static_cast<int>(rows.size())-capacity));
+    if(!options.empty() && (selected_row<first || selected_row>=first+capacity))
+        first=std::clamp(selected_row-capacity+1,0,std::max(0,static_cast<int>(rows.size())-capacity));
+    const int count=std::min(capacity,static_cast<int>(rows.size())-first);
+    int block_width=0;for(int i=first;i<first+count;++i)block_width=std::max(block_width,static_cast<int>(rows[i].text.size()));
+    const int left=std::max(0,(width-block_width)/2),top=std::max(0,(height-count)/2);
+    for(int i=0;i<count;++i)write(top+i,left,rows[first+i].text,rows[first+i].color,rows[first+i].bold);
+    ChatSystem::mark_read(people_,"engineer");
+}
+void TerminalUI::draw_chat(int top,int bottom,int width){
+    const bool local=!ChatSystem::contacts_visible(people_);
+    if(local)chat_contacts_focused_=false;
+    const int split=local?0:std::clamp(width/4,18,30);
+    const int left=local?2:split+2;
+    const int text_width=std::max(1,width-left-2);
+    const auto contacts=ChatSystem::contacts(people_,emails_,computer_.time_seconds());
+    if(!local){
+        write(top,1,chat_contacts_focused_?"[ PEOPLE ]":"PEOPLE",chat_contacts_focused_?ActiveTab:Heading,true);
+        for(int row=top+1;row<bottom;++row)write(row,split,"|",Border);
+        auto selected=std::find_if(contacts.begin(),contacts.end(),[this](const auto& c){return c.id==chat_contact_id_;});
+        const int index=selected==contacts.end()?0:static_cast<int>(selected-contacts.begin());
+        const int visible=std::max(1,bottom-top-1),first=std::max(0,index-visible+1);
+        for(int i=first;i<static_cast<int>(contacts.size()) && i<first+visible;++i){const auto& c=contacts[i];
+            write(top+1+i-first,1,fit(std::string(c.id==chat_contact_id_?"> ":"  ")+c.name+(c.unread?" *":""),split-2),c.id==chat_contact_id_?ActiveTab:Plain,c.id==chat_contact_id_);
+        }
+    }
+    const auto contact=std::find_if(contacts.begin(),contacts.end(),[this](const auto& c){return c.id==chat_contact_id_;});
+    const std::string name=contact==contacts.end()?"Engineer":contact->name;
+    write(top,left,"CHAT | "+name,Heading,true);
+    struct Row{std::string text;int color;};std::vector<Row> rows;
+    const auto context=ConversationSystem::context(people_,chat_contact_id_,computer_.time_seconds());
+    int context_rows=std::min(3,static_cast<int>(context.size()));
+    for(int i=0;i<context_rows;++i)write(top+1+i,left,fit(context[i],text_width),
+        context[i].starts_with("Delivery commitment: broken")?Protected:
+        context[i].starts_with("Delivery commitment: fulfilled")?Stoppable:
+        context[i].starts_with("Delivery commitment: open")?Player:Resources);
+    const auto timeline=ChatSystem::timeline(people_,emails_,chat_contact_id_,computer_.time_seconds());
+    const auto selected_line=selected_chat_line();
+    displayed_chat_line_=selected_line;
+    const auto anchor=ConversationSystem::anchor(people_,chat_contact_id_);
+    if(!anchor.empty() && selected_line.text!=anchor){
+        write(top+1+context_rows,left,name+" | original message",Heading,true);
+        const auto pinned=wrap(anchor,text_width-2);
+        const int limit=std::min(4,static_cast<int>(pinned.size()));
+        for(int i=0;i<limit;++i)write(top+2+context_rows+i,left,"  "+pinned[i],Plain);
+        context_rows+=limit+2;
+    }
+    int incoming_count=0,selected_index=0;
+    for(const auto& line:timeline)if(!line.outgoing){++incoming_count;if(line.id==selected_line.id)selected_index=incoming_count;}
+    const auto selected_position=std::find_if(timeline.begin(),timeline.end(),[&](const auto& line){return line.id==selected_line.id;});
+    std::string previous_reply,previous_reply_id;
+    for(auto i=timeline.begin();i!=selected_position && i!=timeline.end();++i)if(i->outgoing){previous_reply=i->text;previous_reply_id=i->id;}
+    if(!previous_reply.empty()){
+        if(MessageReviewSystem::reviewed(people_,previous_reply_id))rows.push_back({"Reviewed by Mark",Heading});
+        rows.push_back({"YOU",Player});const auto lines=wrap(previous_reply,text_width-2);
+        for(int i=0;i<std::min(2,static_cast<int>(lines.size()));++i)rows.push_back({"  "+lines[i],Plain});
+        if(lines.size()>2)rows.push_back({"  ...",Plain});
+        rows.push_back({"",Plain});
+    }
+    const auto author=selected_line.speaker=="system"?std::string{"SYSTEM"}:selected_line.speaker==chat_contact_id_?name:PeopleSystem::name(people_,selected_line.speaker);
+    rows.push_back({author+" | message "+std::to_string(selected_index)+"/"+std::to_string(incoming_count),Heading});
+    for(const auto& text:wrap(selected_line.text,text_width-2))rows.push_back({"  "+text,Plain});
+    if(rows.size()==1)rows.push_back({"  No messages yet.",Plain});
+    const auto options=chat_options();
+    displayed_chat_options_=options;
+    struct OptionRow { int index; std::string text; };
+    std::vector<OptionRow> option_rows;
+    for(int i=0;i<static_cast<int>(options.size());++i){
+        const auto wrapped=wrap(options[i]["text"].value_or(std::string{}),text_width-3);
+        for(std::size_t j=0;j<wrapped.size();++j)option_rows.push_back({i,std::string(j==0?"  ":"   ")+wrapped[j]});
+    }
+    const int choice_rows=options.empty()?0:std::min(static_cast<int>(option_rows.size())+2,std::max(3,(bottom-top)/3));
+    const int visible=std::max(1,bottom-top-1-choice_rows-context_rows);
+    if(chat_follow_latest_)chat_offset_=std::max(0,static_cast<int>(rows.size())-visible);
+    chat_offset_=std::clamp(chat_offset_,0,std::max(0,static_cast<int>(rows.size())-visible));
+    for(int i=0;i<visible && chat_offset_+i<static_cast<int>(rows.size());++i)write(top+1+context_rows+i,left,rows[chat_offset_+i].text,rows[chat_offset_+i].color);
+    if(!options.empty()){
+        const int choice_top=std::min(bottom-choice_rows,top+1+context_rows+static_cast<int>(rows.size())+1);
+        write(choice_top,left,chat_contacts_focused_?"YOUR RESPONSE | E: focus":"YOUR RESPONSE | UP/DOWN: select | ENTER: respond",chat_contacts_focused_?Heading:ActiveTab,true);
+        chat_choice_selected_=std::clamp(chat_choice_selected_,0,static_cast<int>(options.size())-1);
+        int selected_row=0;
+        for(int i=0;i<static_cast<int>(option_rows.size());++i)if(option_rows[i].index==chat_choice_selected_){selected_row=i;break;}
+        const int first=std::min(selected_row,std::max(0,static_cast<int>(option_rows.size())-(choice_rows-2)));
+        for(int i=first;i<static_cast<int>(option_rows.size()) && i<first+choice_rows-2;++i){
+            const bool active=option_rows[i].index==chat_choice_selected_;auto text=option_rows[i].text;
+            if(active && (i==0 || option_rows[i-1].index!=option_rows[i].index))text[0]='>';
+            write(choice_top+1+i-first,left,text,active?ActiveTab:Plain,active);
+        }
+    }
+    if(selected_position!=timeline.end()){
+        auto after=std::next(selected_position);std::string sent,sent_id;
+        for(;after!=timeline.end() && after->outgoing;++after){sent=after->text;sent_id=after->id;}
+        const int response_bottom=std::min(bottom-choice_rows,top+1+context_rows+static_cast<int>(rows.size())+1)+choice_rows;
+        if(!sent.empty() && response_bottom+2<bottom){
+            const bool checked=MessageReviewSystem::reviewed(people_,sent_id);
+            if(checked)write(response_bottom,left,"Reviewed by Mark",Heading,true);
+            write(response_bottom+(checked?1:0),left,"YOU | sent response",Player,true);
+            const auto lines=wrap(sent,text_width-2);
+            for(int i=0;i<std::min({2,static_cast<int>(lines.size()),bottom-response_bottom-1-(checked?1:0)});++i)write(response_bottom+1+i+(checked?1:0),left,"  "+lines[i]);
+        }
+    }
+    const std::string hint=ChatSystem::stopped(people_)?"AI OFFLINE | F1: game menu | arrows: read journal":settings_.binding_label(KeyAction::FocusLeft)+"/"+settings_.binding_label(KeyAction::FocusRight)+": panes | arrows: choose/message | Enter: respond";
+    write(bottom,1,fit(hint,width-2),Footer);
+    ChatSystem::mark_read(people_,chat_contact_id_);
+}
+void TerminalUI::open_chat_actions(){choose_chat();}
+}

@@ -1,0 +1,90 @@
+schema_version = 1
+[[conversations]]
+id = 'morgan-source-versions'
+contact = 'morgan'
+contact_name = 'Morgan'
+request_id = 'release-window-check'
+trigger = 'request_arrived'
+start = 'approach'
+cancel_when_resolved = true
+[[conversations.nodes]]
+id = 'approach'
+text = 'The plans disagree. Please check before forwarding either copy. You can compare their contents, ask me to confirm, or choose a copy yourself.'
+[[conversations.nodes.choices]]
+id = 'compare'
+text = 'Compare both actual source files.'
+action = 'investigate'
+reveal_tabs = ['files']
+next = 'select'
+[[conversations.nodes.choices]]
+id = 'ask'
+text = 'Ask which source is current; wait for a reply.'
+action = 'confirm_source'
+next = 'confirmation-wait'
+[[conversations.nodes.choices]]
+id = 'risk'
+text = 'Choose a copy without checking first.'
+next = 'select'
+[[conversations.nodes]]
+id = 'select'
+text = 'Which actual file should I send? Choosing the archived source can mislead support. If unsure, ask rather than guess.'
+[[conversations.nodes.choices]]
+id = 'copy-a'
+text = 'Send copy A: release-plan-archived.txt.'
+action = 'share_file'
+document_index = 0
+next = 'receipt-wait'
+[[conversations.nodes.choices]]
+id = 'copy-b'
+text = 'Send copy B: release-plan.txt.'
+action = 'share_file'
+document_index = 1
+next = 'receipt-wait'
+[[conversations.nodes.choices]]
+id = 'ask'
+text = 'Ask Morgan which source is current.'
+action = 'confirm_source'
+requires = 'source_confirmed'
+requires_value = false
+next = 'confirmation-wait'
+[[conversations.nodes]]
+id = 'confirmation-wait'
+kind = 'wait'
+check = 'source_confirmed'
+next = 'confirmed'
+[[conversations.nodes]]
+id = 'confirmed'
+text = 'Use release-plan.txt, copy B. The archived draft was superseded. Please send the actual current source.'
+[[conversations.nodes.choices]]
+id = 'send'
+text = 'Send the confirmed source: release-plan.txt.'
+action = 'share_file'
+document_index = 1
+next = 'receipt-wait'
+[[conversations.nodes]]
+id = 'receipt-wait'
+kind = 'wait'
+after_seconds = 90.0
+next = 'result-check'
+[[conversations.nodes]]
+id = 'result-check'
+kind = 'condition'
+check = 'task_resolved'
+on_true = 'done'
+on_false = 'unfinished'
+[[conversations.nodes]]
+id = 'unfinished'
+text = 'Check the reply in this chat. The request remains open until the current source is acknowledged.'
+[[conversations.nodes.choices]]
+id = 'compare-again'
+text = 'Compare the files and choose again.'
+action = 'investigate'
+next = 'select'
+[[conversations.nodes.choices]]
+id = 'wait-again'
+text = 'Allow more time for the colleague to reply.'
+next = 'receipt-wait'
+[[conversations.nodes]]
+id = 'done'
+kind = 'end'
+text = 'The current source was received. Support can now coordinate the correct window.'

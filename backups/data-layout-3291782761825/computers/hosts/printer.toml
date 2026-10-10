@@ -1,0 +1,15 @@
+schema_version = 1
+
+[[hosts]]
+access_granted = false
+address = '192.168.10.90'
+ai_present = false
+description = 'A network printer near the engineering department.'
+id = 'printer'
+kind = 'printer'
+known = true
+name = 'Office printer'
+online = true
+services = [ 'IPP printing', 'HTTP status page' ]
+x = 48
+y = 5

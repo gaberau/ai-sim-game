@@ -1,0 +1,9 @@
+schema_version = 1
+[[profiles]]
+id = "morgan"
+name = "Morgan"
+email = "morgan@firm.example"
+user = "morgan"
+groups = ["engineering"]
+response_seconds = 60.0
+role = "Release coordinator"

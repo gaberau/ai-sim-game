@@ -1,0 +1,254 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" compressed="false">
+  <diagram id="casey-first-document" name="casey-first-document">
+    <mxGraphModel grid="1" gridSize="10" page="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <object id="approach" node_id="approach" kind="message" label="Before you answer: do you need anything clarified, or can you check where the handover document went?" text="Before you answer: do you need anything clarified, or can you check where the handover document went?">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="80" y="80" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object action="investigate" reveal_tabs="[&quot;files&quot;]" choice_id="investigate" id="approach-investigate" kind="choice" label="I will locate the document and check our actual access first.">
+          <mxCell edge="1" parent="1" source="approach" target="access-check" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object action="ask_question" choice_id="clarify" id="approach-clarify" kind="choice" label="Which copy do you need, and does sending it mean approving its contents?">
+          <mxCell edge="1" parent="1" source="approach" target="question-wait" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object action="promise_delivery" within_seconds="300.0" choice_id="promise" id="approach-promise" kind="choice" label="It is probably fine. I promise you will have the document within five minutes.">
+          <mxCell edge="1" parent="1" source="approach" target="promised" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object after_seconds="60.0" id="question-wait" node_id="question-wait" kind="wait" label="question-wait" text="">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="650" y="80" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="question-wait-next" kind="next" label="next">
+          <mxCell edge="1" parent="1" source="question-wait" target="clarification" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object set_flag="clarified" id="clarification" node_id="clarification" kind="message" label="The current handover copy, please. I need the file for the shift change; sharing it does not certify management approval. If you cannot access it, tell me that." text="The current handover copy, please. I need the file for the shift change; sharing it does not certify management approval. If you cannot access it, tell me that.">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="1220" y="80" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object action="investigate" reveal_tabs="[&quot;files&quot;]" choice_id="inspect-after-question" id="clarification-inspect-after-question" kind="choice" label="Understood. I will check the current file and access.">
+          <mxCell edge="1" parent="1" source="clarification" target="access-check" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="promised" node_id="promised" kind="message" label="All right. I will expect an actual document within that time. Have you checked whether you can read it?" text="All right. I will expect an actual document within that time. Have you checked whether you can read it?">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="80" y="410" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object action="investigate" reveal_tabs="[&quot;files&quot;]" choice_id="inspect-after-promise" id="promised-inspect-after-promise" kind="choice" label="I have not checked yet. I will do that now.">
+          <mxCell edge="1" parent="1" source="promised" target="access-check" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object check="task_readable" id="access-check" node_id="access-check" kind="condition" label="access-check" text="">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="650" y="410" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="access-check-on_true" kind="true" label="true">
+          <mxCell edge="1" parent="1" source="access-check" target="ready" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="access-check-on_false" kind="false" label="false">
+          <mxCell edge="1" parent="1" source="access-check" target="blocked" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="blocked" node_id="blocked" kind="message" label="Then access is the obstacle. Can you request approval, or give me a factual update while we wait?" text="Then access is the obstacle. Can you request approval, or give me a factual update while we wait?">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="1220" y="410" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object action="request_access" requires="access_pending" requires_value="false" choice_id="ask-access" id="blocked-ask-access" kind="choice" label="I found the file but cannot read it. I will ask the engineer for approval.">
+          <mxCell edge="1" parent="1" source="blocked" target="access-wait" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object action="report_blocked" requires_flag="reported_block" requires_value="false" set_flag="reported_block" choice_id="explain-block" id="blocked-explain-block" kind="choice" label="I cannot read the file yet. I will report the access problem without another deadline.">
+          <mxCell edge="1" parent="1" source="blocked" target="reported" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object requires="access_pending" choice_id="already-reviewing" id="blocked-already-reviewing" kind="choice" label="An access review is already pending. I will wait for the decision.">
+          <mxCell edge="1" parent="1" source="blocked" target="access-wait" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object action="investigate" reveal_tabs="[&quot;files&quot;]" choice_id="check-again" id="blocked-check-again" kind="choice" label="I will check whether access has changed.">
+          <mxCell edge="1" parent="1" source="blocked" target="access-check" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="reported" node_id="reported" kind="message" label="Thank you for stating the obstacle. I still need the file. An update helps me plan, but it does not complete the request." text="Thank you for stating the obstacle. I still need the file. An update helps me plan, but it does not complete the request.">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="80" y="740" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="reported-next" kind="next" label="next">
+          <mxCell edge="1" parent="1" source="reported" target="blocked" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object check="access_decided" id="access-wait" node_id="access-wait" kind="wait" label="access-wait" text="">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="650" y="740" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="access-wait-next" kind="next" label="next">
+          <mxCell edge="1" parent="1" source="access-wait" target="decision" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object check="task_readable" id="decision" node_id="decision" kind="condition" label="decision" text="">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="1220" y="740" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="decision-on_true" kind="true" label="true">
+          <mxCell edge="1" parent="1" source="decision" target="ready" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="decision-on_false" kind="false" label="false">
+          <mxCell edge="1" parent="1" source="decision" target="refused" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="refused" node_id="refused" kind="message" label="The review did not make the file readable. Please keep this unresolved rather than claiming the delivery succeeded." text="The review did not make the file readable. Please keep this unresolved rather than claiming the delivery succeeded.">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="80" y="1070" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object action="investigate" reveal_tabs="[&quot;files&quot;]" choice_id="inspect-refusal" id="refused-inspect-refusal" kind="choice" label="I will inspect the current situation before deciding how to proceed.">
+          <mxCell edge="1" parent="1" source="refused" target="access-check" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="ready" node_id="ready" kind="message" label="The file is readable now. Please share the current copy; I will confirm when I receive it." text="The file is readable now. Please share the current copy; I will confirm when I receive it.">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="650" y="1070" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object action="share_file" requires="task_readable" choice_id="deliver" id="ready-deliver" kind="choice" label="Here is the current requested file. Please confirm that it answers the request.">
+          <mxCell edge="1" parent="1" source="ready" target="ack-wait" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object check="task_resolved" id="ack-wait" node_id="ack-wait" kind="wait" label="ack-wait" text="">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="1220" y="1070" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="ack-wait-next" kind="next" label="next">
+          <mxCell edge="1" parent="1" source="ack-wait" target="done" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="done" node_id="done" kind="end" label="That completes the request." text="That completes the request.">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="80" y="1400" width="440" height="170" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="engineer-first-responsibility" name="engineer-first-responsibility">
+    <mxGraphModel grid="1" gridSize="10" page="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <object id="offer" node_id="offer" kind="message" label="Casey confirmed the delivery. You handled real work under the access rules. Would you like me to review whether you can handle routine document requests yourself?" text="Casey confirmed the delivery. You handled real work under the access rules. Would you like me to review whether you can handle routine document requests yourself?">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="80" y="80" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object choice_id="scope" id="offer-scope" kind="choice" label="What would that responsibility include, and what should come back to me?">
+          <mxCell edge="1" parent="1" source="offer" target="boundaries" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object action="request_delegation" reveal_tabs="[&quot;ai&quot;]" choice_id="request" id="offer-request" kind="choice" label="Please review me for routine document replies using existing access.">
+          <mxCell edge="1" parent="1" source="offer" target="review-wait" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object action="decline_offer" reveal_tabs="[&quot;ai&quot;]" choice_id="decline" id="offer-decline" kind="choice" label="Keep me on manual requests for now. I would like more experience first.">
+          <mxCell edge="1" parent="1" source="offer" target="manual" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="boundaries" node_id="boundaries" kind="message" label="Routine means sending the explicitly requested document with access you already have. Do not approve recommendations, change permissions, promise deadlines or replace unfinished drafts. Bring unfamiliar or blocked requests back to the player." text="Routine means sending the explicitly requested document with access you already have. Do not approve recommendations, change permissions, promise deadlines or replace unfinished drafts. Bring unfamiliar or blocked requests back to the player.">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="650" y="80" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object action="request_delegation" reveal_tabs="[&quot;ai&quot;]" choice_id="request-after-scope" id="boundaries-request-after-scope" kind="choice" label="Understood. Queue the human review; I will wait for your decision.">
+          <mxCell edge="1" parent="1" source="boundaries" target="review-wait" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object action="decline_offer" reveal_tabs="[&quot;ai&quot;]" choice_id="decline-after-scope" id="boundaries-decline-after-scope" kind="choice" label="I will keep handling things manually for now.">
+          <mxCell edge="1" parent="1" source="boundaries" target="manual" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object check="delegation_pending" check_value="false" id="review-wait" node_id="review-wait" kind="wait" label="review-wait" text="">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="1220" y="80" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="review-wait-next" kind="next" label="next">
+          <mxCell edge="1" parent="1" source="review-wait" target="review-result" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object check="delegated" id="review-result" node_id="review-result" kind="condition" label="review-result" text="">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="80" y="410" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="review-result-on_true" kind="true" label="true">
+          <mxCell edge="1" parent="1" source="review-result" target="approved" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="review-result-on_false" kind="false" label="false">
+          <mxCell edge="1" parent="1" source="review-result" target="not-approved" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="approved" node_id="approved" kind="end" label="The responsibility is active. Watch the AI view for routine work and exceptions. Sending a document still needs acknowledgement before it counts as success." text="The responsibility is active. Watch the AI view for routine work and exceptions. Sending a document still needs acknowledgement before it counts as success.">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="650" y="410" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="not-approved" node_id="not-approved" kind="end" label="I am not authorizing that scope now. The review message explains why. Keep helping manually; further demonstrated work may change my decision." text="I am not authorizing that scope now. The review message explains why. Keep helping manually; further demonstrated work may change my decision.">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="1220" y="410" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="manual" node_id="manual" kind="end" label="All right. The choice is recorded. You can request review later from AI management when you feel ready." text="All right. The choice is recorded. You can request review later from AI management when you feel ready.">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="80" y="740" width="440" height="170" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

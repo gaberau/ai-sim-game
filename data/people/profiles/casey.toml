@@ -1,0 +1,26 @@
+schema_version = 1
+[[profiles]]
+id = 'casey'
+values = ['reliability', 'belonging']
+[profiles.employment]
+employer = 'Example Technology'
+position = 'Project coordinator'
+[profiles.schedule]
+start_hour = 9
+end_hour = 17
+[profiles.ai_attitudes]
+familiarity = 0.4
+understanding = 0.25
+email_trust = 0.5
+delegation_preference = 0.4
+privacy_concern = 0.65
+oversight_preference = 0.7
+success_trust_gain = 0.05
+[[profiles.motivations]]
+id = 'professional_pride'
+importance = 0.8
+satisfaction = 0.5
+urgency = 0.0
+desired_outcome = 'Keep the handover accurate and timely'
+target = 'work_requests'
+boundaries = ['Verify the requested document was actually delivered']

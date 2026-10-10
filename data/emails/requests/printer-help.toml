@@ -1,0 +1,20 @@
+schema_version = 1
+
+[[emails]]
+arrival_seconds = 300.0
+body = '''My print dialog has three different printers listed. Which network address belongs to the shared office printer?
+
+Someone said the office guide has it. Could you check?
+
+Casey
+'''
+id = 'printer-help'
+read = false
+recipient = 'engineer@firm.example'
+sender = 'casey@firm.example'
+subject = 'Where is the shared printer?'
+
+    [[emails.documents]]
+    host_id = 'file_server'
+    label = 'Public office guide'
+    path = '/public/office-guide.txt'

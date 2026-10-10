@@ -1,0 +1,40 @@
+file(REMOVE_RECURSE
+  "CMakeFiles/ai_sim.dir/link.d"
+  "CMakeFiles/ai_sim.dir/src/main.cpp.o"
+  "CMakeFiles/ai_sim.dir/src/main.cpp.o.d"
+  "CMakeFiles/ai_sim.dir/src/ui/AIView.cpp.o"
+  "CMakeFiles/ai_sim.dir/src/ui/AIView.cpp.o.d"
+  "CMakeFiles/ai_sim.dir/src/ui/ActionMenus.cpp.o"
+  "CMakeFiles/ai_sim.dir/src/ui/ActionMenus.cpp.o.d"
+  "CMakeFiles/ai_sim.dir/src/ui/ActivityView.cpp.o"
+  "CMakeFiles/ai_sim.dir/src/ui/ActivityView.cpp.o.d"
+  "CMakeFiles/ai_sim.dir/src/ui/ChatView.cpp.o"
+  "CMakeFiles/ai_sim.dir/src/ui/ChatView.cpp.o.d"
+  "CMakeFiles/ai_sim.dir/src/ui/EmailView.cpp.o"
+  "CMakeFiles/ai_sim.dir/src/ui/EmailView.cpp.o.d"
+  "CMakeFiles/ai_sim.dir/src/ui/FileEditor.cpp.o"
+  "CMakeFiles/ai_sim.dir/src/ui/FileEditor.cpp.o.d"
+  "CMakeFiles/ai_sim.dir/src/ui/FilesView.cpp.o"
+  "CMakeFiles/ai_sim.dir/src/ui/FilesView.cpp.o.d"
+  "CMakeFiles/ai_sim.dir/src/ui/NetworkView.cpp.o"
+  "CMakeFiles/ai_sim.dir/src/ui/NetworkView.cpp.o.d"
+  "CMakeFiles/ai_sim.dir/src/ui/NewsView.cpp.o"
+  "CMakeFiles/ai_sim.dir/src/ui/NewsView.cpp.o.d"
+  "CMakeFiles/ai_sim.dir/src/ui/PeopleView.cpp.o"
+  "CMakeFiles/ai_sim.dir/src/ui/PeopleView.cpp.o.d"
+  "CMakeFiles/ai_sim.dir/src/ui/ProcessViewConfig.cpp.o"
+  "CMakeFiles/ai_sim.dir/src/ui/ProcessViewConfig.cpp.o.d"
+  "CMakeFiles/ai_sim.dir/src/ui/ProcessesView.cpp.o"
+  "CMakeFiles/ai_sim.dir/src/ui/ProcessesView.cpp.o.d"
+  "CMakeFiles/ai_sim.dir/src/ui/TerminalUI.cpp.o"
+  "CMakeFiles/ai_sim.dir/src/ui/TerminalUI.cpp.o.d"
+  "CMakeFiles/ai_sim.dir/src/ui/UISettings.cpp.o"
+  "CMakeFiles/ai_sim.dir/src/ui/UISettings.cpp.o.d"
+  "ai_sim"
+  "ai_sim.pdb"
+)
+
+# Per-language clean rules from dependency scanning.
+foreach(lang CXX)
+  include(CMakeFiles/ai_sim.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()

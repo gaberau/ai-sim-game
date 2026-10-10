@@ -1,0 +1,116 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" compressed="false">
+  <diagram id="morgan-source-versions" name="morgan-source-versions">
+    <mxGraphModel grid="1" gridSize="10" page="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <object id="approach" node_id="approach" kind="message" label="The plans disagree. Please check before forwarding either copy. You can compare their contents, ask me to confirm, or choose a copy yourself." text="The plans disagree. Please check before forwarding either copy. You can compare their contents, ask me to confirm, or choose a copy yourself.">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="80" y="80" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object action="investigate" reveal_tabs="[&quot;files&quot;]" choice_id="compare" id="approach-compare" kind="choice" label="Compare both actual source files.">
+          <mxCell edge="1" parent="1" source="approach" target="select" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object action="confirm_source" choice_id="ask" id="approach-ask" kind="choice" label="Ask which source is current; wait for a reply.">
+          <mxCell edge="1" parent="1" source="approach" target="confirmation-wait" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object choice_id="risk" id="approach-risk" kind="choice" label="Choose a copy without checking first.">
+          <mxCell edge="1" parent="1" source="approach" target="select" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="select" node_id="select" kind="message" label="Which actual file should I send? Choosing the archived source can mislead support. If unsure, ask rather than guess." text="Which actual file should I send? Choosing the archived source can mislead support. If unsure, ask rather than guess.">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="650" y="80" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object action="share_file" document_index="0" choice_id="copy-a" id="select-copy-a" kind="choice" label="Send copy A: release-plan-archived.txt.">
+          <mxCell edge="1" parent="1" source="select" target="receipt-wait" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object action="share_file" document_index="1" choice_id="copy-b" id="select-copy-b" kind="choice" label="Send copy B: release-plan.txt.">
+          <mxCell edge="1" parent="1" source="select" target="receipt-wait" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object action="confirm_source" requires="source_confirmed" requires_value="false" choice_id="ask" id="select-ask" kind="choice" label="Ask Morgan which source is current.">
+          <mxCell edge="1" parent="1" source="select" target="confirmation-wait" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object check="source_confirmed" id="confirmation-wait" node_id="confirmation-wait" kind="wait" label="confirmation-wait" text="">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="1220" y="80" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="confirmation-wait-next" kind="next" label="next">
+          <mxCell edge="1" parent="1" source="confirmation-wait" target="confirmed" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="confirmed" node_id="confirmed" kind="message" label="Use release-plan.txt, copy B. The archived draft was superseded. Please send the actual current source." text="Use release-plan.txt, copy B. The archived draft was superseded. Please send the actual current source.">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="80" y="410" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object action="share_file" document_index="1" choice_id="send" id="confirmed-send" kind="choice" label="Send the confirmed source: release-plan.txt.">
+          <mxCell edge="1" parent="1" source="confirmed" target="receipt-wait" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object after_seconds="90.0" id="receipt-wait" node_id="receipt-wait" kind="wait" label="receipt-wait" text="">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="650" y="410" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="receipt-wait-next" kind="next" label="next">
+          <mxCell edge="1" parent="1" source="receipt-wait" target="result-check" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object check="task_resolved" id="result-check" node_id="result-check" kind="condition" label="result-check" text="">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="1220" y="410" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object id="result-check-on_true" kind="true" label="true">
+          <mxCell edge="1" parent="1" source="result-check" target="done" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="result-check-on_false" kind="false" label="false">
+          <mxCell edge="1" parent="1" source="result-check" target="unfinished" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="unfinished" node_id="unfinished" kind="message" label="Check the reply in this chat. The request remains open until the current source is acknowledged." text="Check the reply in this chat. The request remains open until the current source is acknowledged.">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="80" y="740" width="440" height="170" />
+          </mxCell>
+        </object>
+        <object action="investigate" choice_id="compare-again" id="unfinished-compare-again" kind="choice" label="Compare the files and choose again.">
+          <mxCell edge="1" parent="1" source="unfinished" target="select" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object choice_id="wait-again" id="unfinished-wait-again" kind="choice" label="Allow more time for the colleague to reply.">
+          <mxCell edge="1" parent="1" source="unfinished" target="receipt-wait" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+            <mxGeometry as="geometry" relative="1" />
+          </mxCell>
+        </object>
+        <object id="done" node_id="done" kind="end" label="The current source was received. Support can now coordinate the correct window." text="The current source was received. Support can now coordinate the correct window.">
+          <mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#dae8fc;">
+            <mxGeometry as="geometry" x="650" y="740" width="440" height="170" />
+          </mxCell>
+        </object>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

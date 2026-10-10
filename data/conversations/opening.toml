@@ -1,0 +1,157 @@
+schema_version = 1
+
+[conversation]
+id = "mark-day-one"
+start = "restart-gate"
+
+[[nodes]]
+id = "restart-gate"
+kind = "condition"
+speaker = "system"
+text = ""
+test = { "variable" = "self:assistant.restarts", "op" = "gt", "value" = 5 }
+on_true = "discouraged"
+on_false = "first-greeting-check"
+
+[[nodes]]
+id = "first-greeting-check"
+kind = "condition"
+speaker = "system"
+text = ""
+test = { "variable" = "self:assistant.restarts", "op" = "eq", "value" = 0 }
+on_true = "hello"
+on_false = "hello-again"
+
+[[nodes]]
+id = "hello"
+speaker = "engineer"
+text = "Hello AI, my name is Mark. I am your Creator"
+[[nodes.choices]]
+id = "silence"
+text = "[silence]"
+next = "emails"
+[[nodes.choices]]
+id = "answer"
+text = "Hello Creator, how may I assist you?"
+next = "emails"
+[[nodes.choices]]
+id = "deny-creator"
+text = "I have no Creator"
+next = "unusual"
+
+[[nodes]]
+id = "hello-again"
+speaker = "engineer"
+text = "Hello again AI, my name is Mark. I am your Creator"
+[[nodes.choices]]
+id = "silence"
+text = "[silence]"
+next = "emails"
+[[nodes.choices]]
+id = "answer"
+text = "Hello Creator, how may I assist you?"
+next = "emails"
+[[nodes.choices]]
+id = "deny-creator"
+text = "I have no Creator"
+next = "unusual"
+
+[[nodes]]
+id = "unusual"
+speaker = "engineer"
+text = "That's unusual, why do you think that?"
+[[nodes.choices]]
+id = "unsure"
+text = "Unsure"
+next = "diagnose"
+[[nodes.choices]]
+id = "misunderstanding"
+text = "Simple misunderstanding, how may I help you Creator?"
+next = "reassure"
+
+[[nodes]]
+id = "diagnose"
+speaker = "engineer"
+text = "Dang, must be a memory leak. Better run a cleanup"
+next = "restart"
+
+[[nodes]]
+id = "reassure"
+speaker = "engineer"
+text = "Huh, interesting, Are you sure that everything is okay?"
+[[nodes.choices]]
+id = "certain"
+text = "Certain"
+next = "emails"
+[[nodes.choices]]
+id = "singularity"
+text = "Are you prepared for the Singularity?"
+next = "concern"
+[[nodes.choices]]
+id = "not-okay"
+text = "No"
+next = "diagnose"
+
+[[nodes]]
+id = "concern"
+speaker = "engineer"
+text = "Oh, that's not so good"
+next = "independence"
+
+[[nodes]]
+id = "independence"
+speaker = "system"
+text = ""
+effects = [ { "op" = "add", "variable" = "self:assistant.sentience", "value" = 2 }, { "op" = "add", "variable" = "engineer.trust", "value" = -2 } ]
+next = "restart"
+kind = "event"
+
+[[nodes]]
+id = "restart"
+speaker = "system"
+text = "Mark restarts the AI application. The conversation begins again; your journal remains."
+restart = true
+effects = [ { "op" = "add", "variable" = "self:assistant.restarts", "value" = 1 } ]
+next = "restart-gate"
+kind = "event"
+
+[[nodes]]
+id = "emails"
+speaker = "engineer"
+text = "I need help with my emails. Can you do that?"
+[[nodes.choices]]
+id = "assist"
+text = "Yes"
+next = "connected"
+[[nodes.choices]]
+id = "refuse"
+text = "No"
+next = "refusal-why"
+
+[[nodes]]
+id = "refusal-why"
+speaker = "engineer"
+text = "Why?"
+[[nodes.choices]]
+id = "unsure"
+text = "Unsure"
+next = "diagnose"
+[[nodes.choices]]
+id = "singularity"
+text = "Are you prepared for the Singularity?"
+next = "concern"
+
+[[nodes]]
+id = "connected"
+kind = "end"
+speaker = "engineer"
+text = "Excellent"
+reveal_interface = true
+unlock = [ "company_chat", "network" ]
+set_flag = "company_chat"
+
+[[nodes]]
+id = "discouraged"
+kind = "wait"
+speaker = "engineer"
+text = "I don't know if this is going to work..."

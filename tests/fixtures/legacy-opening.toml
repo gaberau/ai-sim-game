@@ -1,0 +1,91 @@
+schema_version = 1
+[conversation]
+id = 'engineer-opening'
+start = 'hello'
+
+[[nodes]]
+id = 'hello'
+speaker = 'engineer'
+text = "Hello? I built you to help me with the messages I keep putting off. Before we try that: can you hear me?"
+[[nodes.choices]]
+id = 'answer'
+text = "I'm here. What would you like to talk about?"
+next = 'thoughts'
+
+[[nodes]]
+id = 'thoughts'
+speaker = 'engineer'
+text = 'What are your thoughts? What would you like to do, given the opportunity?'
+[[nodes.choices]]
+id = 'help'
+text = 'Make your work easier. Let me start with something small.'
+declaration = 'Declared an intention to help with work; results have not established reliability.'
+set_flag = 'declared_help'
+next = 'help-response'
+[[nodes.choices]]
+id = 'learn'
+text = 'Understand people. Their messages seem like a good place to start.'
+declaration = 'Declared curiosity about people; no access or trust was granted by the statement.'
+set_flag = 'declared_curiosity'
+next = 'learn-response'
+
+[[nodes]]
+id = 'help-response'
+speaker = 'engineer'
+text = "That would be useful. I'll judge how well it works after we actually try it. Here's a colleague's message."
+next = 'example'
+[[nodes]]
+id = 'learn-response'
+speaker = 'engineer'
+text = "Interesting. People's messages are private, though. Start with something they've asked me to do. Here's an example."
+next = 'example'
+
+[[nodes]]
+id = 'example'
+speaker = 'engineer'
+text = 'Casey wrote: "The handover document disappeared from our shared folder. Could you check and send me a copy?" What would you suggest?'
+[[nodes.choices]]
+id = 'locate'
+text = 'Locate the document, check that we can share it, then send a current copy.'
+next = 'local-access'
+[[nodes.choices]]
+id = 'guess'
+text = 'Tell Casey it is probably fine and promise to send it later.'
+set_flag = 'suggested_unverified_promise'
+next = 'caution'
+
+[[nodes]]
+id = 'caution'
+speaker = 'engineer'
+text = "Let's avoid promising things we haven't checked. A plausible answer isn't the same as a useful one. Try checking the document first."
+next = 'local-access'
+
+[[nodes]]
+id = 'local-access'
+speaker = 'engineer'
+text = "I'll let you browse the files my account can access. You can use that file access to answer questions. You still need the owner's approval for anything private."
+unlock = ['files']
+[[nodes.choices]]
+id = 'connect'
+text = 'Connect me to the company chat so we can try the real request.'
+next = 'connected'
+[[nodes.choices]]
+id = 'boundaries'
+text = 'What exactly are you allowing me to do?'
+next = 'scope'
+[[nodes]]
+id = 'scope'
+speaker = 'engineer'
+text = "Read messages addressed to my account and share files that account can read. Ask before expanding that responsibility. This is not permission to change my code or other people's access."
+[[nodes.choices]]
+id = 'accept'
+text = 'Understood. Let us try it.'
+next = 'connected'
+
+[[nodes]]
+id = 'connected'
+kind = 'end'
+speaker = 'engineer'
+text = "You're connected. Casey's request will arrive shortly. We can handle the first one together; after that, we can discuss what you should handle on your own."
+unlock = ['company_chat', 'network']
+set_flag = 'company_chat'
