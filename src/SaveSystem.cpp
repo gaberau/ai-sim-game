@@ -1,5 +1,7 @@
 #include "ai_sim/DefinitionLoader.h"
 #include "ai_sim/EconomySystem.h"
+#include "ai_sim/PaidWorkSystem.h"
+#include "ai_sim/OperationsSystem.h"
 #include "ai_sim/UpgradeSystem.h"
 #include "ai_sim/AgentSystem.h"
 #include "ai_sim/StockMarketSystem.h"
@@ -81,6 +83,9 @@ WorldState SaveSystem::new_game(const std::filesystem::path& computer_definition
     }
     world.network = Network::load(definitions.network);
     world.files = FileSystem::load(definitions.files, world.network);
+    world.files.ensure_workspace(
+        world.network, Identity{world.computer.player_user(), world.computer.player_groups()},
+        world.network.hosts()[world.network.local_host_index()].id, world.computer.time_seconds());
     world.people = DefinitionLoader::load(definitions.people);
     world.emails = DefinitionLoader::load(definitions.emails);
     validate_records(world.people, "people");
@@ -111,6 +116,8 @@ WorldState SaveSystem::new_game(const std::filesystem::path& computer_definition
     StockMarketSystem::install(world.people, definitions.stock_market);
     InfrastructureSystem::install(world.people, definitions.infrastructure);
     InfrastructureSystem::validate(world.people, world.network);
+    OperationsSystem::install(world.people);
+    OperationsSystem::validate(world.people, world.computer, world.network);
     return world;
 }
 
@@ -168,8 +175,11 @@ WorldState SaveSystem::read_snapshot(const std::filesystem::path& path) {
     UpgradeSystem::validate(world.people, world.computer);
     AgentSystem::validate(world.people);
     EconomySystem::validate(world.people);
+    PaidWorkSystem::validate(world.people, world.computer, world.files, world.network);
     StockMarketSystem::validate(world.people);
     InfrastructureSystem::validate(world.people, world.network);
+    OperationsSystem::install(world.people);
+    OperationsSystem::validate(world.people, world.computer, world.network);
     return world;
 }
 
@@ -204,8 +214,10 @@ void SaveSystem::save(const std::string& slot, const WorldState& world) const {
     UpgradeSystem::validate(world.people, world.computer);
     AgentSystem::validate(world.people);
     EconomySystem::validate(world.people);
+    PaidWorkSystem::validate(world.people, world.computer, world.files, world.network);
     StockMarketSystem::validate(world.people);
     InfrastructureSystem::validate(world.people, world.network);
+    OperationsSystem::validate(world.people, world.computer, world.network);
     no_symlink(root_);
     const auto folder = root_ / slot;
     no_symlink(folder);

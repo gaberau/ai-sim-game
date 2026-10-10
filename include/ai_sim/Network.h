@@ -59,6 +59,9 @@ class Network {
     void grant_access(const std::string& id);
     void discover_host(const std::string& id);
     void import_missing(const Network& source);
+    void add_owned_host(NetworkHost host, const std::string& uplink);
+    void set_online(const std::string& id, bool online);
+    void relocate(const std::string& id);
 
   private:
     std::vector<NetworkHost> hosts_;

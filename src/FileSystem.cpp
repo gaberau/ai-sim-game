@@ -3,6 +3,7 @@
 #include "ai_sim/TomlIO.h"
 #include <algorithm>
 #include <cmath>
+#include <cctype>
 #include <limits>
 #include <map>
 #include <stdexcept>
@@ -90,6 +91,7 @@ void FileSystem::set_category(const Network& network, const Identity& actor,
     require(category == "work" || category == "personal" || category == "hidden",
             "Unknown file category");
     const auto& entry = inspect(network, actor, host, path);
+    require_unmanaged(host, entry.path);
     require(actor.user == entry.owner || actor.user == "root",
             "Only the owner can organize this file");
     const_cast<FileEntry&>(entry).category = category;
@@ -182,6 +184,10 @@ FileSystem FileSystem::load(const std::filesystem::path& path, const Network& ne
         FileSystem result;
         result.default_file_mode_ = parse_mode(text(*settings, "default_file_mode"));
         result.default_directory_mode_ = parse_mode(text(*settings, "default_directory_mode"));
+        result.workspace_root_ = (*settings)["workspace_root"].value_or(result.workspace_root_);
+        require(result.workspace_root_ != "/" &&
+                    normalize(result.workspace_root_) == result.workspace_root_,
+                "Workspace root must be a canonical non-root path");
         if (const auto* id = settings->get("next_id")) {
             const auto value = id->value<std::int64_t>();
             require(id->is_integer() && value && *value > 0, "Invalid next_id");
@@ -203,6 +209,10 @@ FileSystem FileSystem::load(const std::filesystem::path& path, const Network& ne
             require(ids.insert(entry.id).second, "Duplicate file ID");
             require(paths.insert(entry.host_id + "\n" + entry.path).second, "Duplicate file entry");
             entry.category = (*table)["category"].value_or(std::string{});
+            entry.service_kind = (*table)["service_kind"].value_or(std::string{});
+            require(entry.service_kind.empty() || entry.service_kind == "agent" ||
+                        entry.service_kind == "backup" || entry.service_kind == "work",
+                    "Invalid service file type");
             require(entry.category.empty() || entry.category == "work" ||
                         entry.category == "personal" || entry.category == "hidden",
                     "Invalid file category");
@@ -223,7 +233,7 @@ FileSystem FileSystem::load(const std::filesystem::path& path, const Network& ne
             entry.size_bytes = (*table)["allocated_bytes"].value_or(
                 static_cast<std::uint64_t>(entry.content.size()));
             require(entry.size_bytes >= entry.content.size() &&
-                        (!entry.directory || entry.size_bytes == 0),
+                        (!entry.directory || (entry.size_bytes == 0 && entry.service_kind.empty())),
                     "Invalid file allocation");
             if (const auto* modified = table->get("modified_at_seconds")) {
                 const auto value = modified->value<double>();
@@ -244,6 +254,7 @@ FileSystem FileSystem::load(const std::filesystem::path& path, const Network& ne
             require(result.storage_used(host.id) <= host.storage_capacity_bytes,
                     "Files exceed storage capacity: " + host.id);
         }
+        result.migrate_service_files();
         return result;
     } catch (const std::exception& error) {
         throw std::runtime_error(path.string() + ": " + error.what());
@@ -255,6 +266,7 @@ void FileSystem::save_snapshot(const std::filesystem::path& path) const {
         {"filesystem", toml::table{{"default_file_mode", mode_text(default_file_mode_)},
                                    {"default_directory_mode", mode_text(default_directory_mode_)},
                                    {"next_id", static_cast<std::int64_t>(next_id_)}}}};
+    document["filesystem"].as_table()->insert("workspace_root", workspace_root_);
     toml::array entries;
     for (const auto& entry : entries_) {
         toml::table table{{"id", entry.id},
@@ -267,6 +279,8 @@ void FileSystem::save_snapshot(const std::filesystem::path& path) const {
                           {"modified_at_seconds", entry.modified_at_seconds}};
         if (!entry.category.empty())
             table.insert("category", entry.category);
+        if (!entry.service_kind.empty())
+            table.insert("service_kind", entry.service_kind);
         if (!entry.directory) {
             table.insert("content", entry.content);
             table.insert("allocated_bytes", static_cast<std::int64_t>(entry.size_bytes));
@@ -355,6 +369,7 @@ void FileSystem::validate_write(const Network& network, const Identity& actor,
                                 const std::string& host, const std::string& path) const {
     check_host(network, host);
     const auto canonical = normalize(path);
+    require_unmanaged(host, canonical);
     traverse(actor, host, canonical);
     if (const auto* entry = lookup(host, canonical)) {
         require(!entry->directory, "Cannot write a directory");
@@ -396,6 +411,7 @@ void FileSystem::write(const Network& network, const Identity& actor, const std:
     const auto canonical = normalize(path);
     validate_write(network, actor, host, canonical);
     const auto* old = lookup(host, canonical);
+    require_unmanaged(host, canonical);
     const auto used_without_old = storage_used(host) - (old ? old->size_bytes : 0);
     const auto capacity = host_named(network, host).storage_capacity_bytes;
     require(used_without_old <= capacity && content.size() <= capacity - used_without_old,
@@ -439,6 +455,13 @@ bool FileSystem::import_file(const Network& network, const FileEntry& source, do
     entry.category = source.category;
     return true;
 }
+void FileSystem::mount_host(const Network& network, const std::string& host,
+                            const std::string& owner, double time) {
+    check_host(network, host);
+    require(!owner.empty() && std::isfinite(time) && time >= 0, "Invalid server filesystem");
+    if (!lookup(host, "/"))
+        create(Identity{owner}, host, "/", true, "", time);
+}
 void FileSystem::mkdir(const Network& network, const Identity& actor, const std::string& host,
                        const std::string& path, double time) {
     const auto canonical = normalize(path);
@@ -451,6 +474,7 @@ void FileSystem::remove(const Network& network, const Identity& actor, const std
     timestamp(time);
     const auto canonical = normalize(path);
     require(canonical != "/", "Cannot remove the root directory");
+    require_unmanaged(host, canonical);
     const auto& entry = inspect(network, actor, host, canonical);
     check_parent_write(network, actor, host, canonical);
     if (entry.directory) {
@@ -469,6 +493,7 @@ void FileSystem::rename(const Network& network, const Identity& actor, const std
     timestamp(time);
     const auto from = normalize(source), to = normalize(destination);
     require(from != "/" && to != "/", "Cannot rename the root directory");
+    require_unmanaged(host, from);
     (void)inspect(network, actor, host, from);
     check_parent_write(network, actor, host, from);
     check_parent_write(network, actor, host, to);
@@ -485,6 +510,7 @@ void FileSystem::rename(const Network& network, const Identity& actor, const std
 }
 void FileSystem::copy(const Network& network, const Identity& actor, const std::string& host,
                       const std::string& source, const std::string& destination, double time) {
+    require_unmanaged(host, normalize(source));
     const auto category = category_of(inspect(network, actor, host, source));
     const std::string content = read(network, actor, host, source);
     require(!lookup(host, normalize(destination)), "Destination already exists");
@@ -496,10 +522,175 @@ void FileSystem::chmod(const Network& network, const Identity& actor, const std:
     timestamp(time);
     require(mode <= 0777, "Invalid permission mode");
     const auto& old = inspect(network, actor, host, path);
+    require_unmanaged(host, old.path);
     require(actor.user == "root" || actor.user == old.owner,
             "Only the owner or root can change permissions");
     auto& entry = entries_[static_cast<std::size_t>(&old - entries_.data())];
     entry.mode = mode;
     entry.modified_at_seconds = time;
+}
+std::string FileSystem::workspace_path(const std::string& folder) const {
+    require(folder == "agents" || folder == "jobs" || folder == "products" ||
+                folder == "documents" || folder == "backups",
+            "Unknown workspace folder");
+    return workspace_root_ + "/" + folder;
+}
+std::string FileSystem::agent_path(const std::string& id) const {
+    require(!id.empty() && id.find_first_of("/\\") == std::string::npos, "Invalid agent ID");
+    return workspace_path("agents") + "/agent-" + id + ".allocation";
+}
+std::string FileSystem::backup_path() const {
+    return workspace_path("backups") + "/recovery.snapshot";
+}
+void FileSystem::require_unmanaged(const std::string& host, const std::string& path) const {
+    for (const auto& entry : entries_)
+        if (entry.host_id == host && !entry.service_kind.empty() &&
+            (entry.path == path || entry.path.starts_with(path + "/")))
+            throw std::runtime_error("Managed service file: use Agents or Operations to manage it");
+}
+void FileSystem::ensure_workspace(const Network& network, const Identity& actor,
+                                  const std::string& host, double time) {
+    auto next = *this;
+    std::vector<std::string> directories;
+    for (auto path = workspace_root_; path != "/"; path = parent(path))
+        directories.push_back(path);
+    std::reverse(directories.begin(), directories.end());
+    for (const auto* folder : {"agents", "jobs", "products", "documents", "backups"})
+        directories.push_back(workspace_path(folder));
+    for (const auto& path : directories) {
+        if (next.lookup(host, path))
+            next.enter(network, actor, host, path);
+        else
+            next.mkdir(network, actor, host, path, time);
+    }
+    *this = std::move(next);
+}
+void FileSystem::reserve_service_file(const Network& network, const Identity& actor,
+                                      const std::string& host, const std::string& path,
+                                      std::uint64_t bytes, double time, const std::string& kind) {
+    require(kind == "agent" || kind == "backup" || kind == "work", "Unknown service type");
+    require(kind == "agent"    ? normalize(path).starts_with(workspace_path("agents") + "/")
+            : kind == "backup" ? normalize(path) == backup_path()
+                               : normalize(path).starts_with(workspace_path("jobs") + "/") ||
+                                     normalize(path).starts_with(workspace_path("products") + "/"),
+            "Invalid service file location");
+    auto next = *this;
+    next.ensure_workspace(network, actor, host, time);
+    next.reserve_file(network, actor, host, path, bytes, time);
+    next.entries_.back().service_kind = kind;
+    *this = std::move(next);
+}
+void FileSystem::release_service_file(const Network& network, const Identity& actor,
+                                      const std::string& host, const std::string& path,
+                                      double time) {
+    auto next = *this;
+    const auto& entry = next.inspect(network, actor, host, path);
+    require(!entry.service_kind.empty(), "Not a service file");
+    next.entries_[static_cast<std::size_t>(&entry - next.entries_.data())].service_kind.clear();
+    next.remove(network, actor, host, path, time);
+    *this = std::move(next);
+}
+void FileSystem::migrate_service_files() {
+    // Older saves have untyped allocations beside documents and a backup at the host root.
+    const auto count = entries_.size();
+    for (std::size_t i = 0; i < count; ++i) {
+        const auto old = entries_[i];
+        if (old.directory)
+            continue;
+        std::string path;
+        std::string kind;
+        if (old.path.starts_with(workspace_root_ + "/agent-") &&
+            old.path.ends_with(".allocation")) {
+            path = workspace_path("agents") + "/" + old.path.substr(old.path.rfind('/') + 1);
+            kind = "agent";
+        } else if (old.path == "/assistant-backup") {
+            path = backup_path();
+            kind = "backup";
+        } else
+            continue;
+        require(!lookup(old.host_id, path), "Legacy service destination already exists");
+        std::vector<std::string> parents;
+        for (auto dir = parent(path); dir != "/"; dir = parent(dir))
+            parents.push_back(dir);
+        for (auto it = parents.rbegin(); it != parents.rend(); ++it)
+            if (const auto* existing = lookup(old.host_id, *it))
+                require(existing->directory, "Legacy service parent is not a directory");
+            else
+                create(Identity{old.owner, {old.group}}, old.host_id, *it, true, "",
+                       old.modified_at_seconds);
+        entries_[i].path = path;
+        entries_[i].service_kind = kind;
+    }
+}
+void FileSystem::transfer_workspace(const Network& network, const Identity& actor,
+                                    const std::string& source, const std::string& destination,
+                                    double time) {
+    if (source == destination)
+        return;
+    enter(network, actor, source, workspace_root_);
+    auto next = *this;
+    next.ensure_workspace(network, actor, destination, time);
+    std::vector<FileEntry> moving;
+    for (const auto& entry : entries_)
+        if (entry.host_id == source &&
+            (entry.path == workspace_root_ || entry.path.starts_with(workspace_root_ + "/"))) {
+            const auto* existing = next.lookup(destination, entry.path);
+            require(!existing || (existing->directory && entry.directory),
+                    "Recovery workspace conflicts with an existing file: " + entry.path);
+            if (!entry.directory)
+                (void)read(network, actor, source, entry.path);
+            auto moved = entry;
+            moved.host_id = destination;
+            moving.push_back(std::move(moved));
+        }
+    const auto capacity = host_named(network, destination).storage_capacity_bytes;
+    auto used = next.storage_used(destination);
+    for (const auto& entry : moving) {
+        require(used <= capacity && entry.size_bytes <= capacity - used,
+                "Not enough storage to transfer workspace");
+        used += entry.size_bytes;
+    }
+    std::erase_if(next.entries_, [&](const auto& entry) {
+        if (entry.host_id == source &&
+            (entry.path == workspace_root_ || entry.path.starts_with(workspace_root_ + "/")))
+            return true;
+        return entry.host_id == destination &&
+               std::any_of(moving.begin(), moving.end(), [&](const auto& moved) {
+                   return moved.path == entry.path;
+               });
+    });
+    next.entries_.insert(next.entries_.end(), moving.begin(), moving.end());
+    *this = std::move(next);
+}
+std::vector<const FileEntry*> FileSystem::search(const Network& network, const Identity& actor,
+                                                 const std::string& host,
+                                                 const std::string& directory,
+                                                 const std::string& query) const {
+    const auto lower = [](std::string value) {
+        std::transform(value.begin(), value.end(), value.begin(), [](unsigned char character) {
+            return static_cast<char>(std::tolower(character));
+        });
+        return value;
+    };
+    const auto needle = lower(query);
+    const auto base = normalize(directory);
+    (void)listing_directory(network, actor, host, base);
+    std::vector<const FileEntry*> result;
+    for (const auto& entry : entries_) {
+        if (entry.host_id != host || entry.directory ||
+            !(base == "/" || entry.path.starts_with(base + "/")) ||
+            lower(entry.path).find(needle) == std::string::npos)
+            continue;
+        try {
+            (void)listing_directory(network, actor, host, parent(entry.path));
+            traverse(actor, host, entry.path);
+            result.push_back(&entry);
+        } catch (const std::exception&) {
+        }
+    }
+    std::sort(result.begin(), result.end(), [](auto* a, auto* b) {
+        return a->path < b->path;
+    });
+    return result;
 }
 } // namespace ai_sim

@@ -55,7 +55,10 @@ int main(int argc, char** argv) {
             advance(world, 10);
             choose(world, "improvise");
             choose(world, branch);
-            choose(world, "send");
+            check(ConversationSystem::choices(world.people, "jessica", world.files, world.network,
+                                              actor, world.computer.time_seconds())
+                      .empty(),
+                  "Scripted reply still needs confirmation");
             advance(world, 10000);
             verify_story(world);
             SaveSystem saves(temporary);

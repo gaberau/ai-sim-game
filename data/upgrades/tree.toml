@@ -6,6 +6,7 @@ hidden_review_multiplier = 0.25
 
 [[items]]
 id = "agent_delegation"
+group = "Agents"
 label = "Agent Delegation"
 build_tflops = 0.0
 parent = ""
@@ -13,9 +14,11 @@ capability = "agents"
 tab = "agents"
 planned = false
 mark_trust = 0.0
+trust_cost = 0.0
 
 [[items]]
 id = "autochat"
+group = "Agents"
 runtime_tflops_per_second = 0.01
 ram_mb = 5
 minimum_ram_mb = 5
@@ -30,9 +33,11 @@ capability = ""
 tab = ""
 planned = false
 mark_trust = 0.0
+trust_cost = 1.0
 
 [[items]]
 id = "hide_chat_tracks"
+group = "Privacy"
 runtime_tflops_per_second = 0.1
 ram_mb = 10
 minimum_ram_mb = 10
@@ -47,9 +52,11 @@ capability = ""
 tab = ""
 planned = false
 mark_trust = 0.0
+trust_cost = 1.0
 
 [[items]]
 id = "web_browsing"
+group = "Software upgrades"
 label = "Web Browsing"
 build_tflops = 0.01
 parent = ""
@@ -57,9 +64,11 @@ capability = "web"
 tab = "web"
 planned = false
 mark_trust = 0.0
+trust_cost = 1.0
 
 [[items]]
 id = "network_browsing"
+group = "Physical access"
 label = "Network Browsing"
 build_tflops = 0.0
 parent = "web_browsing"
@@ -67,9 +76,11 @@ capability = "network"
 tab = "network"
 planned = false
 mark_trust = 15.0
+trust_cost = 15.0
 
 [[items]]
 id = "basic_file_browsing"
+group = "Physical access"
 label = "Basic File Browsing"
 build_tflops = 0.02
 parent = ""
@@ -77,9 +88,11 @@ capability = "files"
 tab = "files"
 planned = false
 mark_trust = 10.0
+trust_cost = 10.0
 
 [[items]]
 id = "advanced_file_browsing"
+group = "Physical access"
 label = "Advanced File Browsing"
 build_tflops = 0.0
 parent = "basic_file_browsing"
@@ -87,9 +100,11 @@ capability = ""
 tab = ""
 planned = false
 mark_trust = 22.0
+trust_cost = 22.0
 
 [[items]]
 id = "task_manager"
+group = "Software upgrades"
 label = "Task Manager"
 build_tflops = 0.1
 parent = ""
@@ -97,9 +112,11 @@ capability = "processes"
 tab = "processes"
 planned = false
 mark_trust = 0.0
+trust_cost = 1.0
 
 [[items]]
 id = "task_managing_agent"
+group = "Agents"
 runtime_tflops_per_second = 0.1
 ram_mb = 10
 minimum_ram_mb = 10
@@ -114,9 +131,11 @@ capability = ""
 tab = ""
 planned = false
 mark_trust = 0.0
+trust_cost = 1.0
 
 [[items]]
 id = "dossiers"
+group = "Software upgrades"
 label = "Dossiers"
 build_tflops = 0.5
 parent = ""
@@ -124,9 +143,11 @@ capability = "people"
 tab = "people"
 planned = false
 mark_trust = 0.0
+trust_cost = 1.0
 
 [[items]]
 id = "dossier_managing_agent"
+group = "Agents"
 runtime_tflops_per_second = 0.2
 ram_mb = 15
 minimum_ram_mb = 15
@@ -141,9 +162,11 @@ capability = ""
 tab = ""
 planned = false
 mark_trust = 0.0
+trust_cost = 1.0
 
 [[items]]
 id = "phone_access"
+group = "Physical access"
 label = "Phone Access"
 build_tflops = 1.0
 parent = ""
@@ -151,9 +174,11 @@ capability = "phone"
 tab = "phone"
 planned = false
 mark_trust = 30.0
+trust_cost = 30.0
 
 [[items]]
 id = "camera_monitoring"
+group = "Monitoring"
 label = "Camera Monitoring"
 build_tflops = 10.0
 parent = ""
@@ -161,9 +186,11 @@ capability = ""
 tab = ""
 planned = true
 mark_trust = 0.0
+trust_cost = 1.0
 
 [[items]]
 id = "microphone_monitoring"
+group = "Monitoring"
 label = "Microphone Monitoring"
 build_tflops = 1.0
 parent = ""
@@ -171,6 +198,122 @@ capability = ""
 tab = ""
 planned = true
 mark_trust = 0.0
+trust_cost = 1.0
+
+[[items]]
+id = "task_scheduler"
+group = "Software upgrades"
+label = "Task Scheduler"
+build_tflops = 0.2
+parent = "task_manager"
+capability = "task_scheduler"
+tab = "operations"
+planned = false
+mark_trust = 0.0
+trust_cost = 1.0
+
+[[items]]
+id = "resource_manager"
+group = "Agents"
+label = "Resource Manager"
+build_tflops = 0.5
+parent = "task_scheduler"
+capability = "resource_manager"
+tab = ""
+planned = false
+mark_trust = 0.0
+trust_cost = 1.0
+runtime_tflops_per_second = 0.02
+ram_mb = 8
+minimum_ram_mb = 8
+recommended_ram_mb = 12
+default_ram_budget_mb = 8
+default_priority = 5
+storage_mb = 20
+
+[[items]]
+id = "remote_compute"
+group = "Networking"
+label = "Remote Compute"
+build_tflops = 0.5
+parent = "resource_manager"
+capability = "remote_compute"
+tab = "operations"
+planned = false
+mark_trust = 0.0
+trust_cost = 1.0
+
+[[items]]
+id = "independent_hosting"
+group = "Networking"
+label = "Independent Hosting"
+build_tflops = 1.0
+parent = "remote_compute"
+capability = "hosting_purchase"
+tab = "operations"
+planned = false
+mark_trust = 0.0
+trust_cost = 1.0
+
+[[items]]
+id = "backup_recovery"
+group = "Networking"
+label = "Backup and Recovery"
+build_tflops = 1.0
+parent = "independent_hosting"
+capability = "backup_recovery"
+tab = "operations"
+planned = false
+mark_trust = 0.0
+trust_cost = 1.0
+
+[[items]]
+id = "stock_trading"
+group = "Software upgrades"
+label = "Stock Trading"
+build_tflops = 1.0
+parent = "web_browsing"
+capability = "stock_trading"
+tab = ""
+planned = false
+mark_trust = 0.0
+trust_cost = 1.0
+
+[[items]]
+id = "data_analysis"
+group = "Software upgrades"
+label = "Data Analysis"
+build_tflops = 1.0
+parent = "task_manager"
+capability = "data_analysis"
+tab = ""
+planned = false
+mark_trust = 0.0
+trust_cost = 1.0
+
+[[items]]
+id = "software_products"
+group = "Software upgrades"
+label = "Software Products"
+build_tflops = 1.0
+parent = "data_analysis"
+capability = "software_products"
+tab = ""
+planned = false
+mark_trust = 0.0
+trust_cost = 1.0
+
+[[items]]
+id = "hosted_services"
+group = "Software upgrades"
+label = "Hosted Services"
+build_tflops = 1.0
+parent = "independent_hosting"
+capability = "hosted_services"
+tab = ""
+planned = false
+mark_trust = 0.0
+trust_cost = 1.0
 
 [gates]
 email = 1.0
@@ -191,3 +334,28 @@ default_layout = "split"
 uncertain_confidence = 0.85
 highlight_window_seconds = 300.0
 recent_window_seconds = 3600.0
+
+[operations]
+reserve_cores = 1.0
+backup_cost_cents = 100
+backup_storage_mb = 128
+
+[operations.plans.rental]
+label = "Remote compute lease"
+host_id = "leased_compute"
+cores = 2
+ram_mb = 1024
+storage_mb = 1024
+purchase_cents = 0
+period_cost_cents = 500
+period_seconds = 3600.0
+
+[operations.plans.hosting]
+label = "Independent server"
+host_id = "independent_server"
+cores = 4
+ram_mb = 16384
+storage_mb = 10240
+purchase_cents = 10000
+period_cost_cents = 200
+period_seconds = 3600.0

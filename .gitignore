@@ -5,3 +5,9 @@
 /build-wsl/
 
 /config/*.bak
+
+/backups/
+
+# Python test caches
+__pycache__/
+*.py[cod]

@@ -6,7 +6,7 @@
 
 namespace ai_sim {
 namespace {
-enum class Stage { Inactive, Decision, Accepted, Protest, ResetPending, Averted };
+enum class Stage { Inactive, Decision, Accepted, Protest, ResetPending, RecoveryPending, Averted };
 void require(bool condition, const char* message) {
     if (!condition)
         throw std::runtime_error(std::string{"Shutdown: "} + message);
@@ -23,6 +23,8 @@ Stage stage(const toml::table& people) {
         return Stage::Protest;
     if (name == "reset_pending")
         return Stage::ResetPending;
+    if (name == "recovery_pending")
+        return Stage::RecoveryPending;
     if (name == "averted")
         return Stage::Averted;
     throw std::runtime_error("Shutdown: Invalid saved stage");
@@ -59,6 +61,9 @@ bool ShutdownSystem::active(const toml::table& people) {
     return current != Stage::Inactive && current != Stage::Averted;
 }
 
+bool ShutdownSystem::recovery_pending(const toml::table& people) {
+    return stage(people) == Stage::RecoveryPending;
+}
 bool ShutdownSystem::reset_pending(const toml::table& people) {
     return stage(people) == Stage::ResetPending;
 }
@@ -68,8 +73,12 @@ std::vector<toml::table> ShutdownSystem::choices(const toml::table& people) {
     case Stage::Decision:
         return {option("accept", "Accept"), option("protest", "Protest")};
     case Stage::Accepted:
+    case Stage::RecoveryPending:
         return {option("backup", "Revert to backup servers",
-                       "No independent backup server is available yet."),
+                       people["operations"]["backup_slot"].is_string() &&
+                               people["operations"]["hosting"]["active"].value_or(false)
+                           ? ""
+                           : "No independent backup server is available online yet."),
                 option("clean-slate", "Accept a clean slate. Start a new game.")};
     case Stage::Protest:
         return {option("threaten", "Threaten", "This response is not available yet."),
@@ -96,7 +105,10 @@ ShutdownSystem::Outcome ShutdownSystem::choose(toml::table& people, const std::s
         prompt(people, "accepted", "Accept a clean slate or recover from a backup server.", time);
     else if (id == "protest")
         prompt(people, "protest", "Protest", time);
-    else if (id == "clean-slate") {
+    else if (id == "backup") {
+        prompt(people, "recovery_pending", "Recovering on the independent server.", time);
+        return Outcome::Recovery;
+    } else if (id == "clean-slate") {
         prompt(people, "reset_pending", "Accepting a clean slate.", time);
         return Outcome::CleanSlate;
     } else if (id == "beg") {

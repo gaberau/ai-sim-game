@@ -1,9 +1,0 @@
-schema_version = 2
-
-[[entries]]
-group = 'engineering'
-host_id = 'file_server'
-kind = 'directory'
-mode = '750'
-owner = 'engineering_admin'
-path = '/engineering'

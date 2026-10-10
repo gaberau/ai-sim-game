@@ -5,10 +5,14 @@ website_title = "Sim Exchange"
 # Quotes change every 15 working minutes, including across workdays.
 tick_seconds = 900
 fee_cents = 25
+order_lifetime_ticks = 96
+max_open_orders = 32
+history_limit = 128
 
 [[stocks]]
 symbol = 'BYTE'
 name = 'Byteworks Software'
+sector = 'Software'
 initial_price_cents = 500
 minimum_price_cents = 350
 maximum_price_cents = 650
@@ -16,6 +20,7 @@ maximum_price_cents = 650
 [[stocks]]
 symbol = 'GRID'
 name = 'Gridline Hosting'
+sector = 'Internet'
 initial_price_cents = 1000
 minimum_price_cents = 800
 maximum_price_cents = 1200
@@ -23,6 +28,7 @@ maximum_price_cents = 1200
 [[stocks]]
 symbol = 'DATA'
 name = 'Dataforge Analytics'
+sector = 'Analytics'
 initial_price_cents = 750
 minimum_price_cents = 450
 maximum_price_cents = 1050
@@ -30,6 +36,55 @@ maximum_price_cents = 1050
 [[stocks]]
 symbol = 'CORE'
 name = 'Core Hardware'
+sector = 'Hardware'
 initial_price_cents = 2000
 minimum_price_cents = 1800
 maximum_price_cents = 2200
+
+[[stocks]]
+symbol = 'VOLT'
+name = 'Volt City Power'
+sector = 'Power'
+initial_price_cents = 1200
+minimum_price_cents = 900
+maximum_price_cents = 1500
+
+[[stocks]]
+symbol = 'FLOW'
+name = 'Flow Water Utilities'
+sector = 'Water'
+initial_price_cents = 800
+minimum_price_cents = 650
+maximum_price_cents = 950
+
+[[stocks]]
+symbol = 'CLEAN'
+name = 'Cleanloop Sanitation'
+sector = 'Sewage'
+initial_price_cents = 600
+minimum_price_cents = 500
+maximum_price_cents = 700
+
+[[stocks]]
+symbol = 'GROW'
+name = 'Growline Foods'
+sector = 'Food'
+initial_price_cents = 900
+minimum_price_cents = 600
+maximum_price_cents = 1200
+
+[[stocks]]
+symbol = 'SHIP'
+name = 'Shipway Logistics'
+sector = 'Shipping'
+initial_price_cents = 1500
+minimum_price_cents = 1000
+maximum_price_cents = 2000
+
+[[stocks]]
+symbol = 'LINK'
+name = 'Linkspace Networks'
+sector = 'Internet'
+initial_price_cents = 1100
+minimum_price_cents = 700
+maximum_price_cents = 1500

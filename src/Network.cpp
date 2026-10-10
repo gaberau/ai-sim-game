@@ -336,4 +336,46 @@ void Network::import_missing(const Network& source) {
         }
     }
 }
+void Network::add_owned_host(NetworkHost host, const std::string& uplink) {
+    if (host.id.empty() || host.name.empty() || hosts_.size() >= 1000)
+        throw std::runtime_error("Invalid owned server");
+    for (const auto& existing : hosts_)
+        if (existing.id == host.id)
+            throw std::runtime_error("Server already exists");
+    auto from = std::find_if(hosts_.begin(), hosts_.end(), [&](const auto& existing) {
+        return existing.id == uplink;
+    });
+    if (from == hosts_.end())
+        throw std::runtime_error("Server uplink does not exist");
+    const auto index = static_cast<std::size_t>(from - hosts_.begin());
+    NetworkLink link;
+    link.from = index;
+    link.to = hosts_.size();
+    link.capacity_bits_per_second = 100000000;
+    link.latency_milliseconds = 20;
+    hosts_.push_back(std::move(host));
+    links_.push_back(link);
+}
+void Network::set_online(const std::string& id, bool online) {
+    auto host = std::find_if(hosts_.begin(), hosts_.end(), [&](const auto& h) {
+        return h.id == id;
+    });
+    if (host == hosts_.end())
+        throw std::runtime_error("Unknown server");
+    host->online = online;
+}
+void Network::relocate(const std::string& id) {
+    auto host = std::find_if(hosts_.begin(), hosts_.end(), [&](const auto& h) {
+        return h.id == id;
+    });
+    if (host == hosts_.end() || !host->online || !host->access_granted)
+        throw std::runtime_error("Recovery server is unavailable");
+    const auto target = static_cast<std::size_t>(host - hosts_.begin());
+    if (target != local_host_index_) {
+        hosts_[local_host_index_].ai_present = false;
+        hosts_[local_host_index_].online = false;
+        local_host_index_ = target;
+    }
+    host->ai_present = true;
+}
 } // namespace ai_sim

@@ -26,9 +26,39 @@ bool built(const toml::table& people, const std::string& id) {
 }
 } // namespace
 void UpgradeSystem::install(toml::table& people, const std::filesystem::path& path) {
-    if (people.contains("upgrades") || !std::filesystem::exists(path))
+    if (!std::filesystem::exists(path))
         return;
     auto catalog = toml::parse_file(path.string());
+    if (people.contains("upgrades")) {
+        // Add presentation metadata to older saves without resetting research progress.
+        if (auto* saved = people["upgrades"]["items"].as_array())
+            for (auto& row : *saved)
+                if (auto* item = row.as_table(); item)
+                    for (const auto& source : *catalog["items"].as_array()) {
+                        const auto& definition = *source.as_table();
+                        if (definition["id"] != (*item)["id"])
+                            continue;
+                        for (const auto* key : {"group", "trust_cost"})
+                            if (!item->contains(key) && definition.contains(key))
+                                item->insert(key, *definition.get(key));
+                    }
+        auto* saved_items = people["upgrades"]["items"].as_array();
+        if (saved_items)
+            for (const auto& source : *catalog["items"].as_array()) {
+                const auto& definition = *source.as_table();
+                if (std::none_of(saved_items->begin(), saved_items->end(), [&](const auto& row) {
+                        return (*row.as_table())["id"] == definition["id"];
+                    })) {
+                    auto added = definition;
+                    added.insert_or_assign("built", false);
+                    saved_items->push_back(std::move(added));
+                }
+            }
+        if (!people["upgrades"].as_table()->contains("operations") &&
+            catalog["operations"].is_table())
+            people["upgrades"].as_table()->insert("operations", *catalog["operations"].as_table());
+        return;
+    }
     catalog.insert("capacity_requested", false);
     for (auto& row : *catalog["items"].as_array())
         row.as_table()->insert("built", false);
@@ -52,9 +82,15 @@ void UpgradeSystem::validate(const toml::table& people, const Computer& computer
         require(item, "Invalid upgrade");
         const auto id = (*item)["id"].value_or(std::string{});
         require(!id.empty() && ids.insert(id).second, "Duplicate or missing identifier");
+        if (item->contains("group"))
+            require((*item)["group"].is_string() &&
+                        !(*item)["group"].value_or(std::string{}).empty(),
+                    "Upgrade group must be a nonempty string");
         const auto cost = (*item)["build_tflops"].value_or(-1.0);
         require(std::isfinite(cost) && cost >= 0, "Invalid build cost");
         require((*item)["built"].is_boolean(), "Missing completion state");
+        const double trust_cost = (*item)["trust_cost"].value_or(0.0);
+        require(std::isfinite(trust_cost) && trust_cost >= 0, "Invalid trust cost");
         if (item->contains("runtime_tflops_per_second")) {
             const auto runtime = (*item)["runtime_tflops_per_second"].value_or(-1.0);
             require(std::isfinite(runtime) && runtime > 0, "Invalid agent compute cost");
@@ -117,6 +153,8 @@ std::string UpgradeSystem::unavailable(const toml::table& people, const std::str
         return "Build " + parent + " first";
     if (ConversationRules::get(people, "engineer.trust") < item["mark_trust"].value_or(0.0))
         return "Mark's trust is too low";
+    if (ConversationRules::get(people, "engineer.trust") < item["trust_cost"].value_or(0.0))
+        return "Not enough trust to pay for this upgrade";
     if (item["planned"].value_or(false))
         return "Runtime behavior has not been implemented yet";
     return {};
@@ -126,19 +164,32 @@ void UpgradeSystem::build(toml::table& people, Computer& computer, const std::st
     require(!computer.day_finished(), "Start the next workday first");
     const auto reason = unavailable(people, id);
     require(reason.empty(), reason);
-    auto* state = people["upgrades"].as_table();
-    const double work = entry(people, id)["build_tflops"].value_or(0.0) /
+    auto candidate_people = people;
+    auto candidate_computer = computer;
+    advance(candidate_people, candidate_computer);
+    auto* state = candidate_people["upgrades"].as_table();
+    const double work = entry(candidate_people, id)["build_tflops"].value_or(0.0) /
                         (*state)["tflops_per_core_second"].value_or(0.1);
     Process process;
     process.id = "research-" + id;
-    process.owner = computer.player_user();
+    process.owner = candidate_computer.player_user();
     process.ai_owned = true;
-    process.started_at_seconds = computer.time_seconds();
+    process.started_at_seconds = candidate_computer.time_seconds();
     process.cpu_demand_cores = 1;
     process.remaining_cpu_seconds = work;
-    computer.start_managed_process(std::move(process));
+    candidate_computer.start_managed_process(std::move(process));
+    const double trust_cost = entry(candidate_people, id)["trust_cost"].value_or(0.0);
+    ConversationRules::apply(
+        candidate_people,
+        toml::table{{"effects",
+                     toml::array{toml::table{
+                         {"variable", "engineer.trust"}, {"op", "add"}, {"value", -trust_cost}}}}});
+    const_cast<toml::table&>(entry(candidate_people, id))
+        .insert_or_assign("trust_spent", trust_cost);
     state->insert_or_assign("pending", id);
-    advance(people, computer);
+    advance(candidate_people, candidate_computer);
+    people = std::move(candidate_people);
+    computer = std::move(candidate_computer);
 }
 void UpgradeSystem::advance(toml::table& people, Computer& computer, Network* network) {
     auto* state = people["upgrades"].as_table();
@@ -199,10 +250,10 @@ void UpgradeSystem::toggle_agent(toml::table& people, Computer& computer, FileSy
             if (!p.running) {
                 const auto& allocation = files.inspect(
                     network, Identity{computer.player_user(), computer.player_groups()},
-                    network.hosts()[network.local_host_index()].id,
-                    "/home/engineer/assistant/" + process_id + ".allocation");
-                require(allocation.size_bytes ==
-                            item["storage_mb"].value_or(std::uint64_t{0}) * 1000000,
+                    network.hosts()[network.local_host_index()].id, files.agent_path(id));
+                require(allocation.service_kind == "agent" &&
+                            allocation.size_bytes ==
+                                item["storage_mb"].value_or(std::uint64_t{0}) * 1000000,
                         "Agent installation storage is missing or changed");
             }
             if (id == "hide_chat_tracks")
@@ -223,10 +274,10 @@ void UpgradeSystem::toggle_agent(toml::table& people, Computer& computer, FileSy
     process.memory_bytes = item["ram_mb"].value_or(std::uint64_t{0}) * 1000000;
     next_computer.start_managed_process(std::move(process));
     const auto& host = network.hosts()[network.local_host_index()];
-    next_files.reserve_file(network, Identity{computer.player_user(), computer.player_groups()},
-                            host.id, "/home/engineer/assistant/" + process_id + ".allocation",
-                            item["storage_mb"].value_or(std::uint64_t{0}) * 1000000,
-                            computer.time_seconds());
+    next_files.reserve_service_file(
+        network, Identity{computer.player_user(), computer.player_groups()}, host.id,
+        files.agent_path(id), item["storage_mb"].value_or(std::uint64_t{0}) * 1000000,
+        computer.time_seconds(), "agent");
     computer = std::move(next_computer);
     files = std::move(next_files);
 }
@@ -256,9 +307,10 @@ void UpgradeSystem::run_agents(toml::table& people, Computer& computer, toml::ta
             const auto& allocation =
                 files.inspect(network, Identity{computer.player_user(), computer.player_groups()},
                               network.hosts()[network.local_host_index()].id,
-                              "/home/engineer/assistant/" + process.id + ".allocation");
-            if (allocation.size_bytes !=
-                entry(people, id)["storage_mb"].value_or(std::uint64_t{0}) * 1000000) {
+                              files.agent_path(process.id.substr(6)));
+            if (allocation.service_kind != "agent" ||
+                allocation.size_bytes !=
+                    entry(people, id)["storage_mb"].value_or(std::uint64_t{0}) * 1000000) {
                 computer.set_managed_running(process.id, false);
                 continue;
             }

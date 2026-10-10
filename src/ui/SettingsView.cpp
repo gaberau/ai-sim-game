@@ -217,9 +217,9 @@ void TerminalUI::open_context_help() {
         control(KeyAction::EditorCancel, "discard edits");
         control(KeyAction::EditorFocus, "switch editor pane");
     } else {
-        const char* names[] = {"Chat",  "Processes", "Activity",     "Network", "Files",
-                               "News",  "AI",        "Dossiers",     "Web",     "Agents",
-                               "Phone", "Money",     "Modifications"};
+        const char* names[] = {"Chat",  "Processes", "Activity",      "Network",   "Files",
+                               "News",  "AI",        "Dossiers",      "Web",       "Agents",
+                               "Phone", "Money",     "Modifications", "Operations"};
         title += " | " + std::string(names[static_cast<int>(selected_tab_)]);
         switch (selected_tab_) {
         case Tab::Chat:
@@ -241,7 +241,13 @@ void TerminalUI::open_context_help() {
             control(KeyAction::Submit, "person actions and map legend");
             break;
         case Tab::Files:
-            explain("Select a file or directory; actions reflect your current permissions.");
+            explain(
+                "Browse the selected host with an expandable folder tree and path breadcrumbs.");
+            explain("File actions offer host selection, workspace shortcuts, folder creation and "
+                    "search.");
+            explain("Work, Personal and Hidden are filters; managed service files use Agents or "
+                    "Operations.");
+            control(KeyAction::ToggleExpanded, "open the selected folder or preview a file");
             control(KeyAction::Submit, "open, edit, or inspect sharing");
             break;
         case Tab::Processes:
@@ -275,6 +281,11 @@ void TerminalUI::open_context_help() {
         case Tab::Phone:
             explain("Mark trust 30 and Phone Access research authenticate his phone.");
             explain("Text/2FA, GPS and battery telemetry require additional authored data.");
+            break;
+        case Tab::Operations:
+            explain("Schedule paid jobs, manage resources, rent compute, and own recovery "
+                    "infrastructure.");
+            control(KeyAction::Submit, "manage the selected operation");
             break;
         case Tab::Money:
             explain("Manage unlocked client jobs and AI-run products. Mark's tasks remain unpaid.");

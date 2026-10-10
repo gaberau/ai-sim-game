@@ -24,7 +24,8 @@ struct FileEntry {
     unsigned mode = 0600;
     bool directory = false;
     std::string content;
-    std::string category; // work, personal, hidden; empty uses legacy path inference
+    std::string category;     // work, personal, hidden; empty uses legacy path inference
+    std::string service_kind; // agent, backup, or work; managed through the associated tool
     std::uint64_t size_bytes = 0;
     double modified_at_seconds = 0.0;
 };
@@ -69,12 +70,33 @@ class FileSystem {
     void reserve_file(const Network&, const Identity&, const std::string& host,
                       const std::string& path, std::uint64_t bytes, double time);
     bool import_file(const Network&, const FileEntry&, double time);
+    void mount_host(const Network&, const std::string& host, const std::string& owner, double time);
+    const std::string& workspace_root() const {
+        return workspace_root_;
+    }
+    std::string workspace_path(const std::string& folder) const;
+    std::string agent_path(const std::string& id) const;
+    std::string backup_path() const;
+    void ensure_workspace(const Network&, const Identity&, const std::string& host, double time);
+    void reserve_service_file(const Network&, const Identity&, const std::string& host,
+                              const std::string& path, std::uint64_t bytes, double time,
+                              const std::string& kind);
+    void release_service_file(const Network&, const Identity&, const std::string& host,
+                              const std::string& path, double time);
+    void transfer_workspace(const Network&, const Identity&, const std::string& source_host,
+                            const std::string& destination_host, double time);
+    std::vector<const FileEntry*> search(const Network&, const Identity&, const std::string& host,
+                                         const std::string& directory,
+                                         const std::string& query) const;
 
   private:
     std::vector<FileEntry> entries_;
     unsigned default_file_mode_ = 0600;
     unsigned default_directory_mode_ = 0700;
     std::uint64_t next_id_ = 1;
+    std::string workspace_root_ = "/home/engineer/assistant";
+    void migrate_service_files();
+    void require_unmanaged(const std::string& host, const std::string& path) const;
     const FileEntry* lookup(const std::string& host, const std::string& path) const;
     const FileEntry& find(const std::string& host, const std::string& path) const;
     void check_host(const Network&, const std::string& host) const;

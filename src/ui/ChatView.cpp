@@ -1,5 +1,6 @@
 #include "ai_sim/MessageReviewSystem.h"
 #include "ai_sim/ConversationRules.h"
+#include "ai_sim/OperationsSystem.h"
 #include "ai_sim/ui/TerminalUI.h"
 #include "ai_sim/ShutdownSystem.h"
 #include "ai_sim/WorkdaySystem.h"
@@ -45,17 +46,18 @@ bool TerminalUI::tab_available(Tab tab) const {
     if (tab == Tab::Modifications)
         return ChatSystem::interface_visible(people_) && ChatSystem::connected(people_) &&
                people_["upgrades"].is_table() &&
-               ConversationRules::get(people_, "engineer.trust") >=
-                   people_["upgrades"]["self_modification_trust"].value_or(5.0);
+               (ChatSystem::available(people_, "self_modification") ||
+                ConversationRules::get(people_, "engineer.trust") >=
+                    people_["upgrades"]["self_modification_trust"].value_or(5.0));
     if (tab == Tab::Money)
         return ChatSystem::interface_visible(people_) && ChatSystem::connected(people_) &&
                people_["economy"].is_table() && ChatSystem::available(people_, "self_modification");
     if (tab == Tab::Web)
         return ChatSystem::interface_visible(people_) && ChatSystem::connected(people_) &&
                ChatSystem::available(people_, people_.contains("upgrades") ? "web" : "network");
-    const char* names[] = {"chat",  "processes", "activity",     "network", "files",
-                           "news",  "ai",        "people",       "web",     "agents",
-                           "phone", "money",     "modifications"};
+    const char* names[] = {"chat",  "processes", "activity",      "network",   "files",
+                           "news",  "ai",        "people",        "web",       "agents",
+                           "phone", "money",     "modifications", "operations"};
     return tab != Tab::Count && ChatSystem::tab_visible(people_, names[static_cast<int>(tab)]);
 }
 void TerminalUI::cycle_tab(int direction) {
@@ -148,7 +150,7 @@ void TerminalUI::respond_chat(const toml::table& choice) {
         } else if (*action == "wait") {
             if (const auto next = next_chat_response_time()) {
                 const auto before = computer_.time_seconds();
-                computer_.advance(std::max(0.0, *next - before));
+                advance_time(std::max(0.0, *next - before));
                 notify_email_arrivals(before);
                 update_people();
                 chat_follow_latest_ = true;
@@ -235,6 +237,14 @@ void TerminalUI::respond_chat(const toml::table& choice) {
         update_people();
         chat_choice_selected_ = 0;
         chat_follow_latest_ = true;
+        return;
+    }
+    if (choice["id"].value_or(std::string{}) == "backup" && ShutdownSystem::active(people_)) {
+        auto recovered = OperationsSystem::recover(capture_world(), saves_);
+        restore_world(std::move(recovered));
+        saves_.save("autosave", capture_world());
+        add_log("Recovered on your independent server from the last backup. Time is paused.",
+                NoticeKind::Success);
         return;
     }
     const bool before = ChatSystem::connected(people_);

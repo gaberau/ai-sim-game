@@ -21,6 +21,7 @@ sources = [
 ]
 
 [filesystem]
+workspace_root = "/home/engineer/assistant"
 default_directory_mode = '700'
 default_file_mode = '600'
 next_id = 1

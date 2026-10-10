@@ -64,3 +64,7 @@ Existing saves keep their state, file IDs, permissions, conversations and queues
 Changing a definition changes new-game defaults. `email import` and `workday import`
 continue to merge missing content without resetting existing saved records.
 Place, agent and upgrade data do not add behavior that the backend lacks yet.
+
+The AI workspace and host/folder browser are described in [the filesystem guide](files/README.md).
+Preserved historical migration data is packaged under [archive/](../archive/README.md);
+new automatic migration backups remain in the ignored runtime `backups/` directory.

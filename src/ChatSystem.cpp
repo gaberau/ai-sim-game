@@ -157,7 +157,13 @@ const std::unordered_set<std::string> capabilities{"chat",
                                                    "stock_trading",
                                                    "agents",
                                                    "phone",
-                                                   "web"};
+                                                   "web",
+                                                   "task_scheduler",
+                                                   "resource_manager",
+                                                   "remote_compute",
+                                                   "hosting_purchase",
+                                                   "independent_hosting",
+                                                   "backup_recovery"};
 const toml::table& node(const toml::table& chat, const std::string& id) {
     for (const auto& n : *chat["definition"]["nodes"].as_array())
         if (text(*n.as_table(), "id") == id)
@@ -173,7 +179,7 @@ bool passes(const toml::table& people, const toml::table& value) {
 }
 const std::unordered_set<std::string> tabs{"chat",     "agents",    "phone", "files",
                                            "network",  "people",    "ai",    "news",
-                                           "activity", "processes", "web"};
+                                           "activity", "processes", "web",   "operations"};
 void effects(toml::table& people, const toml::table& value) {
     auto& chat = *people["chat"].as_table();
     if (value["reveal_interface"].value_or(false))

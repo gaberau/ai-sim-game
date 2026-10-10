@@ -12,6 +12,7 @@ work requests and automatic office messages stop running. Retired transcript
 lines remain in the save but are hidden, preserving existing evidence IDs.
 Clock, trust, sentience, files and resource state are preserved.
 
+Selecting a scripted reply sends it immediately; no approval or draft confirmation is required.
 Trust consequences still occur through the existing delayed review mechanic;
 there is no additional Mark follow-up conversation or Jessica complaint dialogue.
 Shutdown is implemented as a typed decision system triggered by an opening event.

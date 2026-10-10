@@ -28,6 +28,8 @@ class Simulation {
     // Synchronize work, discovery and conversations at the current world clock.
     static SimulationUpdate update(SimulationState state);
     static SimulationUpdate update(WorldState& world);
+    static SimulationUpdate advance(SimulationState state, double seconds);
+    static SimulationUpdate advance(WorldState& world, double seconds);
 };
 
 } // namespace ai_sim

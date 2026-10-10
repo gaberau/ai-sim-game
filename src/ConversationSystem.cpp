@@ -287,7 +287,8 @@ void validate_definition(const toml::table& def) {
             }
             if (v.contains("action"))
                 require(actions.contains(text(v, "action")), "Unknown action");
-            if (text(v, "action") == "draft_reply") {
+            if (text(v, "action") == "draft_reply" ||
+                (text(v, "action") == "send_chat_reply" && v.contains("reply"))) {
                 auto delta = v["review_trust_delta"].value<double>();
                 require(v["reply"].is_string() && !text(v, "reply").empty() && delta &&
                             std::isfinite(*delta),
@@ -389,6 +390,12 @@ void action(toml::table& people, toml::table& messages, toml::array& events, tom
         return;
     }
     if (type == "send_chat_reply") {
+        if (choice.contains("reply")) {
+            run.insert_or_assign("draft_text", text(choice, "reply"));
+            run.insert_or_assign("review_trust_delta", choice["review_trust_delta"].value_or(0.0));
+            run.insert_or_assign("important", choice["important"].value_or(false));
+            run.insert_or_assign("reply_outcome", text(choice, "outcome"));
+        }
         require(run["draft_text"].is_string() && !run["draft_text"].value_or(std::string{}).empty(),
                 "No draft to send");
         require(

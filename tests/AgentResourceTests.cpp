@@ -93,9 +93,9 @@ int main(int argc, char** argv) {
         AgentSystem::configure(world.people, world.computer, "autochat", .01, 5, 3);
         AgentSystem::deploy(world.people, world.computer, world.files, world.network, "autochat");
         const auto used = world.files.storage_used("engineer_pc");
-        world.files.remove(world.network, Identity{"engineer", {"engineering"}}, "engineer_pc",
-                           "/home/engineer/assistant/agent-autochat.allocation",
-                           world.computer.time_seconds());
+        world.files.release_service_file(world.network, Identity{"engineer", {"engineering"}},
+                                         "engineer_pc", world.files.agent_path("autochat"),
+                                         world.computer.time_seconds());
         UpgradeSystem::run_agents(world.people, world.computer, world.emails, world.pending_events,
                                   world.files, world.network);
         notices = AgentSystem::update(world.people, world.computer, world.files, world.network);
@@ -175,8 +175,8 @@ int main(int argc, char** argv) {
             p.started_at_seconds = computer.time_seconds();
             computer.start_managed_process(p);
         }
-        computer.configure_agent("agent-test-low", 10, 0, 1);
-        computer.configure_agent("agent-test-high", 10, 0, 5);
+        computer.configure_managed_process("agent-test-low", 10, 0, 1);
+        computer.configure_managed_process("agent-test-high", 10, 0, 5);
         auto rates = computer.cpu_allocations();
         check(rates.back() > rates[rates.size() - 2], "Priority did not affect allocation");
         double total = 0;

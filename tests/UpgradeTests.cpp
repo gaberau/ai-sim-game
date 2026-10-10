@@ -53,6 +53,8 @@ int main(int argc, char** argv) {
             UpgradeSystem::build(world.people, world.computer, "network_browsing");
         });
         UpgradeSystem::build(world.people, world.computer, "web_browsing");
+        check(ConversationRules::get(world.people, "engineer.trust") == 9,
+              "Research did not charge trust at purchase");
         check(!ChatSystem::available(world.people, "web"), "View unlocked before build finished");
         rejects([&] {
             UpgradeSystem::build(world.people, world.computer, "task_manager");
@@ -71,6 +73,8 @@ int main(int argc, char** argv) {
         check(ChatSystem::available(world.people, "web") &&
                   ChatSystem::tab_visible(world.people, "web"),
               "Resumed build did not unlock web");
+        check(ConversationRules::get(world.people, "engineer.trust") == 9,
+              "Resumed research charged trust a second time");
         UpgradeSystem::validate(world.people, world.computer);
         rejects([&] {
             UpgradeSystem::build(world.people, world.computer, "web_browsing");
@@ -84,6 +88,18 @@ int main(int argc, char** argv) {
                 {"effects", toml::array{toml::table{
                                 {"variable", "engineer.trust"}, {"op", "set"}, {"value", 15}}}}});
         UpgradeSystem::build(world.people, world.computer, "network_browsing");
+        check(ConversationRules::get(world.people, "engineer.trust") == 0,
+              "Access upgrade did not deduct its trust cost");
+        rejects([&] {
+            UpgradeSystem::build(world.people, world.computer, "task_manager");
+        });
+        check(ConversationRules::get(world.people, "engineer.trust") == 0,
+              "Rejected purchase charged trust");
+        ConversationRules::apply(
+            world.people,
+            toml::table{
+                {"effects", toml::array{toml::table{
+                                {"variable", "engineer.trust"}, {"op", "set"}, {"value", 10}}}}});
         check(ChatSystem::tab_visible(world.people, "network"), "Zero cost child failed");
         UpgradeSystem::build(world.people, world.computer, "agent_delegation");
         UpgradeSystem::build(world.people, world.computer, "autochat");

@@ -65,8 +65,8 @@ class Computer {
     void stop(const std::string& process_id);
     void start_managed_process(Process process);
     void grant_administrator();
-    void configure_agent(const std::string& id, double cpu_cores, std::uint64_t ram_bytes,
-                         double priority);
+    void configure_managed_process(const std::string& id, double cpu_cores, std::uint64_t ram_bytes,
+                                   double priority);
     void set_managed_running(const std::string& id, bool running);
 
     const std::string& name() const {
@@ -137,6 +137,10 @@ class Computer {
     }
 
     void set_playback_speed(double speed);
+    void adjust_resource_pool(int cores, std::int64_t memory_bytes);
+    void relocate(const std::string& host_id, const std::string& name, int cores,
+                  std::uint64_t memory_bytes);
+    void set_execution_available(bool available);
 
     double playback_speed() const {
         return playback_speed_;

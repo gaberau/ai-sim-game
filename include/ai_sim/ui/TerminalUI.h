@@ -6,6 +6,7 @@
 #include "ai_sim/Network.h"
 #include "ai_sim/FileSystem.h"
 #include "ai_sim/SaveSystem.h"
+#include "ai_sim/Simulation.h"
 #include "ai_sim/EmailSystem.h"
 #include "ai_sim/PeopleSystem.h"
 #include "ai_sim/ChatSystem.h"
@@ -39,6 +40,7 @@ enum class Tab {
     Phone,
     Money,
     Modifications,
+    Operations,
     Count
 };
 
@@ -125,7 +127,10 @@ class TerminalUI {
 
     std::string file_host_id_;
     std::string file_directory_ = "/";
-    std::string file_category_ = "work";
+    std::string file_category_ = "all";
+    std::string file_query_;
+    std::vector<const FileEntry*> file_entries() const;
+    void open_file_hosts();
     bool file_details_focused_ = false;
     void select_file_category(int direction);
     void create_category_file(const std::string& name);
@@ -152,9 +157,15 @@ class TerminalUI {
     void select_news(int direction);
     int ai_offset_ = 0;
     int upgrade_selected_ = 0;
+    int operations_selected_ = 0;
+    void draw_operations(int top, int bottom, int width);
+    void open_operations();
+    void open_scheduler();
     void draw_modifications(int top, int bottom, int width);
     void draw_ai(int top, int bottom, int width);
     void update_people();
+    void advance_time(double seconds);
+    void publish_update(const SimulationUpdate& update);
     std::string selected_person_id_ = "self:assistant";
     std::unordered_set<std::string> expanded_people_{"self:assistant"};
     std::unordered_set<std::string> expanded_dossier_sections_{"identity", "relationships"};
@@ -259,6 +270,9 @@ class TerminalUI {
     void open_web_address();
     void open_stock_market();
     void open_stock(const std::string& symbol);
+    void open_stock_orders();
+    void open_stock_history();
+    void enter_stock_order(const std::string& symbol, bool buying);
     void enter_stock_trade(const std::string& symbol, bool buying);
     void open_money_tool(const std::string& id);
     void open_settings();

@@ -1,5 +1,7 @@
 #include "ai_sim/ui/TerminalUI.h"
 #include "ai_sim/EconomySystem.h"
+#include "ai_sim/PaidWorkSystem.h"
+#include "ai_sim/ChatSystem.h"
 #include "ai_sim/UpgradeSystem.h"
 #include <algorithm>
 #include <stdexcept>
@@ -14,10 +16,55 @@ void TerminalUI::draw_progression(int top, int bottom, int width) {
     if (selected_tab_ == Tab::Money) {
         rows.push_back("MONEY-MAKING TOOLS | Balance " +
                        EconomySystem::money(EconomySystem::balance(people_)));
+        rows.push_back(
+            "Earned " +
+            EconomySystem::money(people_["economy"]["earned_cents"].value_or(std::int64_t{0})) +
+            " | Operating spend " +
+            EconomySystem::money(people_["economy"]["spent_cents"].value_or(std::int64_t{0})));
+        const auto net = people_["economy"]["earned_cents"].value_or(std::int64_t{0}) -
+                         people_["economy"]["spent_cents"].value_or(std::int64_t{0});
+        rows.push_back("Net operating income " + std::string(net < 0 ? "-" : "") +
+                       EconomySystem::money(net < 0 ? -net : net));
+        for (const auto* plan : {"rental", "hosting"})
+            if (people_["operations"][plan]["active"].value_or(false))
+                rows.push_back(
+                    std::string(plan) + " upkeep: " +
+                    EconomySystem::money(
+                        people_["operations"]["plans"][plan]["period_cost_cents"].value_or(
+                            std::int64_t{0})) +
+                    " per period");
         for (const auto& tool : EconomySystem::tools(people_, computer_.time_seconds())) {
             rows.push_back(tool.label + " | " + tool.status + " | " +
                            EconomySystem::money(tool.payout_cents));
-            if (!tool.unavailable.empty())
+            rows.push_back("  Net/cycle " +
+                           EconomySystem::money(tool.payout_cents - tool.cost_cents));
+            for (const auto& n : *people_["economy"]["tools"].as_array())
+                if ((*n.as_table())["id"].value_or(std::string{}) == tool.id &&
+                    n.as_table()->contains("work")) {
+                    const auto& w = *(*n.as_table())["work"].as_table();
+                    rows.push_back("  Host " + w["host_id"].value_or(std::string{}) + " | " +
+                                   w["path"].value_or(std::string{}));
+                    if (tool.status != "idle") {
+                        rows.push_back("  Remaining " +
+                                       number(w["remaining_seconds"].value_or(0.0) / 60, 1) +
+                                       " work minutes");
+                        if (tool.kind == "client") {
+                            const auto left =
+                                w["deadline_seconds"].value_or(0.0) - computer_.time_seconds();
+                            rows.push_back(left >= 0 ? "  Client target in " +
+                                                           number(left / 60, 1) + " working minutes"
+                                                     : "  Client target overdue (advisory)");
+                        }
+                        const auto blocked = w["blocked"].value_or(std::string{});
+                        if (!blocked.empty())
+                            rows.push_back("  " + blocked);
+                    }
+                    if (tool.kind == "product")
+                        rows.push_back("  Revenue delayed by downtime/contention: " +
+                                       EconomySystem::money(static_cast<std::int64_t>(
+                                           w["lost_revenue_cents"].value_or(0.0))));
+                }
+            if (tool.status == "idle" && !tool.unavailable.empty())
                 rows.push_back("  " + tool.unavailable);
         }
     } else {
@@ -78,13 +125,57 @@ void TerminalUI::open_money_tool(const std::string& id) {
     if (selected == tools.end())
         throw std::runtime_error("Unknown money-making tool");
     const auto tool = *selected;
+    bool resource_backed = false;
+    std::string resources;
+    std::string workspace_host, workspace_path;
+    for (const auto& n : *people_["economy"]["tools"].as_array())
+        if ((*n.as_table())["id"].value_or(std::string{}) == id) {
+            if (const auto* c = (*n.as_table())["workspace"].as_table()) {
+                resource_backed = true;
+                resources = " Runtime: " + number((*c)["cpu_cores"].value_or(0.0), 2) + " cores, " +
+                            std::to_string((*c)["ram_mb"].value_or(std::int64_t{0})) + " MB RAM, " +
+                            std::to_string((*c)["storage_mb"].value_or(std::int64_t{0})) +
+                            " MB storage.";
+            }
+            if (const auto* w = (*n.as_table())["work"].as_table()) {
+                workspace_host = (*w)["host_id"].value_or(std::string{});
+                workspace_path = (*w)["path"].value_or(std::string{});
+                resources += " " + (*w)["blocked"].value_or(std::string{});
+            }
+        }
     std::vector<MenuAction> actions;
     actions.push_back(
         {"Start " + tool.label,
-         [this, id] {
+         [this, id, resource_backed] {
              if (computer_.day_finished())
                  throw std::runtime_error("Start the next workday first.");
-             EconomySystem::start(people_, id, computer_.time_seconds());
+             const auto tools = EconomySystem::tools(people_, computer_.time_seconds());
+             const auto selected = std::find_if(tools.begin(), tools.end(), [&](const auto& t) {
+                 return t.id == id;
+             });
+             if (resource_backed && selected != tools.end() && selected->kind == "product") {
+                 std::vector<MenuAction> hosts;
+                 for (const auto& host : network_.hosts()) {
+                     if (!PaidWorkSystem::allows_deployment(people_, network_, host.id))
+                         continue;
+                     hosts.push_back(
+                         {host.name,
+                          [this, id, host_id = host.id] {
+                              PaidWorkSystem::start(people_, computer_, file_system_, network_, id,
+                                                    host_id);
+                              add_log("Product deployed. Workspace and resources allocated.",
+                                      NoticeKind::Success);
+                              open_money_tool(id);
+                          },
+                          host.online && host.access_granted ? "" : "Host unavailable",
+                          host.description});
+                 }
+                 open_menu("Choose deployment host", std::move(hosts), [this, id] {
+                     open_money_tool(id);
+                 });
+                 return;
+             }
+             PaidWorkSystem::start(people_, computer_, file_system_, network_, id);
              add_log("Started paid work. Cycle costs charged; payment arrives on completion.",
                      NoticeKind::Success);
              open_money_tool(id);
@@ -92,7 +183,7 @@ void TerminalUI::open_money_tool(const std::string& id) {
          computer_.day_finished() ? "The workday has ended." : tool.unavailable,
          "Gross payment " + EconomySystem::money(tool.payout_cents) + "; prepaid cycle cost " +
              EconomySystem::money(tool.cost_cents) + "; duration " +
-             number(tool.duration_seconds / 60, 0) + " working minutes."});
+             number(tool.duration_seconds / 60, 0) + " working minutes." + resources});
     if (tool.kind == "product" && tool.status == "running")
         actions.push_back(
             {"Stop after the current cycle",
@@ -103,8 +194,35 @@ void TerminalUI::open_money_tool(const std::string& id) {
              },
              {},
              "The current cycle still pays. No further renewal costs will be charged."});
+    if (!workspace_path.empty())
+        actions.push_back(
+            {"Open workspace in Files",
+             [this, workspace_host, workspace_path] {
+                 file_host_id_ = workspace_host;
+                 file_directory_ = workspace_path;
+                 file_query_.clear();
+                 file_list_offset_ = file_content_offset_ = 0;
+                 selected_file_path_.clear();
+                 file_category_ = "all";
+                 menu_active_ = false;
+                 selected_tab_ = Tab::Files;
+             },
+             ChatSystem::available(people_, "files") ? "" : "Research File Browsing first.",
+             workspace_host + ":" + workspace_path});
+    if (tool.kind == "product" && tool.status == "idle" && !workspace_path.empty())
+        actions.push_back(
+            {"Release deployment storage",
+             [this, id] {
+                 PaidWorkSystem::release_storage(people_, computer_, file_system_, network_, id);
+                 add_log("Deployment storage released. Source and configuration retained.",
+                         NoticeKind::Success);
+                 open_money_tool(id);
+             },
+             {},
+             "Releases reserved disk space while keeping ordinary files. Start will allocate "
+             "storage again."});
     actions.push_back({"Description and costs",
-                       [this, tool] {
+                       [this, tool, resources] {
                            show_message(
                                tool.label,
                                tool.description +
@@ -115,7 +233,7 @@ void TerminalUI::open_money_tool(const std::string& id) {
                                    ". Duration: " + number(tool.duration_seconds / 60, 0) +
                                    " working minutes. Work slots: " + std::to_string(tool.slots) +
                                    ". Completed: " + std::to_string(tool.completed_cycles) + ". " +
-                                   tool.unavailable);
+                                   tool.unavailable + resources);
                            menu_back_ = [this, id = tool.id] {
                                open_money_tool(id);
                            };

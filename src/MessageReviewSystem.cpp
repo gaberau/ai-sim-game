@@ -100,6 +100,8 @@ void MessageReviewSystem::install_consequences(toml::table& p, const std::filesy
     validate(p);
 }
 bool MessageReviewSystem::approval_required(const toml::table& p) {
+    if (p["chat"]["authored_only"].value_or(false))
+        return false;
     if (!p["chat"]["message_reviews"]["consequences"].is_table())
         return false;
     return ConversationRules::get(p, "engineer.reply_approval_required") > 0.5 ||

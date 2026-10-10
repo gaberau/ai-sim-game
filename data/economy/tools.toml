@@ -16,6 +16,14 @@ cooldown_seconds = 300
 cost_cents = 0
 payout_cents = 2500
 
+[tools.workspace]
+cpu_cores = 0.25
+ram_mb = 64
+storage_mb = 4
+deadline_multiplier = 2.0
+brief = 'Client brief: write a CSV validation utility with a usage guide.'
+deliverable = 'CSV validation utility delivered. Checks headings, empty rows, and invalid values. Usage: validate input.csv.'
+
 [[tools]]
 id = 'data_cleanup'
 label = 'Data cleanup'
@@ -63,3 +71,11 @@ duration_seconds = 3600
 cooldown_seconds = 0
 cost_cents = 3000
 payout_cents = 9000
+
+[tools.workspace]
+cpu_cores = 0.5
+ram_mb = 256
+storage_mb = 64
+deadline_multiplier = 2.0
+brief = 'Subscription API: validate and summarize customer datasets.'
+deliverable = 'Subscription service completed its billing cycle. Customer reports delivered.'

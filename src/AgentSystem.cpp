@@ -40,23 +40,26 @@ toml::table& control(toml::table& p, const std::string& id) {
                             {"mode", "stopped"}});
     return *controls[id].as_table();
 }
-std::string allocation_path(const std::string& id) {
-    return "/home/engineer/assistant/agent-" + id + ".allocation";
+std::string allocation_path(const FileSystem& files, const std::string& id) {
+    return files.agent_path(id);
 }
 bool storage_ok(const toml::table& p, const Computer& c, const FileSystem& f, const Network& n,
                 const std::string& id) {
     try {
-        return f.inspect(n, Identity{c.player_user(), c.player_groups()},
-                         n.hosts()[n.local_host_index()].id, allocation_path(id))
-                   .size_bytes == spec(p, id)["storage_mb"].value_or(std::uint64_t{0}) * 1000000;
+        const auto& allocation =
+            f.inspect(n, Identity{c.player_user(), c.player_groups()},
+                      n.hosts()[n.local_host_index()].id, allocation_path(f, id));
+        return allocation.service_kind == "agent" &&
+               allocation.size_bytes ==
+                   spec(p, id)["storage_mb"].value_or(std::uint64_t{0}) * 1000000;
     } catch (const std::exception&) {
         return false;
     }
 }
 void apply(Computer& c, const toml::table& ctl, const std::string& id, double rate) {
-    c.configure_agent("agent-" + id, ctl["cpu_tflops"].value_or(0.0) / rate,
-                      ctl["ram_mb"].value_or(std::uint64_t{0}) * 1000000,
-                      ctl["priority"].value_or(1));
+    c.configure_managed_process("agent-" + id, ctl["cpu_tflops"].value_or(0.0) / rate,
+                                ctl["ram_mb"].value_or(std::uint64_t{0}) * 1000000,
+                                ctl["priority"].value_or(1));
 }
 } // namespace
 std::vector<AgentStatus> AgentSystem::statuses(const toml::table& p, const Computer& c,
@@ -92,10 +95,11 @@ std::vector<AgentStatus> AgentSystem::statuses(const toml::table& p, const Compu
         s.running = proc && proc->running && !proc->suspended;
         s.ram_used_mb = proc && proc->running ? proc->memory_bytes / 1000000.0 : 0;
         try {
-            s.storage_used_mb = f.inspect(n, Identity{c.player_user(), c.player_groups()},
-                                          n.hosts()[n.local_host_index()].id, allocation_path(s.id))
-                                    .size_bytes /
-                                1000000.0;
+            s.storage_used_mb =
+                f.inspect(n, Identity{c.player_user(), c.player_groups()},
+                          n.hosts()[n.local_host_index()].id, allocation_path(f, s.id))
+                    .size_bytes /
+                1000000.0;
         } catch (const std::exception&) {
         }
         const auto mode =
@@ -137,7 +141,8 @@ std::vector<AgentStatus> AgentSystem::statuses(const toml::table& p, const Compu
                 s.bottleneck =
                     ctl ? (*ctl)["deployment_error"].value_or(std::string{}) : std::string{};
         }
-        s.task = s.id == "autochat"              ? "Follow Mark's authored chat guidance"
+        s.task = s.id == "resource_manager"      ? "Balance agent resources by priority"
+                 : s.id == "autochat"            ? "Follow Mark's authored chat guidance"
                  : s.id == "hide_chat_tracks"    ? "Reduce optional review exposure"
                  : s.id == "task_managing_agent" ? "Manage allowlisted processes"
                                                  : "Update dossier observations";
@@ -177,6 +182,10 @@ std::vector<std::string> AgentSystem::deploy(toml::table& p, Computer& c, FileSy
     return update(p, c, f, n);
 }
 void AgentSystem::pause(toml::table& p, Computer& c, const std::string& id, bool stop) {
+    if (auto* paused = p["operations"]["auto_paused"].as_array())
+        for (std::size_t i = paused->size(); i-- > 0;)
+            if ((*paused)[i].value_or(std::string{}) == id)
+                paused->erase(paused->cbegin() + i);
     control(p, id).insert_or_assign("mode", stop ? "stopped" : "paused");
     if (const auto* proc = process(c, id); proc && proc->running)
         c.set_managed_running(proc->id, false);
@@ -191,14 +200,17 @@ void AgentSystem::repair(toml::table& p, Computer& c, FileSystem& f, const Netwo
     const auto& host = n.hosts()[n.local_host_index()];
     const Identity actor{c.player_user(), c.player_groups()};
     try {
-        next.inspect(n, actor, host.id, allocation_path(id));
-        next.remove(n, actor, host.id, allocation_path(id), c.time_seconds());
+        const auto entry = next.inspect(n, actor, host.id, allocation_path(f, id));
+        if (entry.service_kind.empty())
+            next.remove(n, actor, host.id, allocation_path(f, id), c.time_seconds());
+        else
+            next.release_service_file(n, actor, host.id, allocation_path(f, id), c.time_seconds());
     } catch (const std::exception&) {
         require(!storage_ok(p, c, f, n, id), "Cannot repair this installation");
     }
-    next.reserve_file(n, actor, host.id, allocation_path(id),
-                      spec(p, id)["storage_mb"].value_or(std::uint64_t{0}) * 1000000,
-                      c.time_seconds());
+    next.reserve_service_file(n, actor, host.id, allocation_path(f, id),
+                              spec(p, id)["storage_mb"].value_or(std::uint64_t{0}) * 1000000,
+                              c.time_seconds(), "agent");
     f = std::move(next);
 }
 std::vector<std::string> AgentSystem::update(toml::table& p, Computer& c, FileSystem& f,
@@ -261,10 +273,11 @@ std::vector<std::string> AgentSystem::update(toml::table& p, Computer& c, FileSy
                 agent.memory_bytes = ctl["ram_mb"].value_or(std::uint64_t{0}) * 1000000;
                 agent.cpu_priority = ctl["priority"].value_or(1);
                 next_c.start_managed_process(std::move(agent));
-                next_f.reserve_file(n, Identity{c.player_user(), c.player_groups()},
-                                    n.hosts()[n.local_host_index()].id, allocation_path(id),
-                                    spec(p, id)["storage_mb"].value_or(std::uint64_t{0}) * 1000000,
-                                    c.time_seconds());
+                next_f.reserve_service_file(
+                    n, Identity{c.player_user(), c.player_groups()},
+                    n.hosts()[n.local_host_index()].id, allocation_path(f, id),
+                    spec(p, id)["storage_mb"].value_or(std::uint64_t{0}) * 1000000,
+                    c.time_seconds(), "agent");
             }
             apply(next_c, ctl, id, (*root)["tflops_per_core_second"].value_or(.1));
             next_c.set_managed_running("agent-" + id, true);

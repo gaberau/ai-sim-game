@@ -1,6 +1,0 @@
-schema_version = 1
-
-[application]
-cpu_demand_cores = 4.0
-memory_bytes = 3221225472
-work_cpu_seconds = 120.0

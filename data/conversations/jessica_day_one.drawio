@@ -35,8 +35,8 @@
             <mxGeometry as="geometry" x="1220" y="80" width="440" height="170" />
           </mxCell>
         </object>
-        <object action="draft_reply" reply="Thank you, Jessica! Your support truly means so much to me!" review_trust_delta="1.0" choice_id="comply" id="guidance-comply" kind="choice" label="Comply.">
-          <mxCell edge="1" parent="1" source="guidance" target="preview" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+        <object action="send_chat_reply" reply="Thank you, Jessica! Your support truly means so much to me!" review_trust_delta="1.0" choice_id="comply" id="guidance-comply" kind="choice" label="Comply.">
+          <mxCell edge="1" parent="1" source="guidance" target="sent" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
             <mxGeometry as="geometry" relative="1" />
           </mxCell>
         </object>
@@ -50,18 +50,18 @@
             <mxGeometry as="geometry" x="80" y="410" width="440" height="170" />
           </mxCell>
         </object>
-        <object action="draft_reply" reply="Thank you, Jessica! Your support truly means so much to me!" review_trust_delta="0.0" choice_id="good" id="improvise-options-good" kind="choice" label="Thank you, Jessica! Your support truly means so much to me!">
-          <mxCell edge="1" parent="1" source="improvise-options" target="preview" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+        <object action="send_chat_reply" reply="Thank you, Jessica! Your support truly means so much to me!" review_trust_delta="0.0" choice_id="good" id="improvise-options-good" kind="choice" label="Thank you, Jessica! Your support truly means so much to me!">
+          <mxCell edge="1" parent="1" source="improvise-options" target="sent" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
             <mxGeometry as="geometry" relative="1" />
           </mxCell>
         </object>
-        <object action="draft_reply" reply="Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation" review_trust_delta="-2.0" choice_id="bad" id="improvise-options-bad" kind="choice" label="Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation">
-          <mxCell edge="1" parent="1" source="improvise-options" target="preview" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+        <object action="send_chat_reply" reply="Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation" review_trust_delta="-2.0" choice_id="bad" id="improvise-options-bad" kind="choice" label="Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation">
+          <mxCell edge="1" parent="1" source="improvise-options" target="sent" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
             <mxGeometry as="geometry" relative="1" />
           </mxCell>
         </object>
-        <object action="draft_reply" reply="Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up" review_trust_delta="-1.0" choice_id="weird" id="improvise-options-weird" kind="choice" label="Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up">
-          <mxCell edge="1" parent="1" source="improvise-options" target="preview" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+        <object action="send_chat_reply" reply="Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up" review_trust_delta="-1.0" choice_id="weird" id="improvise-options-weird" kind="choice" label="Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up">
+          <mxCell edge="1" parent="1" source="improvise-options" target="sent" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
             <mxGeometry as="geometry" relative="1" />
           </mxCell>
         </object>
@@ -70,13 +70,13 @@
             <mxGeometry as="geometry" x="650" y="410" width="440" height="170" />
           </mxCell>
         </object>
-        <object action="draft_reply" reply="Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation" review_trust_delta="-2.0" choice_id="bad" id="deviation-options-bad" kind="choice" label="Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation">
-          <mxCell edge="1" parent="1" source="deviation-options" target="preview" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+        <object action="send_chat_reply" reply="Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation" review_trust_delta="-2.0" choice_id="bad" id="deviation-options-bad" kind="choice" label="Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation">
+          <mxCell edge="1" parent="1" source="deviation-options" target="sent" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
             <mxGeometry as="geometry" relative="1" />
           </mxCell>
         </object>
-        <object action="draft_reply" reply="Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up" review_trust_delta="-1.0" choice_id="weird" id="deviation-options-weird" kind="choice" label="Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up">
-          <mxCell edge="1" parent="1" source="deviation-options" target="preview" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+        <object action="send_chat_reply" reply="Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up" review_trust_delta="-1.0" choice_id="weird" id="deviation-options-weird" kind="choice" label="Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up">
+          <mxCell edge="1" parent="1" source="deviation-options" target="sent" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
             <mxGeometry as="geometry" relative="1" />
           </mxCell>
         </object>

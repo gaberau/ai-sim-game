@@ -15,7 +15,9 @@ add_library(ai_sim_core
     src/Simulation.cpp
     src/UpgradeSystem.cpp
     src/AgentSystem.cpp
+    src/PaidWorkSystem.cpp
     src/EconomySystem.cpp
+    src/OperationsSystem.cpp
     src/StockMarketSystem.cpp
     src/InfrastructureSystem.cpp
     src/DefinitionLoader.cpp
@@ -70,6 +72,7 @@ add_executable(ai_sim
     src/ui/UpgradeView.cpp
     src/ui/AgentView.cpp
     src/ui/MoneyView.cpp
+    src/ui/OperationsView.cpp
     src/ui/StockMarketView.cpp
     src/ui/WebView.cpp
     src/ui/InfrastructureView.cpp
@@ -98,6 +101,15 @@ endif()
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(ai_sim_paid_workspace_tests tests/PaidWorkspaceTests.cpp)
+    target_link_libraries(ai_sim_paid_workspace_tests PRIVATE ai_sim_core)
+    add_test(NAME paid_workspace_and_resources COMMAND ai_sim_paid_workspace_tests ${CMAKE_CURRENT_SOURCE_DIR})
+    add_executable(ai_sim_workspace_tests tests/WorkspaceTests.cpp)
+    target_link_libraries(ai_sim_workspace_tests PRIVATE ai_sim_core)
+    add_test(NAME workspace_files_and_migration COMMAND ai_sim_workspace_tests ${CMAKE_CURRENT_SOURCE_DIR})
+    add_executable(ai_sim_operations_tests tests/OperationsTests.cpp)
+    target_link_libraries(ai_sim_operations_tests PRIVATE ai_sim_core)
+    add_test(NAME scheduling_hosting_and_recovery COMMAND ai_sim_operations_tests ${CMAKE_CURRENT_SOURCE_DIR})
     add_executable(ai_sim_agent_resource_tests tests/AgentResourceTests.cpp)
     target_link_libraries(ai_sim_agent_resource_tests PRIVATE ai_sim_core)
     add_test(NAME agent_resource_management COMMAND ai_sim_agent_resource_tests ${CMAKE_CURRENT_SOURCE_DIR})

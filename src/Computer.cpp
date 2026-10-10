@@ -19,6 +19,60 @@ void Computer::set_playback_speed(double speed) {
         throw std::runtime_error("Playback speed must be between 0 and 3600");
     playback_speed_ = speed;
 }
+void Computer::adjust_resource_pool(int cores, std::int64_t memory) {
+    const double next_cores = cpu_cores_ + cores;
+    const auto next_memory = static_cast<std::int64_t>(memory_bytes_) + memory;
+    if (next_cores < 1 || next_cores > 1000000 || next_memory < 1 || next_memory > 1000000000000LL)
+        throw std::runtime_error("Invalid resource pool capacity");
+    std::uint64_t protected_memory = 0;
+    for (const auto& process : processes_)
+        if (process.running && (!process.ai_owned || process.id == player_process_id_))
+            protected_memory += process.memory_bytes;
+    if (protected_memory > static_cast<std::uint64_t>(next_memory))
+        throw std::runtime_error("Base processes exceed resource pool capacity");
+    cpu_cores_ = next_cores;
+    memory_bytes_ = static_cast<std::uint64_t>(next_memory);
+    // Keep configured budgets and work progress, but release agents that no longer fit.
+    while (allocated_memory_bytes() > memory_bytes_) {
+        Process* victim = nullptr;
+        for (auto& process : processes_)
+            if (process.running && process.ai_owned && process.memory_bytes > 0 &&
+                process.id != player_process_id_ &&
+                (!victim || process.cpu_priority < victim->cpu_priority))
+                victim = &process;
+        if (!victim)
+            throw std::runtime_error("Base processes exceed resource pool capacity");
+        victim->running = false;
+        victim->suspended = false;
+        victim->stopped_at_seconds = time_seconds_;
+    }
+}
+void Computer::relocate(const std::string& host_id, const std::string& name, int cores,
+                        std::uint64_t memory) {
+    if (host_id.empty() || name.empty() || cores < 1 || memory < 1 || memory > 1000000000000ULL)
+        throw std::runtime_error("Invalid recovery server");
+    name_ = name;
+    for (auto& process : processes_) {
+        if (!process.ai_owned) {
+            process.running = false;
+            process.suspended = false;
+            process.stopped_at_seconds = time_seconds_;
+        } else {
+            process.owner = "root";
+            process.data.runtime.insert_or_assign("host_id", host_id);
+        }
+    }
+    player_user_ = "root";
+    player_groups_ = {"root"};
+    adjust_resource_pool(cores - static_cast<int>(cpu_cores_),
+                         static_cast<std::int64_t>(memory) -
+                             static_cast<std::int64_t>(memory_bytes_));
+}
+void Computer::set_execution_available(bool available) {
+    for (auto& process : processes_)
+        if (process.ai_owned)
+            process.suspended = process.running && !available;
+}
 
 namespace {
 template <class T>
@@ -411,16 +465,17 @@ void Computer::start_managed_process(Process process) {
     processes_.push_back(std::move(process));
 }
 
-void Computer::configure_agent(const std::string& id, double cores, std::uint64_t ram,
-                               double priority) {
+void Computer::configure_managed_process(const std::string& id, double cores, std::uint64_t ram,
+                                         double priority) {
     require(std::isfinite(cores) && cores >= 0 && std::isfinite(priority) && priority > 0 &&
                 priority <= 100,
-            "Invalid agent allocation");
+            "Invalid managed process allocation");
     auto found = std::find_if(processes_.begin(), processes_.end(), [&](const auto& p) {
         return p.id == id;
     });
-    require(found != processes_.end() && found->ai_owned && id.starts_with("agent-"),
-            "Unknown agent process");
+    require(found != processes_.end() && found->ai_owned &&
+                (id.starts_with("agent-") || id.starts_with("work-")),
+            "Unknown managed process");
     const auto used = allocated_memory_bytes() - (found->running ? found->memory_bytes : 0);
     require(!found->running || (used <= memory_bytes_ && ram <= memory_bytes_ - used),
             "Not enough RAM");
@@ -442,8 +497,9 @@ void Computer::set_managed_running(const std::string& id, bool running) {
     auto found = std::find_if(processes_.begin(), processes_.end(), [&](const Process& p) {
         return p.id == id;
     });
-    require(found != processes_.end() && found->ai_owned && found->id.starts_with("agent-"),
-            "Unknown agent process");
+    require(found != processes_.end() && found->ai_owned &&
+                (found->id.starts_with("agent-") || found->id.starts_with("work-")),
+            "Unknown managed process");
     if (running && !found->running)
         require(found->memory_bytes <= memory_bytes_ - allocated_memory_bytes(), "Not enough RAM");
     found->running = running;

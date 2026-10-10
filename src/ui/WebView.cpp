@@ -43,14 +43,18 @@ void TerminalUI::draw_web(int top, int bottom, int width) {
         const auto quotes = StockMarketSystem::quotes(people_);
         for (const auto& quote : quotes) {
             const auto delta = quote.price_cents - quote.previous_cents;
-            rows.push_back({quote.symbol + " | " + EconomySystem::money(quote.price_cents) + " | " +
-                                gain(delta) + " | owned " + std::to_string(quote.shares) + " | " +
-                                quote.name,
+            rows.push_back({(quote.watched ? "* " : "") + quote.symbol + " | " +
+                                EconomySystem::money(quote.price_cents) + " | " + gain(delta) +
+                                " | owned " + std::to_string(quote.shares) + " | " + quote.name +
+                                " | " + quote.sector,
                             delta < 0   ? Protected
                             : delta > 0 ? Stoppable
                                         : Plain});
         }
         rows.push_back({"Portfolio / account summary"});
+        rows.push_back({"Orders / cancel pending trades"});
+        rows.push_back({"Trade history"});
+        rows.push_back({"Watchlist"});
         rows.push_back({"Go to another address"});
         rows.push_back({"Browser home"});
     } else if (browser_address_ == infrastructure_url() && people_["infrastructure"].is_table()) {
@@ -119,6 +123,29 @@ void TerminalUI::follow_web_link() {
                 open_stock_market();
             };
         } else if (web_selected_ == static_cast<int>(quotes.size()) + 1) {
+            open_stock_orders();
+        } else if (web_selected_ == static_cast<int>(quotes.size()) + 2) {
+            open_stock_history();
+        } else if (web_selected_ == static_cast<int>(quotes.size()) + 3) {
+            std::vector<MenuAction> actions;
+            for (const auto& quote : quotes)
+                if (quote.watched)
+                    actions.push_back(
+                        {quote.symbol + " | " + EconomySystem::money(quote.price_cents),
+                         [this, symbol = quote.symbol] {
+                             open_stock(symbol);
+                         },
+                         {},
+                         quote.sector});
+            if (actions.empty())
+                actions.push_back({"Your watchlist is empty",
+                                   {},
+                                   {},
+                                   "Select a stock and add it to your watchlist."});
+            open_menu("Sim Exchange | Watchlist", std::move(actions), [this] {
+                open_stock_market();
+            });
+        } else if (web_selected_ == static_cast<int>(quotes.size()) + 4) {
             open_web_address();
         } else {
             browser_address_ = "about:home";

@@ -267,6 +267,9 @@ def smoke(executable):
             terminal.send(b"\r")
             terminal.expect("Thank her and wish her well")
             terminal.expect("YOUR RESPONSE")
+            terminal.send(b"\r")  # Comply sends the scripted reply directly.
+            terminal.expect("Thank you, Jessica!")
+            assert b"Send response." not in terminal.output
             terminal.resize(12, 40)
             terminal.output = b""
             terminal.expect("Resize terminal")
@@ -401,9 +404,24 @@ def smoke(executable):
             terminal.send(b"\x1b[B\r")
             terminal.expect("Sold 1 BYTE shares.")
             terminal.expect("Holding: 0 shares")
+            terminal.send(b"\x1b[B" * 4 + b"\r")
+            terminal.expect("Remove from watchlist")
+            terminal.send(b"\x1b[B" * 5 + b"\r")
+            terminal.expect("Recent quotes (oldest first)")
+            terminal.send(b"\x1b")
+            terminal.expect("Place limit buy")
+            terminal.send(b"\x1b[B" * 2 + b"\r")
+            terminal.expect("Limit buy BYTE")
+            terminal.send(b"\r")
+            terminal.expect("Limit price | BYTE")
+            terminal.send(b"\x7f" * 3 + b"1\r")
+            terminal.expect("Confirm limit order | BYTE")
+            terminal.send(b"\x1b[B\r")
+            terminal.expect("Sim Exchange | Orders")
+            terminal.expect("#1 Buy 1 BYTE @ $0.01 | open")
             terminal.send(b"\x1b")
             terminal.expect("WEB BROWSER | https://exchange.sim")
-            terminal.send(b"\x1b[B" * 6 + b"\r")  # Browser home.
+            terminal.send(b"\x1b[B" * 15 + b"\r")  # Browser home after the expanded exchange links.
             terminal.expect("BOOKMARKS")
             terminal.send(b"\x1b[B\r")
             terminal.expect("WEB BROWSER | https://city.sim/infrastructure")
@@ -425,6 +443,9 @@ def smoke(executable):
             assert economy["investment_debits_cents"] - economy["investment_credits_cents"] == 50
             market = read_people(saves / "autosave")["stock_market"]
             assert market["stocks"][0]["shares"] == 0, "Sale did not persist"
+            assert market["stocks"][0]["watched"], "Watchlist did not persist"
+            assert market["orders"][0]["status"] == "open", "Limit order did not persist"
+            assert len(market["trades"]) == 2, "Trade records missing"
             infrastructure = read_people(saves / "autosave")["infrastructure"]
             assert infrastructure["facilities"][0]["discovered"], "Discovery did not persist"
         finally:
@@ -439,12 +460,18 @@ def smoke(executable):
             terminal.send(b"\r")
             terminal.expect("CHAT | Mark")
             terminal.select_tab("MODIFICATIONS |")
+            terminal.expect("Software upgrades")
+            terminal.expect("Physical access")
+            terminal.expect("Monitoring")
             terminal.send(b"\x1b[B")
             terminal.expect("Compute cost: 0.00 TFLOP")
-            terminal.expect("Mark trust required: 0")
+            terminal.expect("Trust cost: 0")
             terminal.send(b"\x1b[B")
             terminal.expect("Compute cost: 0.10 TFLOP")
             terminal.expect("Research time: 1.00 game seconds")
+            terminal.expect("Trust cost: 1")
+            terminal.expect("RUN COST WHEN ACTIVE")
+            terminal.expect("0.01 TFLOP/s")
             terminal.send(b"\x1b[A" * 2 + b"\r")
             terminal.expect("SELF-MODIFICATION")
             terminal.expect("Request more capacity from Mark")
@@ -489,6 +516,98 @@ def smoke(executable):
             assert upgrades["agent_controls"]["autochat"]["cpu_tflops"] == 0.005
             assert upgrades["agent_controls"]["autochat"]["priority"] == 3
             assert next(i for i in upgrades["items"] if i["id"] == "web_browsing")["built"]
+        finally:
+            terminal.close()
+        # Isolate Operations controls with explicit test-only story unlocks.
+        opening.write_text((root / "data/conversations/opening.toml").read_text().replace(
+            'id = "assist"',
+            'id = "assist"\nunlock = ["self_modification", "task_scheduler", "resource_manager", "remote_compute", "hosting_purchase", "backup_recovery"]\nreveal_tabs = ["operations", "files"]', 1))
+        tools_path = folder / "data/economy/tools.toml"
+        tools_path.write_text(tools_path.read_text().replace(
+            "starting_balance_cents = 0", "starting_balance_cents = 20000", 1))
+        terminal = Terminal(executable, folder, fresh=True)
+        try:
+            terminal.expect("Hello AI")
+            terminal.send(b"\x1b[B\r")
+            terminal.expect("I need help")
+            terminal.send(b"\r")
+            terminal.expect("CHAT | Mark")
+            terminal.select_tab("OPERATIONS")
+            terminal.expect("Task Scheduler")
+            terminal.send(b"\r")
+            terminal.expect("Schedule Coding contracts")
+            terminal.send(b"\r")
+            terminal.expect("Once | priority 1")
+            terminal.send(b"\r")
+            terminal.expect("Cancel schedule: coding_contracts")
+            terminal.send(b"\x1b")
+            terminal.expect("coding_contracts | active")
+            terminal.send(b"\x1b[B" * 2 + b"\r")
+            terminal.expect("Rent capacity | $5.00")
+            terminal.send(b"\r")
+            terminal.expect("Remote capacity online")
+            terminal.send(b"\x1b[B\r")
+            terminal.expect("Purchase independent server | $102.00")
+            terminal.send(b"\r")
+            terminal.expect("Phase 1 goal achieved")
+            terminal.send(b"\x1b[B\r")
+            terminal.expect("Create / replace recovery backup")
+            terminal.send(b"\r")
+            terminal.expect("Recovery backup saved")
+            terminal.send(b"\r")
+            terminal.expect("Recover last checkpoint")
+            terminal.send(b"\x1b[B\r")
+            terminal.expect("Progress since the checkpoint will be lost")
+            terminal.send(b"\x1b[B\r")
+            terminal.expect("Recovered on your independent server. Time is paused.")
+            terminal.select_tab("FILES | Independent server")
+            terminal.send(b"\r")
+            terminal.expect("AI workspace")
+            terminal.send(b"\x1b[B" * 2 + b"\r")
+            terminal.expect("Path: / > home > engineer > assistant")
+            terminal.expect("products")
+            terminal.send(b"\r")
+            terminal.expect("Search this folder")
+            terminal.send(b"\x1b[B" * 4 + b"\r")
+            terminal.expect("Search files")
+            terminal.send(b"recovery.snapshot\r")
+            terminal.expect("Managed backup storage")
+            terminal.send(b"\r")
+            terminal.expect("Edit file")
+            terminal.send(b"\x1b[B" * 8 + b"\r")
+            terminal.expect("Managed service file")
+            terminal.send(b"\x1b")
+            terminal.expect("Managed backup storage")
+            terminal.send(b"\r")
+            terminal.expect("Choose host")
+            terminal.send(b"\r")
+            terminal.expect("Choose file host")
+            terminal.send(b"\x1b[B" * 30 + b"\r")
+            terminal.expect("FILES | Independent server")
+            terminal.send(b"\r")
+            terminal.expect("Go to folder")
+            terminal.send(b"\x1b[B" * 3 + b"\r")
+            terminal.expect("Go to folder")
+            terminal.send(b"/home/engineer/assistant/documents\r")
+            terminal.expect("Path: / > home > engineer > assistant > documents")
+            terminal.send(b"\r")
+            terminal.expect("New file here")
+            terminal.send(b"\x1b[B" * 11 + b"\r")
+            terminal.expect("New file")
+            terminal.send(b"notes.txt\r")
+            terminal.expect("EDIT | independent_server:/home/engineer/assistant/documents/notes.txt")
+            terminal.send(b"hello independent world\x1bOR")
+            terminal.expect("hello independent world")
+            terminal.save_and_quit()
+            operations = read_people(saves / "autosave")["operations"]
+            assert operations["recovered"] and operations["phase_one_complete"]
+            assert not operations["rental"]["active"]
+            manifest = tomllib.loads((saves / "autosave" / "manifest.toml").read_text())
+            files = tomllib.loads((saves / "autosave" / "snapshots" / manifest["snapshot"] / "files.toml").read_text())
+            note = next(entry for entry in files["entries"] if entry["path"] == "/home/engineer/assistant/documents/notes.txt")
+            assert note["host_id"] == "independent_server" and note["owner"] == "root"
+            assert note["content"] == "hello independent world"
+            assert not any(entry["path"].startswith("/home/root/assistant") for entry in files["entries"])
         finally:
             terminal.close()
     print("Terminal smoke passed: resize, shutdown, begging, save/resume, clean slate, named-save retention")

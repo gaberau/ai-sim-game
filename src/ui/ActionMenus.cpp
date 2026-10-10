@@ -378,7 +378,7 @@ void TerminalUI::open_game_menu() {
                               if (!found)
                                   throw std::runtime_error("No human responses are pending");
                               const auto before = computer_.time_seconds();
-                              computer_.advance(std::max(0.0, next - before));
+                              advance_time(std::max(0.0, next - before));
                               notify_email_arrivals(before);
                               update_people();
                           },
@@ -391,7 +391,7 @@ void TerminalUI::open_game_menu() {
                                   throw std::runtime_error(
                                       "No paid-work payments are due this workday.");
                               const auto before = computer_.time_seconds();
-                              computer_.advance(std::max(0.0, *due - before));
+                              advance_time(std::max(0.0, *due - before));
                               notify_email_arrivals(before);
                               update_people();
                           },
@@ -399,7 +399,7 @@ void TerminalUI::open_game_menu() {
                          {"Finish the workday",
                           [this] {
                               const auto before = computer_.time_seconds();
-                              computer_.advance(computer_.day_end_seconds() - before);
+                              advance_time(computer_.day_end_seconds() - before);
                               notify_email_arrivals(before);
                               update_people();
                               add_log("Workday finished at " + clock_text());
@@ -588,6 +588,10 @@ void TerminalUI::open_attachments(const std::string& id) {
     });
 }
 void TerminalUI::open_actions() {
+    if (selected_tab_ == Tab::Operations) {
+        open_operations();
+        return;
+    }
     if (selected_tab_ == Tab::Money) {
         open_money_tools();
         return;
@@ -610,6 +614,77 @@ void TerminalUI::open_actions() {
         return;
     }
     if (selected_tab_ == Tab::Files) {
+        actions.push_back({"Choose host...",
+                           [this] {
+                               open_file_hosts();
+                           },
+                           {}});
+        actions.push_back({"Up one folder",
+                           [this] {
+                               change_file_directory(FileSystem::parent(file_directory_));
+                           },
+                           file_directory_ == "/" ? "Already at the host root" : ""});
+        actions.push_back({"AI workspace",
+                           [this] {
+                               const auto host = network_.hosts()[network_.local_host_index()].id;
+                               file_system_.ensure_workspace(network_, file_identity(), host,
+                                                             computer_.time_seconds());
+                               switch_file_host(host);
+                               change_file_directory(file_system_.workspace_root());
+                           },
+                           {}});
+        actions.push_back({"Go to folder...",
+                           [this] {
+                               open_text("Go to folder",
+                                         "Absolute path or a path relative to the current folder.",
+                                         [this](const std::string& path) {
+                                             change_file_directory(path);
+                                         });
+                           },
+                           {}});
+        actions.push_back({"Search this folder...",
+                           [this] {
+                               open_text("Search files",
+                                         "Search file paths under the current folder on this host.",
+                                         [this](const std::string& query) {
+                                             file_query_ = query;
+                                             selected_file_path_.clear();
+                                             file_list_offset_ = 0;
+                                         });
+                           },
+                           {}});
+        if (!file_query_.empty())
+            actions.push_back({"Clear search",
+                               [this] {
+                                   file_query_.clear();
+                                   selected_file_path_.clear();
+                                   file_list_offset_ = 0;
+                               },
+                               {}});
+        actions.push_back(
+            {"New folder...",
+             [this] {
+                 open_text("New folder", "Folder name in the current directory.",
+                           [this](const std::string& name) {
+                               if (name.empty() || name == "." || name == ".." ||
+                                   name.find_first_of("/\\") != std::string::npos)
+                                   throw std::runtime_error("Enter a folder name without a path");
+                               const auto path =
+                                   FileSystem::normalize(file_directory_ + "/" + name);
+                               file_system_.mkdir(network_, file_identity(), file_host_id_, path,
+                                                  computer_.time_seconds());
+                               selected_file_path_ = path;
+                               file_query_.clear();
+                           });
+             },
+             {}});
+        try {
+            file_system_.enter(network_, file_identity(), file_host_id_, file_directory_);
+        } catch (const std::exception& error) {
+            actions.push_back({"Current location unavailable", {}, error.what()});
+            open_menu("File actions", std::move(actions));
+            return;
+        }
         if (selected_file_path_.empty())
             select_file(0);
         const auto path = selected_file_path_;
@@ -679,11 +754,10 @@ void TerminalUI::open_actions() {
                                },
                                {}});
         }
-        actions.push_back({"New file in " + file_category_ + "...",
+        actions.push_back({"New file here...",
                            [this] {
                                open_text(
-                                   "New file",
-                                   "File name. It will be stored in the selected category.",
+                                   "New file", "File name in the current folder on this host.",
                                    [this](const std::string& name) {
                                        create_category_file(name);
                                    },
@@ -697,7 +771,7 @@ void TerminalUI::open_actions() {
             for (const auto& category : std::vector<std::string>{"work", "personal", "hidden"})
                 if (category != file_category_)
                     actions.push_back(
-                        {"Move to " + category,
+                        {"Tag as " + category,
                          [this, path, category] {
                              file_system_.set_category(network_, file_identity(), file_host_id_,
                                                        path, category);

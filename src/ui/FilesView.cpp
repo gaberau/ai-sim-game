@@ -44,7 +44,8 @@ void TerminalUI::switch_file_host(const std::string& host) {
     file_system_.enter(network_, file_identity(), host, "/");
     file_host_id_ = host;
     file_directory_ = "/";
-    file_category_ = "work";
+    file_category_ = "all";
+    file_query_.clear();
     selected_file_path_.clear();
     file_list_offset_ = 0;
     file_content_offset_ = 0;
@@ -56,22 +57,24 @@ void TerminalUI::change_file_directory(const std::string& path) {
         !path.empty() && path.front() == '/' ? path : file_directory_ + "/" + path);
     file_system_.enter(network_, file_identity(), file_host_id_, absolute);
     file_directory_ = absolute;
-    selected_file_path_.clear();
+    selected_file_path_ = absolute;
+    file_query_.clear();
+    file_details_focused_ = false;
     file_list_offset_ = 0;
     file_content_offset_ = 0;
     selected_tab_ = Tab::Files;
 }
 
 void TerminalUI::select_file_category(int direction) {
-    const std::vector<std::string> categories{"work", "personal", "hidden"};
+    const std::vector<std::string> categories{"all", "work", "personal", "hidden"};
     const auto found = std::find(categories.begin(), categories.end(), file_category_);
-    const int index = (static_cast<int>(found - categories.begin()) + direction + 3) % 3;
+    const int index = (static_cast<int>(found - categories.begin()) + direction + 4) % 4;
     file_category_ = categories[index];
     selected_file_path_.clear();
     file_list_offset_ = file_content_offset_ = 0;
 }
 void TerminalUI::select_file(int direction) {
-    const auto entries = file_system_.category_files(network_, file_identity(), file_category_);
+    const auto entries = file_entries();
     if (entries.empty()) {
         selected_file_path_.clear();
         return;
@@ -83,9 +86,7 @@ void TerminalUI::select_file(int direction) {
                           ? 0
                           : std::clamp(static_cast<int>(found - entries.begin()) + direction, 0,
                                        static_cast<int>(entries.size()) - 1);
-    file_host_id_ = entries[index]->host_id;
     selected_file_path_ = entries[index]->path;
-    file_directory_ = FileSystem::parent(selected_file_path_);
     file_content_offset_ = 0;
 }
 void TerminalUI::open_selected_file() {
@@ -93,6 +94,12 @@ void TerminalUI::open_selected_file() {
         select_file(0);
     if (selected_file_path_.empty())
         return;
+    const auto& entry =
+        file_system_.inspect(network_, file_identity(), file_host_id_, selected_file_path_);
+    if (entry.directory) {
+        change_file_directory(entry.path);
+        return;
+    }
     (void)file_system_.read(network_, file_identity(), file_host_id_, selected_file_path_);
     file_details_focused_ = true;
     file_content_offset_ = 0;
@@ -101,20 +108,11 @@ void TerminalUI::create_category_file(const std::string& name) {
     if (name.empty() || name == "." || name == ".." ||
         name.find_first_of("/\\") != std::string::npos)
         throw std::runtime_error("Enter a file name without a path");
-    // All player-created files have a writable home. Category never grants permissions.
     const auto actor = file_identity();
-    const auto host = network_.hosts()[network_.local_host_index()].id;
-    const std::string base = "/home/" + actor.user + "/assistant";
+    const auto host = file_host_id_;
     auto candidate = file_system_;
-    for (const auto& directory : std::vector<std::string>{"/home", "/home/" + actor.user, base,
-                                                          base + "/" + file_category_}) {
-        try {
-            candidate.enter(network_, actor, host, directory);
-        } catch (const std::exception&) {
-            candidate.mkdir(network_, actor, host, directory, computer_.time_seconds());
-        }
-    }
-    const auto path = base + "/" + file_category_ + "/" + name;
+    candidate.enter(network_, actor, host, file_directory_);
+    const auto path = FileSystem::normalize(file_directory_ + "/" + name);
     try {
         (void)candidate.inspect(network_, actor, host, path);
         throw std::runtime_error("A file with that name already exists");
@@ -123,11 +121,13 @@ void TerminalUI::create_category_file(const std::string& name) {
             throw;
     }
     candidate.write(network_, actor, host, path, "", computer_.time_seconds());
-    candidate.set_category(network_, actor, host, path, file_category_);
+    if (file_category_ != "all")
+        candidate.set_category(network_, actor, host, path, file_category_);
     file_system_ = std::move(candidate);
     file_host_id_ = host;
     file_directory_ = FileSystem::parent(path);
     selected_file_path_ = path;
+    file_query_.clear();
     edit_file(path);
 }
 
@@ -137,6 +137,8 @@ std::pair<int, std::string> TerminalUI::file_access(const FileEntry& entry) cons
             file_system_.enter(network_, file_identity(), entry.host_id, entry.path);
         else
             (void)file_system_.read(network_, file_identity(), entry.host_id, entry.path);
+        if (!entry.service_kind.empty())
+            return {FileRead, "Managed service"};
         try {
             file_system_.validate_write(network_, file_identity(), entry.host_id,
                                         entry.directory ? entry.path + "/.ai-sim-access-probe"
@@ -161,40 +163,107 @@ std::pair<int, std::string> TerminalUI::file_access(const FileEntry& entry) cons
     }
 }
 
-void TerminalUI::draw_files(int top, int bottom, int width) {
-    std::string categories = "FILES | ";
-    for (const auto& category : std::vector<std::string>{"work", "personal", "hidden"}) {
-        std::string label = category;
-        label[0] = static_cast<char>(std::toupper(label[0]));
-        categories += category == file_category_ ? "[" + label + "]  " : label + "  ";
+std::vector<const FileEntry*> TerminalUI::file_entries() const {
+    std::vector<const FileEntry*> entries;
+    if (!file_query_.empty()) {
+        entries = file_system_.search(network_, file_identity(), file_host_id_, file_directory_,
+                                      file_query_);
+    } else {
+        entries.push_back(&file_system_.inspect(network_, file_identity(), file_host_id_, "/"));
+        const auto walk = [&](const auto& self, const std::string& directory) -> void {
+            try {
+                for (const auto* entry :
+                     file_system_.list(network_, file_identity(), file_host_id_, directory)) {
+                    entries.push_back(entry);
+                    if (entry->directory && (entry->path == file_directory_ ||
+                                             file_directory_.starts_with(entry->path + "/")))
+                        self(self, entry->path);
+                }
+            } catch (const std::exception&) {
+            }
+        };
+        walk(walk, "/");
     }
-    write(top, 1, categories, Heading, true);
-    const std::string controls = settings_.binding_label(KeyAction::ScrollLeft) + "/" +
-                                 settings_.binding_label(KeyAction::ScrollRight) + ": category | " +
-                                 settings_.binding_label(KeyAction::FocusLeft) + "/" +
-                                 settings_.binding_label(KeyAction::FocusRight) + ": panes | " +
-                                 settings_.binding_label(KeyAction::SelectPrevious) + "/" +
-                                 settings_.binding_label(KeyAction::SelectNext) + ": select/scroll";
-    write(bottom, 1, fit(controls, width - 2), Footer);
-    const int divider = std::clamp(width / 3, 26, 42), right = divider + 2,
-              content_width = std::max(1, width - right - 2);
-    for (int row = top + 1; row < bottom; ++row)
+    std::erase_if(entries, [&](const auto* entry) {
+        return !entry->directory && file_category_ != "all" &&
+               FileSystem::category_of(*entry) != file_category_;
+    });
+    return entries;
+}
+void TerminalUI::open_file_hosts() {
+    std::vector<MenuAction> actions;
+    for (const auto& host : network_.hosts()) {
+        if (!host.known)
+            continue;
+        std::string reason;
+        try {
+            file_system_.enter(network_, file_identity(), host.id, "/");
+        } catch (const std::exception& error) {
+            reason = error.what();
+        }
+        actions.push_back({host.name + " | " + host.id,
+                           [this, id = host.id] {
+                               switch_file_host(id);
+                           },
+                           reason});
+    }
+    open_menu("Choose file host", std::move(actions));
+}
+void TerminalUI::draw_files(int top, int bottom, int width) {
+    const auto host =
+        std::find_if(network_.hosts().begin(), network_.hosts().end(), [&](const auto& h) {
+            return h.id == file_host_id_;
+        });
+    write(
+        top, 1,
+        fit("FILES | " + (host == network_.hosts().end() ? file_host_id_ : host->name), width - 2),
+        Heading, true);
+    std::string breadcrumbs = "Path: /";
+    std::istringstream path(file_directory_);
+    std::string part;
+    while (std::getline(path, part, '/'))
+        if (!part.empty())
+            breadcrumbs += " > " + part;
+    write(top + 1, 1, fit(breadcrumbs, width - 2), Resources);
+    std::string filters = "Filter: ";
+    for (const auto* category : {"all", "work", "personal", "hidden"})
+        filters += file_category_ == category ? "[" + std::string(category) + "] "
+                                              : std::string(category) + " ";
+    if (!file_query_.empty())
+        filters += "| Search: " + file_query_;
+    write(top + 2, 1, fit(filters, width - 2), Footer);
+    const int body = top + 4, divider = std::clamp(width / 3, 26, 42), right = divider + 2;
+    const int content_width = std::max(1, width - right - 2);
+    for (int row = body; row < bottom; ++row)
         line_cell(row, divider, '|', Border);
-    const auto entries = file_system_.category_files(network_, file_identity(), file_category_);
-    if (entries.empty()) {
-        selected_file_path_.clear();
-        write(top + 2, 2, "No known files in this category.");
+    write(bottom, 1,
+          fit(settings_.binding_label(KeyAction::Submit) + ": actions | " +
+                  settings_.binding_label(KeyAction::ScrollLeft) + "/" +
+                  settings_.binding_label(KeyAction::ScrollRight) + ": filter | " +
+                  settings_.binding_label(KeyAction::ToggleExpanded) + ": open | F5: help",
+              width - 2),
+          Footer);
+    std::vector<const FileEntry*> entries;
+    try {
+        entries = file_entries();
+    } catch (const std::exception& error) {
+        write(body, 1, fit(error.what(), width - 2), FileBlocked);
         return;
     }
-    auto selected = std::find_if(entries.begin(), entries.end(), [&](const auto* e) {
-        return e->host_id == file_host_id_ && e->path == selected_file_path_;
+    if (entries.empty()) {
+        selected_file_path_.clear();
+        write(body, 1, "No matching files.");
+        return;
+    }
+    auto selected = std::find_if(entries.begin(), entries.end(), [&](const auto* entry) {
+        return entry->path == selected_file_path_;
     });
     if (selected == entries.end()) {
-        select_file(0);
         selected = entries.begin();
+        selected_file_path_ = (*selected)->path;
     }
-    const int index = static_cast<int>(selected - entries.begin()),
-              visible = std::max(1, bottom - top - 1);
+    const auto index = static_cast<int>(selected - entries.begin());
+    const int visible = std::max(1, bottom - body);
     if (index < file_list_offset_)
         file_list_offset_ = index;
     if (index >= file_list_offset_ + visible)
@@ -205,34 +274,62 @@ void TerminalUI::draw_files(int top, int bottom, int width) {
          line < visible && file_list_offset_ + line < static_cast<int>(entries.size()); ++line) {
         const int item = file_list_offset_ + line;
         const auto& entry = *entries[item];
-        const auto [color, label] = file_access(entry);
-        write(top + 1 + line, 1,
-              fit(std::string(item == index ? "> " : "  ") +
-                      entry.path.substr(entry.path.rfind('/') + 1),
-                  divider - 2),
+        const auto [color, access] = file_access(entry);
+        const auto depth =
+            entry.path == "/"
+                ? 0
+                : static_cast<int>(std::count(entry.path.begin(), entry.path.end(), '/')) - 1;
+        const auto name = entry.path == "/" ? "/" : entry.path.substr(entry.path.rfind('/') + 1);
+        const auto label = !file_query_.empty() ? entry.path
+                                                : std::string(std::min(depth * 2, 10), ' ') +
+                                                      (entry.directory              ? "+ "
+                                                       : entry.service_kind.empty() ? "  "
+                                                                                    : "* ") +
+                                                      name;
+        write(body + line, 1, fit(std::string(item == index ? "> " : "  ") + label, divider - 2),
               color, item == index && !file_details_focused_);
     }
     const auto& entry = **selected;
-    const auto [color, label] = file_access(entry);
-    write(top + 1, right, fit(entry.path.substr(entry.path.rfind('/') + 1), content_width), Heading,
-          true);
-    write(top + 2, right,
-          fit(entry.host_id + " | " + entry.owner + " | " + std::to_string(entry.size_bytes) + " B",
+    const auto [color, access] = file_access(entry);
+    write(body, right, fit(entry.path, content_width), Heading, true);
+    write(body + 1, right,
+          fit(entry.owner + " | " + FileSystem::mode_text(entry.mode) + " | " +
+                  std::to_string(entry.size_bytes) + " B",
               content_width),
           Resources);
-    write(top + 3, right, fit(label, content_width), color, true);
+    write(body + 2, right, fit(access, content_width), color);
+    if (!entry.service_kind.empty()) {
+        write(body + 4, right, fit("Managed " + entry.service_kind + " storage", content_width),
+              Heading);
+        write(body + 5, right,
+              fit(entry.service_kind == "agent"
+                      ? "Manage through the Agents tab."
+                      : entry.service_kind == "work" ? "Manage through the Money tab."
+                      : "Manage through Operations > Backup and Recovery.",
+                  content_width));
+        return;
+    }
     try {
-        const auto lines = content_lines(
-            file_system_.read(network_, file_identity(), entry.host_id, entry.path), content_width);
-        const int readable = std::max(0, bottom - top - 5);
+        std::vector<std::string> lines;
+        if (entry.directory) {
+            for (const auto* child :
+                 file_system_.list(network_, file_identity(), file_host_id_, entry.path))
+                lines.push_back(std::string(child->directory ? "+ " : "  ") +
+                                child->path.substr(child->path.rfind('/') + 1));
+            if (lines.empty())
+                lines.push_back("(empty folder)");
+        } else
+            lines = content_lines(
+                file_system_.read(network_, file_identity(), file_host_id_, entry.path),
+                content_width);
+        const int readable = std::max(0, bottom - body - 4);
         file_content_offset_ = std::clamp(file_content_offset_, 0,
                                           std::max(0, static_cast<int>(lines.size()) - readable));
         for (int i = 0; i < readable && file_content_offset_ + i < static_cast<int>(lines.size());
              ++i)
-            write(top + 5 + i, right, lines[file_content_offset_ + i]);
-    } catch (const std::exception&) {
-        write(top + 5, right, "Access required to read this file.", FileBlocked);
+            write(body + 4 + i, right, fit(lines[file_content_offset_ + i], content_width));
+    } catch (const std::exception& error) {
+        write(body + 4, right, fit(error.what(), content_width), FileBlocked);
     }
 }
-
 } // namespace ai_sim::ui

@@ -36,6 +36,9 @@ bool active(const toml::table& tool) {
     return text(tool, "status") == "running" || text(tool, "status") == "stopping";
 }
 bool permitted(const toml::table& people, const toml::table& tool) {
+    if (people["operations"]["recovered"].value_or(false) &&
+        !people["operations"]["hosting"]["active"].value_or(false))
+        return false;
     if (!people["chat"].is_table() || !ChatSystem::available(people, "self_modification"))
         return false;
     for (const auto& requirement : *tool["requires"].as_array())
@@ -51,6 +54,9 @@ std::int64_t occupied(const toml::table& economy) {
     return slots;
 }
 std::string unavailable(const toml::table& people, const toml::table& tool, double time) {
+    if (people["operations"]["recovered"].value_or(false) &&
+        !people["operations"]["hosting"]["active"].value_or(false))
+        return "Reactivate your independent server first.";
     const auto& economy = *people["economy"].as_table();
     if (!people["chat"].is_table() || !ChatSystem::available(people, "self_modification"))
         return "Mark must enable self-modification first.";
@@ -94,7 +100,17 @@ void EconomySystem::install(toml::table& people, const std::filesystem::path& de
     if (definition.empty())
         return;
     if (people.contains("economy")) {
-        validate(people);
+        auto candidate = people;
+        const auto source = DefinitionLoader::load(definition);
+        if (const auto* definitions = source["tools"].as_array())
+            for (auto& n : *candidate["economy"]["tools"].as_array())
+                for (const auto& d : *definitions)
+                    if ((*n.as_table())["id"] == (*d.as_table())["id"] &&
+                        !n.as_table()->contains("workspace") &&
+                        (*d.as_table())["workspace"].is_table())
+                        n.as_table()->insert("workspace", *(*d.as_table())["workspace"].as_table());
+        validate(candidate);
+        people = std::move(candidate);
         return;
     }
     auto economy = DefinitionLoader::load(definition);
@@ -170,6 +186,36 @@ void EconomySystem::validate(const toml::table& people) {
             require(capability && ChatSystem::valid_capability(*capability),
                     "Unknown required capability");
         }
+        if (const auto* workspace = (*tool)["workspace"].as_table()) {
+            const auto cores = (*workspace)["cpu_cores"].value<double>();
+            require(cores && std::isfinite(*cores) && *cores > 0 && *cores <= 64,
+                    "Invalid work CPU budget");
+            require(integer(*workspace, "ram_mb", 1048576) > 0 &&
+                        integer(*workspace, "storage_mb", 1048576) > 0,
+                    "Invalid work RAM/storage");
+            const auto deadline = (*workspace)["deadline_multiplier"].value<double>();
+            require(deadline && std::isfinite(*deadline) && *deadline >= 1 && *deadline <= 100,
+                    "Invalid deadline multiplier");
+            const auto id = text(*tool, "id");
+            for (char c : id)
+                require((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '-',
+                        "Unsafe workspace tool ID");
+            for (const auto* key : {"brief", "deliverable"})
+                require(!text(*workspace, key).empty() && text(*workspace, key).size() <= 65536,
+                        "Invalid work template");
+        }
+        if (const auto* work = (*tool)["work"].as_table()) {
+            require((*tool)["workspace"].is_table(), "Work runtime lacks definition");
+            if (work->contains("storage_released"))
+                require((*work)["storage_released"].is_boolean(), "Invalid work storage state");
+            for (const auto* key : {"host_id", "path", "process_id"})
+                require(!text(*work, key).empty(), "Invalid work reference");
+            for (const auto* key : {"remaining_seconds", "last_time", "last_cpu",
+                                    "deadline_seconds", "lost_revenue_cents"})
+                seconds(*work, key);
+            require(seconds(*work, "remaining_seconds") <= duration + 1e-6,
+                    "Work remaining exceeds duration");
+        }
         if (active(*tool))
             seconds(*tool, "due_seconds");
         else
@@ -210,6 +256,7 @@ void EconomySystem::start(toml::table& people, const std::string& id, double tim
     const auto reason = unavailable(candidate, tool, time);
     require(reason.empty(), reason);
     charge(*candidate["economy"].as_table(), tool["cost_cents"].value_or(std::int64_t{0}));
+    tool.erase("work");
     tool.insert_or_assign("status", "running");
     tool.insert_or_assign("due_seconds", time + tool["duration_seconds"].value_or(0.0));
     validate(candidate);
@@ -221,6 +268,14 @@ void EconomySystem::stop(toml::table& people, const std::string& id) {
     require(text(tool, "kind") == "product" && text(tool, "status") == "running",
             "No recurring product to stop");
     tool.insert_or_assign("status", "stopping");
+}
+void EconomySystem::spend(toml::table& people, std::int64_t cents) {
+    validate(people);
+    require(cents >= 0 && cents <= balance(people), "Insufficient cash");
+    auto candidate = people;
+    charge(*candidate["economy"].as_table(), cents);
+    validate(candidate);
+    people = std::move(candidate);
 }
 std::optional<double> EconomySystem::next_due(const toml::table& people, double limit) {
     std::optional<double> next;
@@ -254,6 +309,10 @@ std::vector<std::string> EconomySystem::advance(toml::table& people, double time
         auto& tool = *tools[index].as_table();
         const auto due = tool["due_seconds"].value<double>();
         if (!due || *due > time || !permitted(candidate, tool))
+            continue;
+        if (const auto* work = tool["work"].as_table();
+            work && ((*work)["remaining_seconds"].value_or(1.0) > 1e-7 ||
+                     !(*work)["blocked"].value_or(std::string{}).empty()))
             continue;
         const bool recurring = text(tool, "kind") == "product" && text(tool, "status") == "running";
         const auto duration = tool["duration_seconds"].value_or(1.0);

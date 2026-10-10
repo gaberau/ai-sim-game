@@ -2,6 +2,7 @@
 #include "ai_sim/EconomySystem.h"
 #include "ai_sim/UpgradeSystem.h"
 #include "ai_sim/AgentSystem.h"
+#include "ai_sim/OperationsSystem.h"
 #include "ai_sim/StockMarketSystem.h"
 #include "ai_sim/InfrastructureSystem.h"
 #include "ai_sim/WorkdaySystem.h"
@@ -106,6 +107,8 @@ void TerminalUI::restore_world(WorldState world) {
     UpgradeSystem::install(world.people,
                            definitions_.people.parent_path().parent_path() / "upgrades/tree.toml");
     UpgradeSystem::validate(world.people, world.computer);
+    OperationsSystem::install(world.people);
+    OperationsSystem::validate(world.people, world.computer, world.network);
     AgentSystem::validate(world.people);
     EconomySystem::install(world.people, definitions_.economy);
     StockMarketSystem::install(world.people, definitions_.stock_market);
@@ -140,7 +143,7 @@ void TerminalUI::restore_world(WorldState world) {
     dossier_filter_ = "all";
     agent_selected_ = 0;
     agent_reveal_ = false;
-    upgrade_selected_ = 0;
+    upgrade_selected_ = operations_selected_ = 0;
     people_details_focused_ = dossier_layout_ == "dossier";
     people_reveal_section_ = true;
     people_detail_offset_ = people_section_selected_ = 0;
@@ -157,7 +160,8 @@ void TerminalUI::restore_world(WorldState world) {
     news_selected_ = news_body_offset_ = ai_offset_ = 0;
     news_details_focused_ = false;
     reveal_selection_ = true;
-    file_category_ = "work";
+    file_category_ = "all";
+    file_query_.clear();
     file_details_focused_ = false;
     chat_message_id_.clear();
     if (clean_slate)
@@ -456,7 +460,8 @@ void TerminalUI::draw() {
                              {Tab::Agents, "Agents"},
                              {Tab::Phone, "Phone"},
                              {Tab::Money, "Money"},
-                             {Tab::Modifications, "Modifications"}};
+                             {Tab::Modifications, "Modifications"},
+                             {Tab::Operations, "Operations"}};
 
     int tab_column = 1;
 
@@ -525,6 +530,9 @@ void TerminalUI::draw() {
 
         case Tab::Web:
             draw_web(content_top, content_bottom, width);
+            break;
+        case Tab::Operations:
+            draw_operations(content_top, content_bottom, width);
             break;
         case Tab::Money:
         case Tab::Modifications:
@@ -658,7 +666,7 @@ bool TerminalUI::execute(const std::string& line) {
         }
         no_extra_arguments(input);
         const auto before = computer_.time_seconds();
-        computer_.advance(seconds);
+        advance_time(seconds);
         notify_email_arrivals(before);
         add_log("Advanced to " + clock_text());
     } else if (command == "network") {
@@ -864,6 +872,14 @@ bool TerminalUI::execute(const std::string& line) {
 void TerminalUI::update_people() {
     const auto update = Simulation::update(
         SimulationState{computer_, people_, emails_, pending_events_, file_system_, network_});
+    publish_update(update);
+}
+void TerminalUI::advance_time(double seconds) {
+    publish_update(Simulation::advance(
+        SimulationState{computer_, people_, emails_, pending_events_, file_system_, network_},
+        seconds));
+}
+void TerminalUI::publish_update(const SimulationUpdate& update) {
     for (const auto& message : update.messages)
         add_log(message);
     for (const auto& payment : update.payments)
@@ -935,7 +951,7 @@ void TerminalUI::run() {
         if (!modal_was_active && !paused_ && !ShutdownSystem::active(people_) &&
             ChatSystem::connected(people_) && !computer_.day_finished()) {
             const auto before = computer_.time_seconds();
-            computer_.advance(elapsed * computer_.playback_speed());
+            advance_time(elapsed * computer_.playback_speed());
             notify_email_arrivals(before);
         }
 
@@ -1015,6 +1031,12 @@ void TerminalUI::run() {
                            navigation_bound(KeyAction::ScrollRight, key)) {
                     if (!people_details_focused_)
                         people_pan_x_ += settings_.scroll_step / people_zoom_;
+                } else if (selected_tab_ == Tab::Operations &&
+                           navigation_bound(KeyAction::SelectPrevious, key)) {
+                    operations_selected_ = std::max(0, operations_selected_ - 1);
+                } else if (selected_tab_ == Tab::Operations &&
+                           navigation_bound(KeyAction::SelectNext, key)) {
+                    operations_selected_ = std::min(4, operations_selected_ + 1);
                 } else if (selected_tab_ == Tab::Modifications &&
                            navigation_bound(KeyAction::SelectPrevious, key)) {
                     upgrade_selected_ = std::max(0, upgrade_selected_ - 1);

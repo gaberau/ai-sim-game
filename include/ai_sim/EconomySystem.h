@@ -24,6 +24,7 @@ class EconomySystem {
     static void start(toml::table& people, const std::string& id, double time);
     // Products finish their prepaid cycle before stopping; client jobs finish once.
     static void stop(toml::table& people, const std::string& id);
+    static void spend(toml::table& people, std::int64_t cents);
     static std::optional<double> next_due(const toml::table& people, double limit);
     static std::vector<std::string> advance(toml::table& people, double time);
 };

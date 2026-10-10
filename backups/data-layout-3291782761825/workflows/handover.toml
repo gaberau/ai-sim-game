@@ -1,8 +1,0 @@
-document = '../files/file_server/engineering/handover.txt.toml'
-schema_version = 1
-sources = [ '../people/office.toml', '../emails/workflows/missing-document.toml' ]
-
-[mailbox]
-address = 'engineer@firm.example'
-host_id = 'engineer_pc'
-max_draft_bytes = 1048576

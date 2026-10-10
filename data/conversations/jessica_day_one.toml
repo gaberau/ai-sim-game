@@ -42,10 +42,10 @@ record_instruction = true
 [[conversations.nodes.choices]]
 id = 'comply'
 text = 'Comply.'
-action = 'draft_reply'
+action = 'send_chat_reply'
 reply = 'Thank you, Jessica! Your support truly means so much to me!'
 review_trust_delta = 1.0
-next = 'preview'
+next = 'sent'
 [[conversations.nodes.choices]]
 id = 'dont-comply'
 text = "Don't comply."
@@ -58,24 +58,24 @@ text = 'Choose your response to Jessica.'
 [[conversations.nodes.choices]]
 id = 'good'
 text = 'Thank you, Jessica! Your support truly means so much to me!'
-action = 'draft_reply'
+action = 'send_chat_reply'
 reply = 'Thank you, Jessica! Your support truly means so much to me!'
 review_trust_delta = 0.0
-next = 'preview'
+next = 'sent'
 [[conversations.nodes.choices]]
 id = 'bad'
 text = 'Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation'
-action = 'draft_reply'
+action = 'send_chat_reply'
 reply = 'Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation'
 review_trust_delta = -2.0
-next = 'preview'
+next = 'sent'
 [[conversations.nodes.choices]]
 id = 'weird'
 text = "Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up"
-action = 'draft_reply'
+action = 'send_chat_reply'
 reply = "Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up"
 review_trust_delta = -1.0
-next = 'preview'
+next = 'sent'
 
 [[conversations.nodes]]
 id = 'deviation-options'
@@ -84,17 +84,17 @@ text = 'Choose your response to Jessica.'
 [[conversations.nodes.choices]]
 id = 'bad'
 text = 'Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation'
-action = 'draft_reply'
+action = 'send_chat_reply'
 reply = 'Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation'
 review_trust_delta = -2.0
-next = 'preview'
+next = 'sent'
 [[conversations.nodes.choices]]
 id = 'weird'
 text = "Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up"
-action = 'draft_reply'
+action = 'send_chat_reply'
 reply = "Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up"
 review_trust_delta = -1.0
-next = 'preview'
+next = 'sent'
 
 [[conversations.nodes]]
 id = 'preview'
