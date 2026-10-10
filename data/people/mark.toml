@@ -29,3 +29,8 @@ initial = 0
 min = 0
 max = 1
 integer = true
+
+[people.state_definitions.fear]
+initial = 0
+min = 0
+max = 100

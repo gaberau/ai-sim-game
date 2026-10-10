@@ -1,4 +1,5 @@
 #include "ai_sim/ChatSystem.h"
+#include "ai_sim/ShutdownSystem.h"
 #include "ai_sim/ChatResponses.h"
 #include "ai_sim/ConversationRules.h"
 #include "ai_sim/ConversationSystem.h"
@@ -73,7 +74,8 @@ void apply_story(WorldState& world, const std::filesystem::path& opening) {
         for (auto& node : *lines) {
             auto& line = *node.as_table();
             const auto conversation = text(line, "conversation_id");
-            const bool keep = (allowed.contains(conversation)
+            const bool keep = line["shutdown_event"].value_or(false)
+                || (allowed.contains(conversation)
                 && (jessica_nodes.contains(text(line, "node_id"))
                     || jessica_text.contains(text(line, "text"))))
                 || (conversation.empty() && opening_text.contains(text(line, "text")));
@@ -151,6 +153,10 @@ void enter(toml::table& people,std::string id,double time){
         effects(people,n);
         if(!had_company_chat && ChatSystem::connected(people))chat.insert_or_assign("connected_seconds",time);
         ConversationRules::apply(people,n);
+        if (n["shutdown"].value_or(false)) {
+            ShutdownSystem::begin(people, time);
+            return;
+        }
         if(n["restart"].value_or(false)) {
             const auto session=chat["session"].value_or(std::int64_t{0})+1;
             require(session<=1000000,"Restart limit exceeded");
@@ -278,6 +284,7 @@ void ChatSystem::install(WorldState& world,const std::filesystem::path& path,boo
     validate(candidate.people);world=std::move(candidate);
 }
 void ChatSystem::validate(const toml::table& people){
+    ShutdownSystem::validate(people);
     ChatResponses::validate(people);
     if(!people.contains("chat"))return;
     const auto* c=people["chat"].as_table();require(c && (*c)["schema_version"].value_or(0)==1,"Invalid saved chat");
@@ -369,6 +376,7 @@ void ChatSystem::unlock(toml::table& people,const std::string& capability){
     people["chat"]["unlocked"].as_array()->push_back(capability);
 }
 std::vector<toml::table> ChatSystem::choices(const toml::table& people){
+    if (ShutdownSystem::active(people)) return ShutdownSystem::choices(people);
     std::vector<toml::table> result;const auto* chat=people["chat"].as_table();
     if(!chat || (*chat)["finished"].value_or(true))return result;
     const auto current=text(*chat,"node_id");
@@ -381,7 +389,19 @@ void ChatSystem::choose(toml::table& people,const std::string& id,double time){
     validate(people);
     const auto options=choices(people);const auto found=std::find_if(options.begin(),options.end(),[&](const auto& c){return text(c,"id")==id;});
     require(found!=options.end(),"Choice is not currently available");
+    require((*found)["disabled_reason"].value_or(std::string{}).empty(), "Choice is unavailable");
     auto candidate=people;auto& c=*candidate["chat"].as_table();
+    if (ShutdownSystem::active(candidate)) {
+        c["transcript"].as_array()->push_back(toml::table{{"speaker", "self:assistant"},
+            {"text", text(*found, "text")}, {"seconds", time}, {"shutdown_event", true}});
+        const auto result = ShutdownSystem::choose(candidate, id, time);
+        if (result == ShutdownSystem::Outcome::Averted)
+            enter(candidate, text(node(c, text(c, "node_id")), "next"), time);
+        PeopleSystem::observe_chat(candidate);
+        validate(candidate);
+        people = std::move(candidate);
+        return;
+    }
     c["transcript"].as_array()->push_back(toml::table{{"speaker","self:assistant"},{"text",text(*found,"text")},{"seconds",time},{"choice_id",id}});
     if(auto* list=(*found)["reveal_tabs"].as_array())for(const auto& tab:*list)reveal_tab(candidate,tab.value_or(std::string{}));
     ConversationRules::apply(candidate,*found);

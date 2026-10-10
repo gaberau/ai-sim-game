@@ -16,6 +16,21 @@ sys.path.insert(0, str(PROJECT / 'tools'))
 import drawio_to_conversation as converter
 
 class DrawioTests(unittest.TestCase):
+    def test_shutdown_lifecycle_validation(self):
+        source = PROJECT / 'data/conversations/opening.drawio'
+        with tempfile.TemporaryDirectory() as folder:
+            for node_id in ('hello', 'shutdown'):
+                xml = ET.parse(source)
+                node = next(o for o in xml.iter('object') if o.get('node_id') == node_id)
+                if node_id == 'hello':
+                    node.set('shutdown', 'true')
+                else:
+                    node.set('kind', 'message')
+                path = Path(folder) / 'invalid.drawio'
+                xml.write(path, encoding='utf-8')
+                with self.assertRaises(ValueError):
+                    converter.convert(path, 'mark-day-one', 'restart-gate')
+
     def test_current_story_graphs(self):
         folder = PROJECT / 'data/conversations'
         opening = tomllib.loads((folder / 'opening.toml').read_text())

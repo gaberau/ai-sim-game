@@ -1,4 +1,5 @@
 #include "ai_sim/Simulation.h"
+#include "ai_sim/ShutdownSystem.h"
 #include "ai_sim/ChatSystem.h"
 #include "ai_sim/ConversationSystem.h"
 #include "ai_sim/PeopleSystem.h"
@@ -20,7 +21,7 @@ bool engineer_review_started(const toml::table& people) {
 
 SimulationUpdate Simulation::update(SimulationState state) {
     SimulationUpdate result;
-    if (!ChatSystem::connected(state.people)) return result;
+    if (!ChatSystem::connected(state.people) || ShutdownSystem::active(state.people)) return result;
 
     const Identity actor{state.computer.player_user(), state.computer.player_groups()};
     const double time = state.computer.time_seconds();

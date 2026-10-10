@@ -79,9 +79,9 @@ void validate_entry(const toml::table& definition,const toml::table& entry,bool 
             require(text(rule,"op")=="add" || text(rule,"op")=="set","Unknown numeric effect");
         }
     }
-    for(auto key:{"restart","stop"})if(entry.contains(key)){
+    for(auto key:{"restart","stop","shutdown"})if(entry.contains(key)){
         require(entry[key].is_boolean(),"Lifecycle effect must be boolean");
-        const std::string expected=std::string{key}=="restart"?"event":"end";
+        const std::string expected=std::string{key}=="stop"?"end":"event";
         require(!choice && text(entry,"kind")==expected,"restart belongs on an event; stop belongs on an end node");
     }
 }

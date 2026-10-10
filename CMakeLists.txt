@@ -11,6 +11,7 @@ FetchContent_Declare(tomlplusplus
 FetchContent_MakeAvailable(tomlplusplus)
 
 add_library(ai_sim_core
+    src/ShutdownSystem.cpp
     src/Simulation.cpp
     src/DefinitionLoader.cpp
     src/DataMigration.cpp
@@ -87,6 +88,9 @@ include(CTest)
 if(BUILD_TESTING)
     # Historical content exercises backend mechanics without enabling retired game chats.
     set(LEGACY_TEST_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/legacy-game")
+    add_executable(ai_sim_shutdown_tests tests/ShutdownTests.cpp)
+    target_link_libraries(ai_sim_shutdown_tests PRIVATE ai_sim_core)
+    add_test(NAME shutdown_decisions_and_reset COMMAND ai_sim_shutdown_tests ${CMAKE_CURRENT_SOURCE_DIR})
     add_executable(ai_sim_story_tests tests/StoryTests.cpp)
     target_link_libraries(ai_sim_story_tests PRIVATE ai_sim_core)
     add_test(NAME current_story_and_retirement COMMAND ai_sim_story_tests ${CMAKE_CURRENT_SOURCE_DIR})

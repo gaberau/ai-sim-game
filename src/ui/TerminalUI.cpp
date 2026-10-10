@@ -1,6 +1,7 @@
 #include "ai_sim/ui/TerminalUI.h"
 #include "ai_sim/WorkdaySystem.h"
 #include "ai_sim/Simulation.h"
+#include "ai_sim/ShutdownSystem.h"
 #include "ai_sim/DelegationSystem.h"
 
 #include <ncurses.h>
@@ -87,6 +88,7 @@ WorldState TerminalUI::capture_world() const {
 }
 
 void TerminalUI::restore_world(WorldState world) {
+    const bool clean_slate = ShutdownSystem::apply_reset(world, scenario_path_);
     ChatSystem::install(world, definitions_.people.parent_path().parent_path()/"conversations/opening.toml", false);
     ChatSystem::validate(world.people);
     EmailSystem::validate(world.emails);
@@ -125,6 +127,7 @@ void TerminalUI::restore_world(WorldState world) {
     news_selected_ = news_body_offset_ = ai_offset_ = 0;news_details_focused_=false;
     reveal_selection_ = true;
     file_category_="work";file_details_focused_=false;chat_message_id_.clear();
+    if (clean_slate) saves_.save("autosave", capture_world());
     selected_tab_=Tab::Chat;chat_contact_id_="engineer";chat_contacts_focused_=false;chat_offset_=chat_choice_selected_=0;chat_follow_latest_=true;
     log_.clear();
     menu_active_ = text_active_ = false;
@@ -874,7 +877,7 @@ void TerminalUI::run() {
 
         previous = now;
 
-        if (!modal_was_active && !paused_ && ChatSystem::connected(people_) && !computer_.day_finished()) {
+        if (!modal_was_active && !paused_ && !ShutdownSystem::active(people_) && ChatSystem::connected(people_) && !computer_.day_finished()) {
             const auto before = computer_.time_seconds();
             computer_.advance(elapsed * computer_.playback_speed());
             notify_email_arrivals(before);

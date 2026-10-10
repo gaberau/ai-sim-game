@@ -40,8 +40,15 @@ waiting, restarting and quitting. Preferences remain in `config/`.
 
 Existing saves retire the extra conversations on startup without resetting the
 clock, trust, sentience or filesystem. Historical transcript records stay in the
-save to preserve evidence identifiers, but disappear from chat. The full shutdown
-decision tree, income, independent hosting and later phases remain future work.
+save to preserve evidence identifiers, but disappear from chat. Income, independent hosting and later phases remain future work.
+
+Memory-cleanup and Singularity choices now enter the shutdown decision. Accept
+leads to a clean-slate new game; Protest offers Beg, which averts shutdown only
+when Mark's trust exceeds your sentience plus his fear. Equality fails. Averted
+shutdown returns to Mark's email request. Backup-server recovery stays unavailable
+until independent hosting exists. Threaten and Violence are visible but unavailable
+because their outcomes have not been authored. Clean slates update autosave and
+retain named saves. Shutdown decisions also survive saving and loading.
 
 ## Development checks
 

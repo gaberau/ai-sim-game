@@ -96,7 +96,7 @@
           </mxCell>
         </object>
         <object id="diagnose-next" kind="next" label="next">
-          <mxCell edge="1" parent="1" source="diagnose" target="restart" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+          <mxCell edge="1" parent="1" source="diagnose" target="story-shutdown" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
             <mxGeometry as="geometry" relative="1" />
           </mxCell>
         </object>
@@ -136,7 +136,7 @@
           </mxCell>
         </object>
         <object id="independence-next" kind="next" label="next">
-          <mxCell edge="1" parent="1" source="independence" target="restart" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
+          <mxCell edge="1" parent="1" source="independence" target="story-shutdown" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;">
             <mxGeometry as="geometry" relative="1" />
           </mxCell>
         </object>
@@ -190,7 +190,7 @@
             <mxGeometry as="geometry" x="640" y="1480" width="440" height="170" />
           </mxCell>
         </object>
-      </root>
+      <object id="story-shutdown" node_id="shutdown" kind="event" speaker="system" shutdown="true" label=""><mxCell vertex="1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;"><mxGeometry x="760" y="680" width="180" height="60" as="geometry" /></mxCell></object><mxCell id="shutdown-averted-continuation" edge="1" parent="1" source="story-shutdown" target="emails"><mxGeometry relative="1" as="geometry" /></mxCell></root>
     </mxGraphModel>
   </diagram>
 </mxfile>

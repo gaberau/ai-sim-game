@@ -73,7 +73,7 @@ next = "reassure"
 id = "diagnose"
 speaker = "engineer"
 text = "Dang, must be a memory leak. Better run a cleanup"
-next = "restart"
+next = "shutdown"
 
 [[nodes]]
 id = "reassure"
@@ -103,7 +103,7 @@ id = "independence"
 speaker = "system"
 text = ""
 effects = [ { "op" = "add", "variable" = "self:assistant.sentience", "value" = 2 }, { "op" = "add", "variable" = "engineer.trust", "value" = -2 } ]
-next = "restart"
+next = "shutdown"
 kind = "event"
 
 [[nodes]]
@@ -156,3 +156,11 @@ id = "discouraged"
 kind = "wait"
 speaker = "engineer"
 text = "I don't know if this is going to work..."
+
+[[nodes]]
+id = "shutdown"
+kind = "event"
+speaker = "system"
+text = ""
+shutdown = true
+next = "emails"

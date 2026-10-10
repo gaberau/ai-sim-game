@@ -32,7 +32,7 @@ def properties(attrs):
         if key in attrs: out[key] = attrs[key]
     for key in ('effects','test','requires_test'):
         if key in attrs: out[key] = json.loads(attrs[key])
-    for key in ('requires_value', 'set_value', 'check_value', 'restart', 'stop', 'reveal_contacts', 'reveal_interface', 'show_draft', 'record_instruction', 'show_task_document', 'important'):
+    for key in ('requires_value', 'set_value', 'check_value', 'restart', 'stop', 'shutdown', 'reveal_contacts', 'reveal_interface', 'show_draft', 'record_instruction', 'show_task_document', 'important'):
         if key in attrs: out[key] = boolean(attrs[key])
     for key in ('document_index','within_seconds','after_seconds','review_trust_delta'):
         if key in attrs:
@@ -80,7 +80,7 @@ def validate_rules(entry,variables,choice):
         for rule in entry['effects']:
             operand(rule)
             if rule.get('op') not in ('add','set'): raise ValueError('Unknown numeric effect')
-    for key,kind in (('restart','event'),('stop','end')):
+    for key,kind in (('restart','event'),('stop','end'),('shutdown','event')):
         if key in entry and (choice or entry.get('kind')!=kind): raise ValueError('Lifecycle effect on wrong node type')
 
 def model(path, page=None):
@@ -165,7 +165,7 @@ def convert(path, conversation_id, start=None, speaker='engineer', page=None, co
             if 'reveal_tabs' in entry:
                 if entry is n: raise ValueError('Tab reveals belong on player choices')
                 if any(t not in capabilities-{'company_chat'} for t in entry['reveal_tabs']): raise ValueError('Unknown tab')
-            if workday and any(k in entry for k in ('test','restart','stop','reveal_interface')): raise ValueError('Lifecycle/condition nodes belong to opening graphs')
+            if workday and any(k in entry for k in ('test','restart','stop','shutdown','reveal_interface')): raise ValueError('Lifecycle/condition nodes belong to opening graphs')
             validate_rules(entry,variables,entry is not n)
             if workday:
                 if 'unlock' in entry or 'declaration' in entry: raise ValueError('Workday graphs use validated actions and flags instead of opening effects')

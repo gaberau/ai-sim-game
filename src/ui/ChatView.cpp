@@ -1,5 +1,6 @@
 #include "ai_sim/MessageReviewSystem.h"
 #include "ai_sim/ui/TerminalUI.h"
+#include "ai_sim/ShutdownSystem.h"
 #include "ai_sim/WorkdaySystem.h"
 #include <algorithm>
 #include <sstream>
@@ -56,6 +57,8 @@ std::vector<toml::table> TerminalUI::chat_options() const {
     return fallback;
 }
 void TerminalUI::respond_chat(const toml::table& choice) {
+    const auto disabled = choice["disabled_reason"].value_or(std::string{});
+    if (!disabled.empty()) { add_log(disabled); return; }
     if(choice.contains("message_id")) {
         const auto line=displayed_chat_line_;
         const auto action=choice["action"].value_or(std::string{});
@@ -85,6 +88,11 @@ void TerminalUI::respond_chat(const toml::table& choice) {
             chat_contact_id_,choice["conversation_id"].value_or(std::string{}),choice["id"].value_or(std::string{}),computer_.time_seconds());
         update_people();
     } else ChatSystem::choose(people_,choice["id"].value_or(std::string{}),computer_.time_seconds());
+    if (ShutdownSystem::reset_pending(people_)) {
+        restore_world(capture_world());
+        add_log("New game started. Named saves remain available.");
+        return;
+    }
     chat_choice_selected_=0;chat_offset_=0;chat_follow_latest_=true;
     if(!before && ChatSystem::connected(people_)){paused_=false;add_log("Company chat connected.");}
 }
@@ -134,7 +142,7 @@ void TerminalUI::draw_opening(int height,int width){
     const auto& options=displayed_chat_options_;
     chat_choice_selected_=std::clamp(chat_choice_selected_,0,std::max(0,static_cast<int>(options.size())-1));
     const int wrap_width=std::max(1,std::min(64,width-8));
-    struct Row{std::string text;int color;bool bold;};
+    struct Row{std::string text;int color;bool bold;bool dim=false;};
     std::vector<Row> rows;
     rows.push_back({displayed_chat_line_.speaker=="system"?"SYSTEM":"Mark",Heading,true});
     rows.push_back({"",Plain,false});
@@ -145,8 +153,16 @@ void TerminalUI::draw_opening(int height,int width){
     for(int i=0;i<static_cast<int>(options.size());++i){
         const bool active=i==chat_choice_selected_;
         if(active)selected_row=static_cast<int>(rows.size());
-        const auto lines=wrap(options[i]["text"].value_or(std::string{}),std::max(1,wrap_width-3));
-        for(std::size_t j=0;j<lines.size();++j)rows.push_back({std::string(j==0?(active?"> ":"  "):"  ")+lines[j],active?ActiveTab:Plain,active});
+        const auto reason = options[i]["disabled_reason"].value_or(std::string{});
+        const bool disabled = !reason.empty();
+        auto label = options[i]["text"].value_or(std::string{});
+        if (disabled) label += " [unavailable]";
+        const auto lines = wrap(label, std::max(1, wrap_width-3));
+        for(std::size_t j=0;j<lines.size();++j)
+            rows.push_back({std::string(j==0?(active?"> ":"  "):"  ")+lines[j],active?ActiveTab:Plain,active,disabled});
+        if (active && disabled)
+            for (const auto& line : wrap(reason, wrap_width-3))
+                rows.push_back({"  " + line, Footer, false});
     }
     const int capacity=std::max(1,height-4);
     int first=std::clamp(chat_offset_,0,std::max(0,static_cast<int>(rows.size())-capacity));
@@ -155,7 +171,7 @@ void TerminalUI::draw_opening(int height,int width){
     const int count=std::min(capacity,static_cast<int>(rows.size())-first);
     int block_width=0;for(int i=first;i<first+count;++i)block_width=std::max(block_width,static_cast<int>(rows[i].text.size()));
     const int left=std::max(0,(width-block_width)/2),top=std::max(0,(height-count)/2);
-    for(int i=0;i<count;++i)write(top+i,left,rows[first+i].text,rows[first+i].color,rows[first+i].bold);
+    for(int i=0;i<count;++i)write(top+i,left,rows[first+i].text,rows[first+i].color,rows[first+i].bold,rows[first+i].dim);
     ChatSystem::mark_read(people_,"engineer");
 }
 void TerminalUI::draw_chat(int top,int bottom,int width){
@@ -235,7 +251,9 @@ void TerminalUI::draw_chat(int top,int bottom,int width){
         for(int i=first;i<static_cast<int>(option_rows.size()) && i<first+choice_rows-2;++i){
             const bool active=option_rows[i].index==chat_choice_selected_;auto text=option_rows[i].text;
             if(active && (i==0 || option_rows[i-1].index!=option_rows[i].index))text[0]='>';
-            write(choice_top+1+i-first,left,text,active?ActiveTab:Plain,active);
+            const bool disabled = !options[option_rows[i].index]["disabled_reason"].value_or(std::string{}).empty();
+            if (disabled) text += " [unavailable]";
+            write(choice_top+1+i-first,left,text,active?ActiveTab:Plain,active,disabled);
         }
     }
     if(selected_position!=timeline.end()){

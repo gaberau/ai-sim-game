@@ -14,7 +14,11 @@ Clock, trust, sentience, files and resource state are preserved.
 
 Trust consequences still occur through the existing delayed review mechanic;
 there is no additional Mark follow-up conversation or Jessica complaint dialogue.
-The full shutdown tree and later phases in the chart are not implemented yet.
+Shutdown is implemented as a typed decision system triggered by an opening event.
+Accept can start a clean-slate game. Protest can beg; trust must strictly exceed
+sentience plus fear to avert shutdown. Backup recovery, Threaten and Violence
+remain unavailable pending hosting mechanics and authored outcomes. Later phases
+are not implemented yet.
 
 Historical conversations exist only in `tests/fixtures/legacy-game` to exercise
 backend functionality. They do not supply playable content.
