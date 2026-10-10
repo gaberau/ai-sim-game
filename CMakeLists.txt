@@ -5,13 +5,13 @@ include(FetchContent)
 
 FetchContent_Declare(tomlplusplus
     GIT_REPOSITORY https://github.com/marzer/tomlplusplus.git
-    GIT_TAG v3.4.0
-    GIT_SHALLOW TRUE
+    GIT_TAG 30172438cee64926dc41fdd9c11fb3ba5b2ba9de # toml++ v3.4.0
 )
 
 FetchContent_MakeAvailable(tomlplusplus)
 
 add_library(ai_sim_core
+    src/Simulation.cpp
     src/DefinitionLoader.cpp
     src/DataMigration.cpp
     src/ConversationRules.cpp
@@ -85,6 +85,9 @@ endif()
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(ai_sim_simulation_tests tests/SimulationTests.cpp)
+    target_link_libraries(ai_sim_simulation_tests PRIVATE ai_sim_core)
+    add_test(NAME simulation_progression COMMAND ai_sim_simulation_tests ${CMAKE_CURRENT_SOURCE_DIR})
     add_executable(ai_sim_delegation_policy_tests tests/DelegationPolicyTests.cpp)
     target_link_libraries(ai_sim_delegation_policy_tests PRIVATE ai_sim_core)
     add_test(NAME delegation_policies_and_sources COMMAND ai_sim_delegation_policy_tests ${CMAKE_CURRENT_SOURCE_DIR})

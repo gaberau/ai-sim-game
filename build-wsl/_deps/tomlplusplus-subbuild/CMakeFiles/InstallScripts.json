@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/mnt/c/Users/gaber/Downloads/ai-sim-persistence/build-wsl/_deps/tomlplusplus-subbuild/cmake_install.cmake"
-	],
-	"Parallel" : false
-}

@@ -5,8 +5,11 @@ set -euo pipefail
 project_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd -- "$project_root"
 
+# Keep the Windows launcher default while allowing isolated Linux/CI builds.
+build_directory="${AI_SIM_BUILD_DIR:-build-wsl}"
+
 case "${1:-build}" in
-    build)
+    build|test)
         for tool in cmake g++ git; do
             if ! command -v "$tool" >/dev/null 2>&1; then
                 echo "Missing WSL build dependency: $tool" >&2
@@ -15,13 +18,17 @@ case "${1:-build}" in
             fi
         done
         # Separate from older build/ folders to avoid stale absolute CMake paths.
-        cmake -S . -B build-wsl -DCMAKE_BUILD_TYPE=Release
-        cmake --build build-wsl --parallel 2
+        cmake -S . -B "$build_directory" -DCMAKE_BUILD_TYPE="${AI_SIM_BUILD_TYPE:-Release}" -DBUILD_TESTING=ON
+        cmake --build "$build_directory" --parallel "${AI_SIM_BUILD_JOBS:-2}"
+        if [[ "${1:-build}" == test ]]; then
+            ctest --test-dir "$build_directory" --output-on-failure
+            python3 tests/DrawioTests.py
+        fi
         ;;
     run)
         export TERM=xterm-256color
         status=0
-        ./build-wsl/ai_sim || status=$?
+        "$build_directory/ai_sim" || status=$?
         if (( status != 0 )); then
             printf '\nAI Sim exited with error %s.\n' "$status"
         fi
@@ -31,7 +38,7 @@ case "${1:-build}" in
         exit "$status"
         ;;
     *)
-        echo 'Usage: bash scripts/build-and-run.sh [build|run]' >&2
+        echo 'Usage: bash scripts/build-and-run.sh [build|test|run]' >&2
         exit 1
         ;;
 esac

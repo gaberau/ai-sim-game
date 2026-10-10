@@ -1,5 +1,6 @@
 #include "ai_sim/ui/TerminalUI.h"
 #include "ai_sim/WorkdaySystem.h"
+#include "ai_sim/Simulation.h"
 #include "ai_sim/DelegationSystem.h"
 
 #include <ncurses.h>
@@ -804,17 +805,24 @@ bool TerminalUI::execute(const std::string& line) {
 }
 
 void TerminalUI::update_people() {
-    if(!ChatSystem::connected(people_))return;
-    for (const auto& message : WorkdaySystem::advance(people_, emails_, pending_events_, file_system_, network_, computer_.time_seconds(), file_identity())) add_log(message);
-    ChatSystem::discover(people_,emails_,computer_.time_seconds());
-    bool had_review_chat=false;
-    if(auto* runs=people_["chat"]["workday"]["runs"].as_array())for(const auto& n:*runs)if((*n.as_table())["id"].value_or(std::string{})=="mark-jessica-review")had_review_chat=(*n.as_table())["started"].value_or(false);
-    const bool knew_jessica=PeopleSystem::dossier(people_,"jessica")!=nullptr;
-    ConversationSystem::update(people_,emails_,file_system_,network_,file_identity(),computer_.time_seconds());
-    if(!had_review_chat)if(auto* runs=people_["chat"]["workday"]["runs"].as_array())for(const auto& n:*runs)if((*n.as_table())["id"].value_or(std::string{})=="mark-jessica-review" && (*n.as_table())["started"].value_or(false))add_log("Mark has checked your reply. He wants to talk.");
-    if(!knew_jessica && PeopleSystem::dossier(people_,"jessica")){
-        add_log("Jessica sent a message.");
-        if(selected_tab_==Tab::Chat && chat_contact_id_=="engineer" && chat_follow_latest_ && !menu_active_ && !text_active_){chat_contact_id_="jessica";chat_choice_selected_=chat_offset_=0;chat_contacts_focused_=false;}
+    const auto update = Simulation::update(SimulationState{
+        computer_, people_, emails_, pending_events_, file_system_, network_});
+    for (const auto& message : update.messages) add_log(message);
+    for (const auto event : update.events) {
+        switch (event) {
+        case SimulationEvent::EngineerReviewStarted:
+            add_log("Mark has checked your reply. He wants to talk.");
+            break;
+        case SimulationEvent::JessicaDiscovered:
+            add_log("Jessica sent a message.");
+            if (selected_tab_ == Tab::Chat && chat_contact_id_ == "engineer"
+                && chat_follow_latest_ && !menu_active_ && !text_active_) {
+                chat_contact_id_ = "jessica";
+                chat_choice_selected_ = chat_offset_ = 0;
+                chat_contacts_focused_ = false;
+            }
+            break;
+        }
     }
 }
 

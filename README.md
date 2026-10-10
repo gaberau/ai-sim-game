@@ -20,7 +20,7 @@ ctest --test-dir build --output-on-failure
 ./build/ai_sim
 ```
 
-CMake fetches toml++ v3.4.0 on first configuration. Run from the project root.
+CMake fetches toml++ v3.4.0 at a pinned commit on first configuration. Run from the project root.
 The existing Windows launcher uses build-wsl/.
 
 ## Opening and navigation
@@ -149,7 +149,7 @@ Missing roles receive defaults; existing settings remain valid.
 
 ## Verification and current limits
 
-Eleven CTest suites cover chat opening/migration, people, delegation, definitions,
+Seventeen CTest suites cover chat opening/migration, people, delegation, definitions,
 workflows, resources, message transport and saves/permissions. Terminal checks
 exercise opening/resume, colored access, request/approval/share/acknowledgement,
 authored responses, file creation, pane controls and legacy migration at 120x40 and 80x24. Workday checks cover
@@ -165,3 +165,23 @@ consume simulated CPU or transfer time. Reassuring statements record intentions;
 demonstrated outcomes establish reliability.
 
 Latest update: [Delegation policies and source versions](UPDATE-DELEGATION-POLICIES.md).
+
+## Development checks
+
+With the Ubuntu dependencies above and Python 3.11+, build and run both test suites:
+
+```bash
+AI_SIM_BUILD_DIR=build bash scripts/build-and-run.sh test
+```
+
+The script defaults to `build-wsl` for the Windows launcher. Set
+`AI_SIM_BUILD_JOBS` to adjust the default two build jobs and
+`AI_SIM_BUILD_TYPE=Debug` for a debug build. Build directories are
+local generated outputs and are excluded from Git. GitHub Actions runs the same
+script on Ubuntu for pushes and pull requests.
+
+`Simulation::update` coordinates workday processing, chat discovery and
+conversation progression in that order. It accepts a `WorldState` for headless
+use or borrowed state for the terminal UI, and returns messages and typed events.
+The UI handles display and focus changes. `WorkRequestState` decodes deadline
+scheduling fields into typed state while retaining the existing TOML save schema.

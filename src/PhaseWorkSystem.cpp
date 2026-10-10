@@ -1,4 +1,5 @@
 #include "ai_sim/PhaseWorkSystem.h"
+#include "ai_sim/WorkRequestState.h"
 #include "ai_sim/ChatSystem.h"
 #include "ai_sim/DefinitionLoader.h"
 #include "ai_sim/EmailSystem.h"
@@ -63,14 +64,35 @@ void PhaseWorkSystem::install(WorldState& world,const std::filesystem::path& pat
     EmailSystem::import_messages(future,toml::table{{"schema_version",1},{"emails",templates}});EmailSystem::validate(future);WorkdaySystem::validate_mail_workflows(w.people,future);
     world=std::move(w);
 }
-std::optional<double> PhaseWorkSystem::next_due(const toml::table& p,double limit,bool include_commitments){
-    std::optional<double> due;if(!state(p) || !ChatSystem::connected(p))return due;
-    auto add=[&](double t){if(t<=limit && (!due || t<*due))due=t;};
-    if(include_commitments)for(const auto& n:*(*state(p))["commitments"].as_array()){const auto& c=*n.as_table();if(!c["processed"].value_or(false))add(base(p)+c["after_seconds"].value_or(0.0));}
-    for(const auto& n:*(*state(p))["requests"].as_array()){const auto& r=*n.as_table();if(r["processed"].value_or(false))continue;const auto* prerequisite=record(p,"work_requests",text(r,"after_request"));if(prerequisite && text(*prerequisite,"status")=="resolved")add(std::max(base(p),(*prerequisite)["resolved_seconds"].value_or(base(p)))+r["delay_seconds"].value_or(0.0));}
-    if(auto* tasks=p["work_requests"].as_array())for(const auto& n:*tasks){const auto& t=*n.as_table();if(!t.contains("deadline_seconds"))continue;
-        if(text(t,"status")=="resolved" && !t["deadline_assessed"].value_or(false))add(t["resolved_seconds"].value_or(limit));
-        else if(text(t,"status")!="resolved" && !t["deadline_notified"].value_or(false))add(t["deadline_seconds"].value_or(limit));
+std::optional<double> PhaseWorkSystem::next_due(
+    const toml::table& people, double limit, bool include_commitments) {
+    std::optional<double> due;
+    const auto* plan = state(people);
+    if (!plan || !ChatSystem::connected(people)) return due;
+    const auto add = [&](double time) {
+        if (time <= limit && (!due || time < *due)) due = time;
+    };
+    if (include_commitments) {
+        for (const auto& node : *(*plan)["commitments"].as_array()) {
+            const auto& commitment = *node.as_table();
+            if (!commitment["processed"].value_or(false))
+                add(base(people) + commitment["after_seconds"].value_or(0.0));
+        }
+    }
+    for (const auto& node : *(*plan)["requests"].as_array()) {
+        const auto& request = *node.as_table();
+        if (request["processed"].value_or(false)) continue;
+        const auto* prerequisite = record(people, "work_requests", text(request, "after_request"));
+        if (prerequisite && text(*prerequisite, "status") == "resolved") {
+            add(std::max(base(people), (*prerequisite)["resolved_seconds"].value_or(base(people)))
+                + request["delay_seconds"].value_or(0.0));
+        }
+    }
+    if (const auto* tasks = people["work_requests"].as_array()) {
+        for (const auto& node : *tasks) {
+            const auto request = WorkRequestState::read(*node.as_table());
+            if (const auto next = request.next_deadline_event(limit)) add(*next);
+        }
     }
     return due;
 }
@@ -84,11 +106,23 @@ void PhaseWorkSystem::advance(toml::table& p,toml::table& emails,double time){
         const double arrival=std::max(base(p),(*prerequisite)["resolved_seconds"].value_or(base(p)))+r["delay_seconds"].value_or(0.0);if(arrival>time)continue;
         auto message=*r["message"].as_table();message.insert_or_assign("arrival_seconds",arrival);EmailSystem::import_messages(emails,toml::table{{"schema_version",1},{"emails",toml::array{message}}});r.insert_or_assign("processed",true);r.insert("released_seconds",arrival);
     }
-    if(auto* tasks=p["work_requests"].as_array())for(auto& n:*tasks){auto& t=*n.as_table();if(!t.contains("deadline_seconds"))continue;const double deadline=t["deadline_seconds"].value_or(0.0);
-        if(text(t,"status")=="resolved" && !t["deadline_assessed"].value_or(false)){
-            const bool on_time=t["resolved_seconds"].value_or(time)<=deadline;t.insert("deadline_assessed",true);t.insert("on_time",on_time);const auto key=on_time?"on_time_results":"late_results";s.insert_or_assign(key,s[key].value_or(0)+1);
-        }else if(text(t,"status")!="resolved" && deadline<=time && !t["deadline_notified"].value_or(false)){
-            t.insert("deadline_notified",true);note(p,text(t,"colleague_id"),s["deadline_message"].value_or(std::string{}),deadline);
+    if (auto* tasks = p["work_requests"].as_array()) {
+        for (auto& node : *tasks) {
+            auto& task = *node.as_table();
+            const auto request = WorkRequestState::read(task);
+            if (!request.deadline) continue;
+            if (request.resolved && !request.deadline_assessed) {
+                const bool on_time = request.resolved_at.value_or(time) <= *request.deadline;
+                task.insert("deadline_assessed", true);
+                task.insert("on_time", on_time);
+                const auto key = on_time ? "on_time_results" : "late_results";
+                s.insert_or_assign(key, s[key].value_or(0) + 1);
+            } else if (!request.resolved && *request.deadline <= time
+                       && !request.deadline_notified) {
+                task.insert("deadline_notified", true);
+                note(p, text(task, "colleague_id"),
+                    s["deadline_message"].value_or(std::string{}), *request.deadline);
+            }
         }
     }
     PeopleSystem::observe_chat(p);validate(p);
