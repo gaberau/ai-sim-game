@@ -77,8 +77,10 @@ class Terminal:
 
     def save_and_quit(self):
         self.send(b"\x1bOP")  # F1: main menu
+        self.expect("Game menu")
+        self.send(b"\x1b[B" * 30)
         self.expect("Save and quit")
-        self.send(b"\x1b[B" * 30 + b"\r")
+        self.send(b"\r")
         # Drain output while waiting, so a full PTY buffer cannot block exit.
         deadline = time.monotonic() + 5
         while self.process.poll() is None and time.monotonic() < deadline:
@@ -495,11 +497,12 @@ def smoke(executable):
             terminal.expect("Research started: agent_delegation")
             terminal.send(b"\x1b")
             terminal.expect("MODIFICATIONS |")
-            terminal.select_tab("AGENTS | Workday")
+            terminal.select_tab("AGENTS")
+            terminal.expect("[ Agents ]")
             terminal.send(b"\x1b[15~")  # F5 contextual help must handle the new tab.
             terminal.expect("Help | Agents")
             terminal.send(b"\x1b")
-            terminal.expect("AGENTS | Workday")
+            terminal.expect("AGENTS")
             terminal.expect("CPU demand")
             terminal.send(b"\r")
             terminal.expect("Agent | Autochat")
@@ -539,6 +542,7 @@ def smoke(executable):
             terminal.send(b"\r")
             terminal.expect("CHAT | Mark")
             terminal.select_tab("OPERATIONS")
+            terminal.expect("[ Operations ]")
             terminal.expect("Task Scheduler")
             terminal.send(b"\r")
             terminal.expect("Schedule Coding contracts")

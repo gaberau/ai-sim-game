@@ -7,8 +7,21 @@ buffers, focus, or scroll offsets.
 
 The main screen has shared-buffer header, body, and footer subwindows. Split
 views add left and right subwindows; writes clip to their own pane. Menus and
-text dialogs use a separate window and panel while retaining the existing
-configurable controls and custom menu behavior.
+text dialogs use a centered, bordered panel while retaining the existing
+configurable controls and custom menu behavior. Their coordinates are local to
+the dialog. The workspace is rendered underneath without an intermediate screen
+update, so resizing an open menu keeps the current view visible.
+
+Messages, files, upgrades, and agents share the same list-column sizing. Agents
+show selected-agent details instead of a long dashboard of every agent. Upgrade
+and agent details wrap and scroll independently of selection. The persistent
+tab strip shows locked tabs dimmed and keeps the selected tab visible when the
+whole strip cannot fit. Tab navigation continues to skip locked tabs.
+
+The header shows the clock and a short resource summary; the news ticker appears
+on the news view. The footer separates contextual actions from the short global
+navigation hint. The default palette uses neutral text and borders, reserving
+strong colors for selection and warnings; saved color settings remain editable.
 
 Chat history, activity history, file previews, and editor drafts use bounded
 pads. Each pad holds the visible slice, so ncurses allocation stays proportional

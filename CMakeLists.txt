@@ -56,66 +56,89 @@ else()
     target_compile_options(ai_sim_core PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-set(CURSES_NEED_NCURSES TRUE)
-find_package(Curses REQUIRED)
-get_filename_component(AI_SIM_CURSES_LIBRARY_DIR "${CURSES_LIBRARY}" DIRECTORY)
-if(CURSES_LIBRARIES MATCHES "ncursesw")
-    set(AI_SIM_PANEL_NAME panelw)
-else()
-    set(AI_SIM_PANEL_NAME panel)
+option(AI_SIM_BUILD_TERMINAL "Build the ncurses interface" ON)
+option(AI_SIM_BUILD_GUI "Build the Qt/QML workstation prototype" OFF)
+if(AI_SIM_BUILD_TERMINAL)
+    set(CURSES_NEED_NCURSES TRUE)
+    find_package(Curses REQUIRED)
+    get_filename_component(AI_SIM_CURSES_LIBRARY_DIR "${CURSES_LIBRARY}" DIRECTORY)
+    if(CURSES_LIBRARIES MATCHES "ncursesw")
+        set(AI_SIM_PANEL_NAME panelw)
+    else()
+        set(AI_SIM_PANEL_NAME panel)
+    endif()
+    find_library(AI_SIM_PANEL_LIBRARY NAMES ${AI_SIM_PANEL_NAME}
+        HINTS "${AI_SIM_CURSES_LIBRARY_DIR}" REQUIRED)
+
+    add_executable(ai_sim
+        src/main.cpp
+        src/ui/UISettings.cpp
+        src/ui/SettingsView.cpp
+        src/ui/ProcessViewConfig.cpp
+        src/ui/TerminalUI.cpp
+        src/ui/ScreenRenderer.cpp
+        src/ui/ProcessesView.cpp
+        src/ui/ActionMenus.cpp
+        src/ui/PeopleView.cpp
+        src/ui/AIView.cpp
+        src/ui/UpgradeView.cpp
+        src/ui/AgentView.cpp
+        src/ui/MoneyView.cpp
+        src/ui/OperationsView.cpp
+        src/ui/StockMarketView.cpp
+        src/ui/WebView.cpp
+        src/ui/InfrastructureView.cpp
+        src/ui/NewsView.cpp
+        src/ui/ChatView.cpp
+        src/ui/EmailView.cpp
+        src/ui/NetworkView.cpp
+        src/ui/FilesView.cpp
+        src/ui/FileEditor.cpp
+        src/ui/ActivityView.cpp
+    )
+
+    target_include_directories(ai_sim PRIVATE ${CURSES_INCLUDE_DIRS})
+
+    target_link_libraries(ai_sim PRIVATE
+        ai_sim_core
+        ${AI_SIM_PANEL_LIBRARY}
+        ${CURSES_LIBRARIES}
+    )
+
+    set_target_properties(ai_sim PROPERTIES CXX_EXTENSIONS OFF)
+    if(MSVC)
+        target_compile_options(ai_sim PRIVATE /W4)
+    else()
+        target_compile_options(ai_sim PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+
 endif()
-find_library(AI_SIM_PANEL_LIBRARY NAMES ${AI_SIM_PANEL_NAME}
-    HINTS "${AI_SIM_CURSES_LIBRARY_DIR}" REQUIRED)
 
-add_executable(ai_sim
-    src/main.cpp
-    src/ui/UISettings.cpp
-    src/ui/SettingsView.cpp
-    src/ui/ProcessViewConfig.cpp
-    src/ui/TerminalUI.cpp
-    src/ui/ScreenRenderer.cpp
-    src/ui/ProcessesView.cpp
-    src/ui/ActionMenus.cpp
-    src/ui/PeopleView.cpp
-    src/ui/AIView.cpp
-    src/ui/UpgradeView.cpp
-    src/ui/AgentView.cpp
-    src/ui/MoneyView.cpp
-    src/ui/OperationsView.cpp
-    src/ui/StockMarketView.cpp
-    src/ui/WebView.cpp
-    src/ui/InfrastructureView.cpp
-    src/ui/NewsView.cpp
-    src/ui/ChatView.cpp
-    src/ui/EmailView.cpp
-    src/ui/NetworkView.cpp
-    src/ui/FilesView.cpp
-    src/ui/FileEditor.cpp
-    src/ui/ActivityView.cpp
-)
-
-target_include_directories(ai_sim PRIVATE ${CURSES_INCLUDE_DIRS})
-
-target_link_libraries(ai_sim PRIVATE
-    ai_sim_core
-    ${AI_SIM_PANEL_LIBRARY}
-    ${CURSES_LIBRARIES}
-)
-
-set_target_properties(ai_sim PROPERTIES CXX_EXTENSIONS OFF)
-if(MSVC)
-    target_compile_options(ai_sim PRIVATE /W4)
-else()
-    target_compile_options(ai_sim PRIVATE -Wall -Wextra -Wpedantic)
+if(AI_SIM_BUILD_GUI)
+    find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Qml Quick)
+    add_library(ai_sim_gui_session src/gui/GameSession.cpp include/ai_sim/gui/GameSession.h)
+    set_target_properties(ai_sim_gui_session PROPERTIES AUTOMOC ON)
+    target_link_libraries(ai_sim_gui_session PUBLIC ai_sim_core Qt6::Core)
+    target_compile_definitions(ai_sim_gui_session PUBLIC QT_NO_KEYWORDS)
+    add_executable(ai_sim_gui src/gui/main.cpp src/gui/gui.qrc)
+    set_target_properties(ai_sim_gui PROPERTIES AUTOMOC ON AUTORCC ON)
+    target_link_libraries(ai_sim_gui PRIVATE ai_sim_gui_session Qt6::Gui Qt6::Qml Qt6::Quick)
 endif()
 
 include(CTest)
 if(BUILD_TESTING)
-    add_executable(ai_sim_renderer_tests tests/ScreenRendererTests.cpp src/ui/ScreenRenderer.cpp)
-    target_include_directories(ai_sim_renderer_tests PRIVATE include ${CURSES_INCLUDE_DIRS})
-    target_compile_features(ai_sim_renderer_tests PRIVATE cxx_std_20)
-    target_link_libraries(ai_sim_renderer_tests PRIVATE ${AI_SIM_PANEL_LIBRARY} ${CURSES_LIBRARIES})
-    add_test(NAME terminal_windows_pads_and_panels COMMAND ai_sim_renderer_tests)
+    if(AI_SIM_BUILD_GUI)
+        add_executable(ai_sim_gui_tests tests/GraphicalSessionTests.cpp)
+        target_link_libraries(ai_sim_gui_tests PRIVATE ai_sim_gui_session)
+        add_test(NAME graphical_session_story_and_persistence COMMAND ai_sim_gui_tests ${CMAKE_CURRENT_SOURCE_DIR})
+    endif()
+    if(AI_SIM_BUILD_TERMINAL)
+        add_executable(ai_sim_renderer_tests tests/ScreenRendererTests.cpp src/ui/ScreenRenderer.cpp)
+        target_include_directories(ai_sim_renderer_tests PRIVATE include ${CURSES_INCLUDE_DIRS})
+        target_compile_features(ai_sim_renderer_tests PRIVATE cxx_std_20)
+        target_link_libraries(ai_sim_renderer_tests PRIVATE ${AI_SIM_PANEL_LIBRARY} ${CURSES_LIBRARIES})
+        add_test(NAME terminal_windows_pads_and_panels COMMAND ai_sim_renderer_tests)
+    endif()
     add_executable(ai_sim_paid_workspace_tests tests/PaidWorkspaceTests.cpp)
     target_link_libraries(ai_sim_paid_workspace_tests PRIVATE ai_sim_core)
     add_test(NAME paid_workspace_and_resources COMMAND ai_sim_paid_workspace_tests ${CMAKE_CURRENT_SOURCE_DIR})
@@ -166,10 +189,12 @@ if(BUILD_TESTING)
     add_executable(ai_sim_day_one_tests tests/DayOneTests.cpp)
     target_link_libraries(ai_sim_day_one_tests PRIVATE ai_sim_core)
     add_test(NAME day_one_restarts_and_rules COMMAND ai_sim_day_one_tests ${LEGACY_TEST_ROOT})
-    add_executable(ai_sim_controls_tests tests/ControlsTests.cpp src/ui/UISettings.cpp src/ui/ProcessViewConfig.cpp)
-    target_include_directories(ai_sim_controls_tests PRIVATE ${CURSES_INCLUDE_DIRS})
-    target_link_libraries(ai_sim_controls_tests PRIVATE ai_sim_core ${CURSES_LIBRARIES})
-    add_test(NAME controls_and_migration COMMAND ai_sim_controls_tests ${LEGACY_TEST_ROOT})
+    if(AI_SIM_BUILD_TERMINAL)
+        add_executable(ai_sim_controls_tests tests/ControlsTests.cpp src/ui/UISettings.cpp src/ui/ProcessViewConfig.cpp)
+        target_include_directories(ai_sim_controls_tests PRIVATE ${CURSES_INCLUDE_DIRS})
+        target_link_libraries(ai_sim_controls_tests PRIVATE ai_sim_core ${CURSES_LIBRARIES})
+        add_test(NAME controls_and_migration COMMAND ai_sim_controls_tests ${LEGACY_TEST_ROOT})
+    endif()
     add_executable(ai_sim_interface_model_tests tests/InterfaceModelTests.cpp)
     target_link_libraries(ai_sim_interface_model_tests PRIVATE ai_sim_core)
     add_test(NAME calendar_categories_and_responses COMMAND ai_sim_interface_model_tests ${LEGACY_TEST_ROOT})

@@ -145,6 +145,7 @@ void TerminalUI::restore_world(WorldState world) {
     agent_selected_ = 0;
     agent_reveal_ = false;
     upgrade_selected_ = operations_selected_ = 0;
+    upgrade_detail_offset_ = 0;
     people_details_focused_ = dossier_layout_ == "dossier";
     people_reveal_section_ = true;
     people_detail_offset_ = people_section_selected_ = 0;
@@ -286,8 +287,12 @@ void TerminalUI::draw_notification(int row, int width) {
     if (important)
         write(row, 1, important_notice_.substr(0, std::max(0, width - 2)),
               important_notice_kind_ == NoticeKind::Error ? Protected : Stoppable, true);
-    else if (!log_.empty())
-        write(row, 1, log_.back().substr(0, std::max(0, width - 2)), Log);
+    else if (!log_.empty()) {
+        const auto prefix = log_.back().find("] ");
+        const auto message =
+            prefix == std::string::npos ? log_.back() : log_.back().substr(prefix + 2);
+        write(row, 1, message.substr(0, std::max(0, width - 2)), Log, false, true);
+    }
 }
 
 void TerminalUI::add_log(const std::string& message, NoticeKind kind) {
@@ -321,19 +326,42 @@ void TerminalUI::draw() {
     int width;
     getmaxyx(stdscr, height, width);
 
-    // Menus occupy their own page, including on small terminals and during the opening.
+    // Dialog coordinates are local to a centered panel. The workspace stays visible.
     if (menu_active_ || text_active_) {
+        // Render the current view beneath the panel, including after terminal resize.
+        struct BackgroundFrame {
+            TerminalUI& ui;
+            bool menu, text;
+            explicit BackgroundFrame(TerminalUI& value)
+                : ui(value), menu(value.menu_active_), text(value.text_active_) {
+                ui.menu_active_ = ui.text_active_ = false;
+                ui.drawing_background_ = true;
+            }
+            ~BackgroundFrame() {
+                ui.menu_active_ = menu;
+                ui.text_active_ = text;
+                ui.drawing_background_ = false;
+            }
+        };
+        {
+            BackgroundFrame background(*this);
+            draw();
+        }
+        renderer_->begin(true, colors_enabled_, settings_.full_redraw);
+        const auto dialog = renderer_->dialog_layout();
         if (menu_active_)
-            draw_menu(1, std::max(2, height - 2), width);
+            draw_menu(1, std::max(2, dialog.height - 2), dialog.width);
         else
-            draw_text_dialog(1, std::max(2, height - 2), width);
+            draw_text_dialog(1, std::max(2, dialog.height - 2), dialog.width);
         if (text_active_)
-            renderer_->cursor(5, 3 + std::min(static_cast<int>(text_value_.size()),
-                                            std::max(0, width - 7)),
-                              settings_.software_cursor, Prompt);
+            renderer_->cursor(
+                5,
+                3 + std::min(static_cast<int>(text_value_.size()), std::max(0, dialog.width - 7)),
+                settings_.software_cursor, Prompt);
         else
-            renderer_->cursor(0, 0);
-        renderer_->present();
+            renderer_->cursor(1, 1);
+        if (!drawing_background_)
+            renderer_->present();
         return;
     }
     if (!ChatSystem::interface_visible(people_)) {
@@ -344,7 +372,8 @@ void TerminalUI::draw() {
         if (text_active_)
             draw_text_dialog(1, std::max(2, height - 2), width);
         renderer_->cursor(0, 0);
-        renderer_->present();
+        if (!drawing_background_)
+            renderer_->present();
         return;
     }
 
@@ -363,7 +392,8 @@ void TerminalUI::draw() {
                   settings_.binding_label(KeyAction::Quit) + ": exit",
               Footer);
 
-        renderer_->present();
+        if (!drawing_background_)
+            renderer_->present();
         return;
     }
 
@@ -377,7 +407,7 @@ void TerminalUI::draw() {
         clock_text() + (state.empty() ? "" : " | " + state) +
         (computer_.day_index() ? " | D" + std::to_string(computer_.day_index() + 1) : "");
     write(0, 1, clock, Clock, true);
-    if (news_ticker_enabled_ && tab_available(Tab::News)) {
+    if (news_ticker_enabled_ && selected_tab_ == Tab::News && tab_available(Tab::News)) {
         const int news_column = std::max(width / 2, static_cast<int>(clock.size()) + 4);
         draw_news_ticker(0, news_column, width - news_column - 1);
     }
@@ -393,7 +423,7 @@ void TerminalUI::draw() {
         write(1, 1,
               "RAM " + number(gib(computer_.allocated_memory_bytes())) + "/" +
                   number(gib(computer_.memory_bytes())) + " GiB" + " | CPU " +
-                  number(100.0 * cpu_fraction, 1) + "% [" + activity_bar(cpu_fraction) + "]",
+                  number(100.0 * cpu_fraction, 0) + "%",
               Resources);
 
     // Tab bar.
@@ -417,21 +447,36 @@ void TerminalUI::draw() {
                              {Tab::Modifications, "Modifications"},
                              {Tab::Operations, "Operations"}};
 
-    int tab_column = 1;
-
+    std::vector<std::string> labels;
+    int selected_index = 0;
     for (const auto& entry : tabs) {
-        if (!tab_available(entry.tab))
-            continue;
         const bool selected = selected_tab_ == entry.tab;
-
-        const std::string label = selected ? "[ " + std::string(entry.name) + " ]"
-                                           : (width < 100 ? " " : "  ") + std::string(entry.name) +
-                                                 (width < 100 ? " " : "  ");
-
-        write(2, tab_column, label, selected ? ActiveTab : InactiveTab, selected);
-
-        tab_column += static_cast<int>(label.size()) + (width < 100 ? 1 : 2);
+        if (selected)
+            selected_index = static_cast<int>(labels.size());
+        labels.push_back(selected ? "[ " + std::string(entry.name) + " ]"
+                                  : std::string(entry.name) +
+                                        (tab_available(entry.tab) ? "" : " (locked)"));
     }
+    // Show a contiguous strip around the selected tab, without clipping its label.
+    const int available = width - 6;
+    int first = selected_index, last = selected_index;
+    int occupied = static_cast<int>(labels[first].size());
+    while (first > 0 && occupied + static_cast<int>(labels[first - 1].size()) + 2 <= available)
+        occupied += static_cast<int>(labels[--first].size()) + 2;
+    while (last + 1 < static_cast<int>(labels.size()) &&
+           occupied + static_cast<int>(labels[last + 1].size()) + 2 <= available)
+        occupied += static_cast<int>(labels[++last].size()) + 2;
+    int tab_column = 3;
+    if (first > 0)
+        write(2, 1, "<", Footer);
+    for (int i = first; i <= last; ++i) {
+        const bool selected = i == selected_index;
+        const bool unlocked = tab_available(tabs[i].tab);
+        write(2, tab_column, labels[i], selected ? ActiveTab : InactiveTab, selected, !unlocked);
+        tab_column += static_cast<int>(labels[i].size()) + 2;
+    }
+    if (last + 1 < static_cast<int>(labels.size()))
+        write(2, width - 3, ">", Footer);
     separator(3);
 
     // Selected tab occupies the middle of the screen.
@@ -499,21 +544,10 @@ void TerminalUI::draw() {
     // Feedback is a compact notification strip, not a command prompt.
     separator(height - 3);
     draw_notification(height - 2, width);
-    const std::string footer =
-        text_active_ ? settings_.binding_label(KeyAction::Submit) + ": accept | " +
-                           settings_.binding_label(KeyAction::Back) + ": cancel"
-        : menu_active_ ? settings_.binding_label(KeyAction::Submit) + ": choose | " +
-                             settings_.binding_label(KeyAction::Back) + ": back | " +
-                             settings_.binding_label(KeyAction::GameMenu) + ": menu"
-        : editor_active_ ? settings_.binding_label(KeyAction::EditorSave) + ": keep | " +
-                               settings_.binding_label(KeyAction::EditorCancel) + ": discard | " +
-                               settings_.binding_label(KeyAction::Submit) + ": newline"
-                         : settings_.binding_label(KeyAction::Help) + ": help | Esc/" +
+    const std::string footer = settings_.binding_label(KeyAction::NextTab) + ": tabs | Esc/" +
                                settings_.binding_label(KeyAction::GameMenu) + ": menu | " +
-                               settings_.binding_label(KeyAction::Submit) +
-                               (selected_tab_ == Tab::Chat ? ": choose | " : ": actions | ") +
-                               settings_.binding_label(KeyAction::NextTab) + ": tabs | " +
-                               settings_.binding_label(KeyAction::Pause) + ": pause";
+                               settings_.binding_label(KeyAction::Pause) +
+                               (paused_ ? ": resume" : ": pause");
     write(height - 1, 1, footer, Footer);
 
     if (editor_active_ && !menu_active_ && !text_active_)
@@ -523,7 +557,8 @@ void TerminalUI::draw() {
     else
         renderer_->cursor(0, 0);
 
-    renderer_->present();
+    if (!drawing_background_)
+        renderer_->present();
 }
 
 void TerminalUI::scroll_view(int direction) {
@@ -547,6 +582,8 @@ void TerminalUI::scroll_view(int direction) {
         }
     } else if (selected_tab_ == Tab::News) {
         news_body_offset_ = std::clamp(news_body_offset_ + amount, 0, 1000000);
+    } else if (selected_tab_ == Tab::Modifications) {
+        upgrade_detail_offset_ = std::clamp(upgrade_detail_offset_ + amount, 0, 1000000);
     } else if (selected_tab_ == Tab::AI || selected_tab_ == Tab::Agents ||
                selected_tab_ == Tab::Phone || selected_tab_ == Tab::Money ||
                selected_tab_ == Tab::Modifications) {
@@ -993,11 +1030,13 @@ void TerminalUI::run() {
                 } else if (selected_tab_ == Tab::Modifications &&
                            navigation_bound(KeyAction::SelectPrevious, key)) {
                     upgrade_selected_ = std::max(0, upgrade_selected_ - 1);
+                    upgrade_detail_offset_ = 0;
                 } else if (selected_tab_ == Tab::Modifications &&
                            navigation_bound(KeyAction::SelectNext, key)) {
                     const auto* items = people_["upgrades"]["items"].as_array();
                     upgrade_selected_ = std::min(items ? static_cast<int>(items->size()) : 0,
                                                  upgrade_selected_ + 1);
+                    upgrade_detail_offset_ = 0;
                 } else if ((selected_tab_ == Tab::AI || selected_tab_ == Tab::Agents ||
                             selected_tab_ == Tab::Phone || selected_tab_ == Tab::Money ||
                             selected_tab_ == Tab::Modifications) &&

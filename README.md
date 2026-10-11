@@ -184,3 +184,7 @@ research time. Up/Down selects upgrades; Enter opens controls for that selection
 The terminal uses ncurses subwindows, bounded scroll pads, and panels for menus
 and dialogs. See [terminal rendering](docs/terminal-ui.md) for ownership and
 composition details.
+
+A separate [Qt/QML workstation prototype](docs/graphical-ui.md) provides mouse-driven
+Messages and Resources views backed by the existing game simulation. On Linux/WSL
+with Qt 6 installed, launch it with `bash scripts/build-gui.sh run --new`.

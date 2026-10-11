@@ -29,18 +29,18 @@ text = "white"
 protected = "red"
 stoppable = "green"
 player = "orange"
-heading = "cyan"
+heading = "white"
 
-clock = "cyan"
+clock = "white"
 resources = "white"
 
 active_tab = "orange"
-inactive_tab = "white"
+inactive_tab = "gray"
 
-border = "cyan"
+border = "gray"
 log = "white"
 prompt = "orange"
-footer = "cyan"
+footer = "gray"
 
 [backgrounds]
 # Optional background overrides for any color role above.

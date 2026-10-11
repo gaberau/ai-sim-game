@@ -71,14 +71,17 @@ void TerminalUI::show_message(const std::string& title, const std::string& body)
     });
 }
 void TerminalUI::draw_menu(int top, int bottom, int width) {
-    write(top, 1, fit(menu_title_, width - 2), Heading, true);
+    write(top, 1, fit(menu_title_, width - 13), Heading, true);
+    if (!menu_actions_.empty())
+        write(top, width - 10, std::to_string(menu_selected_ + 1) + " / " +
+                                  std::to_string(menu_actions_.size()), Footer);
     write(top + 1, 1,
-          "Select with " + settings_.binding_label(KeyAction::SelectPrevious) + "/" +
-              settings_.binding_label(KeyAction::SelectNext) + "; " +
-              settings_.binding_label(KeyAction::Submit) + ": choose; " +
+          settings_.binding_label(KeyAction::SelectPrevious) + "/" +
+              settings_.binding_label(KeyAction::SelectNext) + ": select | " +
+              settings_.binding_label(KeyAction::Submit) + ": choose | " +
               settings_.binding_label(KeyAction::Back) + ": back",
           Footer);
-    const int visible = std::max(1, bottom - top - 4);
+    const int visible = std::max(1, bottom - top - 5);
     if (menu_selected_ < menu_offset_)
         menu_offset_ = menu_selected_;
     if (menu_selected_ >= menu_offset_ + visible)
@@ -93,13 +96,22 @@ void TerminalUI::draw_menu(int top, int bottom, int width) {
                   width - 4),
               selected ? ActiveTab : Plain, selected, disabled);
     }
-    draw_notification(bottom - 1, width);
+    draw_notification(bottom - 2, width);
     if (!menu_actions_.empty()) {
         const auto& selected = menu_actions_[menu_selected_];
         const auto hint = !selected.disabled_reason.empty() ? selected.disabled_reason
                           : !selected.detail.empty()        ? selected.detail
-                                                            : "Actions apply to the selected item.";
-        write(bottom, 1, fit(hint, width - 2), Footer);
+                                                            : "";
+        const int hint_width = std::max(1, width - 2);
+        auto split = hint.size() > static_cast<std::size_t>(hint_width)
+                         ? hint.rfind(' ', hint_width)
+                         : std::string::npos;
+        if (split == std::string::npos)
+            split = std::min(hint.size(), static_cast<std::size_t>(hint_width));
+        write(bottom - 1, 1, hint.substr(0, split), Footer);
+        if (split < hint.size())
+            write(bottom, 1, fit(hint.substr(split + (hint[split] == ' ' ? 1 : 0)), hint_width),
+                  Footer);
     }
 }
 void TerminalUI::draw_text_dialog(int top, int bottom, int width) {

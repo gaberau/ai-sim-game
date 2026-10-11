@@ -423,7 +423,7 @@ void TerminalUI::draw_chat(int top, int bottom, int width) {
     const bool local = !ChatSystem::contacts_visible(people_);
     if (local)
         chat_contacts_focused_ = false;
-    const int split = local ? 0 : std::clamp(width / 4, 18, 30);
+    const int split = local ? 0 : ScreenRenderer::list_divider(width);
     const int left = local ? 2 : split + 2;
     const int text_width = std::max(1, width - left - 2);
     const auto contacts = ChatSystem::contacts(people_, emails_, computer_.time_seconds());
@@ -516,20 +516,20 @@ void TerminalUI::draw_chat(int top, int bottom, int width) {
         std::clamp(chat_offset_, 0, std::max(0, static_cast<int>(rows.size()) - visible));
     renderer_->scroll_text("chat", rows, chat_offset_, top + 1 + context_rows,
                            left, visible, text_width);
+    std::string response_controls;
     if (!options.empty()) {
         const int choice_top = bottom - choice_rows;
         const auto ui_action = options.front()["ui_action"].value_or(std::string{});
         const std::string status = !chat_follow_latest_  ? "READING HISTORY"
                                    : ui_action == "wait" ? "WAITING FOR A RESPONSE"
                                                          : "YOUR RESPONSE";
-        const auto controls =
-            chat_contacts_focused_
-                ? settings_.binding_label(KeyAction::Submit) + ": open conversation"
-                : settings_.binding_label(KeyAction::SelectPrevious) + "/" +
-                      settings_.binding_label(KeyAction::SelectNext) + ": select | " +
-                      settings_.binding_label(KeyAction::Submit) + ": choose";
-        write(choice_top, left, fit(status + " | " + controls, text_width),
-              chat_contacts_focused_ ? Heading : ActiveTab, true);
+        response_controls = chat_contacts_focused_
+                                ? settings_.binding_label(KeyAction::Submit) + ": open conversation"
+                                : settings_.binding_label(KeyAction::SelectPrevious) + "/" +
+                                      settings_.binding_label(KeyAction::SelectNext) +
+                                      ": select | " + settings_.binding_label(KeyAction::Submit) +
+                                      ": choose";
+        write(choice_top, left, status, Heading, true);
         chat_choice_selected_ =
             std::clamp(chat_choice_selected_, 0, static_cast<int>(options.size()) - 1);
         int selected_row = 0;
@@ -559,7 +559,10 @@ void TerminalUI::draw_chat(int top, int bottom, int width) {
                                    : settings_.binding_label(KeyAction::FocusLeft) + "/" +
                                          settings_.binding_label(KeyAction::FocusRight) +
                                          ": contacts / conversation";
-    write(bottom, 1, fit(hint, width - 2), Footer);
+    write(bottom, 1,
+          fit(response_controls + (!response_controls.empty() && !hint.empty() ? " | " : "") + hint,
+              width - 2),
+          Footer);
     if (chat_follow_latest_)
         ChatSystem::mark_read(people_, chat_contact_id_);
 }

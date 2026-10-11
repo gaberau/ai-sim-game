@@ -57,6 +57,8 @@ class TerminalUI {
 
   private:
     ScreenRenderer* renderer_ = nullptr;
+    bool drawing_background_ = false;
+    int upgrade_detail_offset_ = 0;
     enum Color {
         Plain = 0,
         Protected = 1,

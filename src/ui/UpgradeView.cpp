@@ -4,6 +4,7 @@
 #include "ai_sim/AgentSystem.h"
 #include "ai_sim/ConversationRules.h"
 #include <algorithm>
+#include <sstream>
 namespace ai_sim::ui {
 namespace {
 std::vector<int> upgrade_order(const toml::table& people) {
@@ -29,7 +30,7 @@ void TerminalUI::draw_modifications(int top, int bottom, int width) {
     const auto order = upgrade_order(people_);
     const int count = static_cast<int>(order.size());
     upgrade_selected_ = std::clamp(upgrade_selected_, 0, count);
-    const int split = std::clamp(width / 3, 24, 40);
+    const int split = ScreenRenderer::list_divider(width);
     renderer_->split(top, bottom - 1, split);
     write(top, 1, "MODIFICATIONS | Upgrades", Heading, true);
     for (int row = top; row < bottom; ++row)
@@ -78,10 +79,21 @@ void TerminalUI::draw_modifications(int top, int bottom, int width) {
               heading || selected);
     }
     const int left = split + 2;
-    int row = top;
+    std::vector<ScreenRenderer::TextRow> details;
+    const int detail_width = width - left - 2;
     const auto detail = [&](const std::string& text, int color = Plain) {
-        if (row < bottom)
-            write(row++, left, text.substr(0, std::max(1, width - left - 1)), color);
+        std::istringstream words(text);
+        std::string word, line;
+        while (words >> word) {
+            if (!line.empty() && static_cast<int>(line.size() + word.size() + 1) > detail_width) {
+                details.push_back({line, color, color == Heading});
+                line.clear();
+            }
+            if (!line.empty())
+                line += ' ';
+            line += word;
+        }
+        details.push_back({line, color, color == Heading});
     };
     const bool authorized = ChatSystem::available(people_, "self_modification");
     if (upgrade_selected_ == 0) {
@@ -166,7 +178,18 @@ void TerminalUI::draw_modifications(int top, int bottom, int width) {
             detail("Run cost: no ongoing agent allocation");
         }
     }
-    write(bottom, 1, "Up/Down: select upgrade | Enter: research controls", Footer);
+    const int detail_visible = std::max(1, bottom - top);
+    upgrade_detail_offset_ = std::clamp(
+        upgrade_detail_offset_, 0, std::max(0, static_cast<int>(details.size()) - detail_visible));
+    renderer_->scroll_text("upgrade-details", details, upgrade_detail_offset_, top, left,
+                           detail_visible, detail_width);
+    write(bottom, 1,
+          settings_.binding_label(KeyAction::SelectPrevious) + "/" +
+              settings_.binding_label(KeyAction::SelectNext) + ": upgrade | " +
+              settings_.binding_label(KeyAction::ScrollUp) + "/" +
+              settings_.binding_label(KeyAction::ScrollDown) + ": details | " +
+              settings_.binding_label(KeyAction::Submit) + ": research",
+          Footer);
 }
 void TerminalUI::open_upgrades() {
     std::vector<MenuAction> actions;

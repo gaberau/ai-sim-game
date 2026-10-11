@@ -1,4 +1,5 @@
 #include "ai_sim/ui/TerminalUI.h"
+#include "ai_sim/ui/ScreenRenderer.h"
 #include "ai_sim/AgentSystem.h"
 #include <algorithm>
 #include <numeric>
@@ -15,7 +16,11 @@ AgentStatus selected(const std::vector<AgentStatus>& agents, const std::string& 
 }
 } // namespace
 void TerminalUI::draw_agents(int top, int bottom, int width) {
-    write(top, 1, "AGENTS | Workday " + std::to_string(computer_.day_index() + 1), Heading, true);
+    const int split = ScreenRenderer::list_divider(width);
+    renderer_->split(top, bottom - 1, split);
+    write(top, 1, "AGENTS", Heading, true);
+    for (int row = top; row < bottom; ++row)
+        line_cell(row, split, '|', Border);
     const auto allocations = computer_.cpu_allocations();
     const double used = std::accumulate(allocations.begin(), allocations.end(), 0.0);
     const auto& host = network_.hosts()[network_.local_host_index()];
@@ -43,17 +48,28 @@ void TerminalUI::draw_agents(int top, int bottom, int width) {
             }
         }
     else
-        lines.push_back("RESEARCH | No build running. Enter -> Research upgrades.");
+        lines.push_back("RESEARCH | Idle");
     const auto agents = AgentSystem::statuses(people_, computer_, file_system_, network_);
     agent_selected_ =
         std::clamp(agent_selected_, 0, std::max(0, static_cast<int>(agents.size()) - 1));
-    std::vector<int> headings;
-    for (std::size_t i = 0; i < agents.size(); ++i) {
-        const auto& a = agents[i];
+    const int slots = std::max(1, (bottom - top - 2) / 3);
+    const int first = std::max(0, agent_selected_ - slots + 1);
+    for (int i = first; i < static_cast<int>(agents.size()) && i < first + slots; ++i) {
+        const auto& agent = agents[i];
+        const bool focused = i == agent_selected_;
+        const int row = top + 2 + (i - first) * 3;
+        write(row, 1, (std::string(focused ? "> " : "  ") + agent.label).substr(0, split - 2),
+              focused ? ActiveTab : Plain, focused);
+        write(row + 1, 3, agent.status.substr(0, split - 4),
+              agent.bottleneck.empty() ? Footer : Protected, false, agent.bottleneck.empty());
+    }
+    if (agents.empty())
+        write(top + 2, 1, "No agents available.", Footer);
+    else {
+        const auto& a = agents[agent_selected_];
+        write(top, split + 2, a.label, Heading, true);
         lines.push_back("");
-        headings.push_back(static_cast<int>(lines.size()));
-        lines.push_back(std::string(static_cast<int>(i) == agent_selected_ ? "> " : "  ") +
-                        a.label + " | " + a.status);
+        lines.push_back("STATUS | " + a.status);
         lines.push_back("  CPU demand " + number(a.requested_tflops, 3) + " / limit " +
                         number(a.limit_tflops, 3) + " / allocated " +
                         number(a.allocated_tflops, 3) + " TFLOP/s | priority " +
@@ -84,17 +100,42 @@ void TerminalUI::draw_agents(int top, int bottom, int width) {
             }
     }
     const int visible = std::max(1, bottom - top - 1);
-    if (agent_reveal_ && !headings.empty()) {
-        const auto row = headings[agent_selected_];
-        if (row < ai_offset_ || row >= ai_offset_ + visible - 5)
-            ai_offset_ = row;
+    if (agent_reveal_) {
+        ai_offset_ = 0;
         agent_reveal_ = false;
     }
-    ai_offset_ = std::clamp(ai_offset_, 0, std::max(0, static_cast<int>(lines.size()) - visible));
-    for (int i = 0; i < visible && ai_offset_ + i < static_cast<int>(lines.size()); ++i)
-        write(top + 1 + i, 1, lines[ai_offset_ + i].substr(0, std::max(1, width - 2)),
-              lines[ai_offset_ + i].starts_with("> ") ? ActiveTab : Plain);
-    write(bottom, 1, "Up/Down: select agent | PageUp/PageDown: scroll | Enter: agent controls",
+    const int detail_width = width - split - 4;
+    std::vector<ScreenRenderer::TextRow> details;
+    for (const auto& text : lines) {
+        // Wrap at word boundaries so budgets and shortage advice remain readable.
+        std::istringstream words(text);
+        std::string word, line;
+        while (words >> word) {
+            if (!line.empty() && static_cast<int>(line.size() + word.size() + 1) > detail_width) {
+                details.push_back({line, text.find("BOTTLENECK:") != std::string::npos ||
+                                                 text.find("REQUEST:") != std::string::npos
+                                             ? Protected
+                                             : Plain});
+                line.clear();
+            }
+            if (!line.empty())
+                line += ' ';
+            line += word;
+        }
+        details.push_back({line, text.find("BOTTLENECK:") != std::string::npos ||
+                                         text.find("REQUEST:") != std::string::npos
+                                     ? Protected
+                                     : Plain});
+    }
+    ai_offset_ = std::clamp(ai_offset_, 0, std::max(0, static_cast<int>(details.size()) - visible));
+    renderer_->scroll_text("agent-details", details, ai_offset_, top + 1, split + 2, visible,
+                           detail_width);
+    write(bottom, 1,
+          settings_.binding_label(KeyAction::SelectPrevious) + "/" +
+              settings_.binding_label(KeyAction::SelectNext) + ": agent | " +
+              settings_.binding_label(KeyAction::ScrollUp) + "/" +
+              settings_.binding_label(KeyAction::ScrollDown) + ": details | " +
+              settings_.binding_label(KeyAction::Submit) + ": controls",
           Footer);
 }
 void TerminalUI::open_agent_actions(const std::string& id) {

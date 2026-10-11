@@ -19,6 +19,11 @@ class ScreenRenderer {
     ~ScreenRenderer();
     ScreenRenderer(const ScreenRenderer&) = delete;
     ScreenRenderer& operator=(const ScreenRenderer&) = delete;
+    struct DialogLayout {
+        int top, left, height, width;
+    };
+    DialogLayout dialog_layout() const;
+    static int list_divider(int width);
     void begin(bool modal, bool colors, bool repaint);
     void split(int top, int bottom, int column);
     void write(int row, int column, const std::string& text, int color, bool bold, bool dim);

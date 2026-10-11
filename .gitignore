@@ -11,3 +11,5 @@
 # Python test caches
 __pycache__/
 *.py[cod]
+
+/build-gui/

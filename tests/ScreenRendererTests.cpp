@@ -48,7 +48,11 @@ int main() {
         renderer.begin(true, false, false);
         renderer.write(6, 2, "MENU", 0, false, false);
         renderer.present();
-        check(cell(6, 2) == 'M' && cell(15, 2) == ' ', "Modal panel did not cover pad");
+        const auto dialog = renderer.dialog_layout();
+        check(dialog.top > 0 && dialog.left > 0, "Dialog was not centered inside workspace");
+        check(cell(dialog.top + 6, dialog.left + 2) == 'M', "Modal panel missing");
+        check(cell(6, 2) == 'R', "Modal erased uncovered workspace");
+        check(cell(dialog.top, dialog.left) != ' ', "Dialog border missing");
         renderer.begin(false, false, false);
         renderer.scroll_text("large-file", rows, 9999, 6, 2, 10, 40);
         renderer.present();
@@ -63,11 +67,18 @@ int main() {
             check(cell(4, 5) == '5' && cell(height - 1, 1) == 'R',
                   "Resize lost viewport or footer");
         }
+        resizeterm(24, 80);
+        renderer.begin(false, false, false);
+        renderer.write(2, 3, "TABS", 0, false, false);
         renderer.begin(true, false, false);
+        check(renderer.dialog_layout().top >= 4, "Dialog covers the tab bar at minimum size");
         renderer.write(5, 3, "TEXT", 0, false, false);
         renderer.cursor(5, 7, true);
         renderer.present();
-        check((mvwinch(curscr, 5, 7) & A_REVERSE) != 0, "Modal text cursor missing");
+        const auto text_dialog = renderer.dialog_layout();
+        check((mvwinch(curscr, text_dialog.top + 5, text_dialog.left + 7) & A_REVERSE) != 0,
+              "Modal text cursor missing");
+        check(cell(2, 3) == 'T', "Minimum-size dialog erased persistent tabs");
     } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';
         result = 1;

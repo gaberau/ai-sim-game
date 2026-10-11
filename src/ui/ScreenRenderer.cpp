@@ -82,7 +82,11 @@ struct ScreenRenderer::Impl {
         height = h;
         width = w;
         root.own(newwin(h, w, 0, 0), true);
-        overlay.own(newwin(h, w, 0, 0), true);
+        const int dialog_height = std::max(1, std::min(h - (h >= 24 ? 8 : 4), 22));
+        const int dialog_width = std::max(1, std::min(w - 4, 92));
+        overlay.own(
+            newwin(dialog_height, dialog_width, (h - dialog_height) / 2, (w - dialog_width) / 2),
+            true);
         keypad(root.window, TRUE);
         keypad(overlay.window, TRUE);
         if (h >= 8) {
@@ -95,6 +99,15 @@ struct ScreenRenderer::Impl {
 ScreenRenderer::ScreenRenderer() : impl_(std::make_unique<Impl>()) {
 }
 ScreenRenderer::~ScreenRenderer() = default;
+ScreenRenderer::DialogLayout ScreenRenderer::dialog_layout() const {
+    int top, left, height, width;
+    getbegyx(impl_->overlay.window, top, left);
+    getmaxyx(impl_->overlay.window, height, width);
+    return {top, left, height, width};
+}
+int ScreenRenderer::list_divider(int width) {
+    return std::clamp(width / 3, 26, 36);
+}
 void ScreenRenderer::begin(bool modal, bool colors, bool repaint) {
     auto& s = *impl_;
     int h, w;
@@ -111,6 +124,10 @@ void ScreenRenderer::begin(bool modal, bool colors, bool repaint) {
         hide_panel(s.overlay.panel);
     wbkgd(s.active(), s.attributes(0));
     werase(s.active());
+    if (modal) {
+        wattrset(s.active(), s.attributes(9));
+        box(s.active(), 0, 0);
+    }
     if (repaint)
         redrawwin(s.active());
     s.cursor_row = s.cursor_column = 0;
@@ -134,19 +151,33 @@ void ScreenRenderer::split(int top, int bottom, int column) {
 void ScreenRenderer::write(int row, int column, const std::string& text, int color, bool bold,
                            bool dim) {
     auto& s = *impl_;
+    if (s.modal) {
+        const auto layout = dialog_layout();
+        if (row < 1 || column < 1 || row >= layout.height - 1 || column >= layout.width - 1)
+            return;
+        row += layout.top;
+        column += layout.left;
+    }
     if (row < 0 || column < 0 || row >= s.height || column >= s.width - 1)
         return;
     WINDOW* target = s.at(row, column);
-    int y, x, h, w;
+    int y, x;
     getbegyx(target, y, x);
-    getmaxyx(target, h, w);
-    const int count = std::min(w - (column - x), s.width - column - 1);
+    const int w = getmaxx(target);
+    const int count = std::min(w - (column - x) - (s.modal ? 1 : 0), s.width - column - 1);
     wattrset(target, s.attributes(color, bold, dim));
     mvwaddnstr(target, row - y, column - x, sanitized(text).c_str(), count);
     wsyncup(target);
 }
 void ScreenRenderer::cell(int row, int column, char symbol, int color) {
     auto& s = *impl_;
+    if (s.modal) {
+        const auto layout = dialog_layout();
+        if (row < 1 || column < 1 || row >= layout.height - 1 || column >= layout.width - 1)
+            return;
+        row += layout.top;
+        column += layout.left;
+    }
     if (row < 0 || column < 0 || row >= s.height || column >= s.width)
         return;
     WINDOW* target = s.at(row, column);
@@ -162,6 +193,15 @@ void ScreenRenderer::cell(int row, int column, char symbol, int color) {
 void ScreenRenderer::scroll_text(const std::string& id, const std::vector<TextRow>& rows,
                                  int offset, int top, int left, int height, int width) {
     auto& s = *impl_;
+    if (s.modal) {
+        const auto layout = dialog_layout();
+        height = std::min(height, layout.height - top - 1);
+        width = std::min(width, layout.width - left - 1);
+        if (top < 1 || left < 1)
+            return;
+        top += layout.top;
+        left += layout.left;
+    }
     height = std::min(height, s.height - top);
     width = std::min(width, s.width - left - 1);
     if (top < 0 || left < 0 || height <= 0 || width <= 0)
@@ -188,10 +228,16 @@ void ScreenRenderer::scroll_text(const std::string& id, const std::vector<TextRo
 }
 void ScreenRenderer::cursor(int row, int column, bool highlight, int color) {
     auto& s = *impl_;
+    if (s.modal) {
+        const auto layout = dialog_layout();
+        row = layout.top + std::clamp(row, 1, std::max(1, layout.height - 2));
+        column = layout.left + std::clamp(column, 1, std::max(1, layout.width - 2));
+    }
     s.cursor_row = std::clamp(row, 0, s.height - 1);
     s.cursor_column = std::clamp(column, 0, s.width - 1);
     if (highlight)
-        mvwchgat(s.active(), s.cursor_row, s.cursor_column, 1, A_REVERSE,
+        mvwchgat(s.active(), s.cursor_row - (s.modal ? dialog_layout().top : 0),
+                 s.cursor_column - (s.modal ? dialog_layout().left : 0), 1, A_REVERSE,
                  s.colors ? static_cast<short>(color + 1) : 0, nullptr);
 }
 void ScreenRenderer::present() {

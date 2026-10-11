@@ -233,7 +233,7 @@ void TerminalUI::draw_files(int top, int bottom, int width) {
     if (!file_query_.empty())
         filters += "| Search: " + file_query_;
     write(top + 2, 1, fit(filters, width - 2), Footer);
-    const int body = top + 4, divider = std::clamp(width / 3, 26, 42), right = divider + 2;
+    const int body = top + 4, divider = ScreenRenderer::list_divider(width), right = divider + 2;
     const int content_width = std::max(1, width - right - 2);
     renderer_->split(body, bottom - 1, divider);
     for (int row = body; row < bottom; ++row)
