@@ -15,15 +15,15 @@ update, so resizing an open menu keeps the current view visible.
 Messages, files, upgrades, and agents share the same list-column sizing. Agents
 show selected-agent details instead of a long dashboard of every agent. Upgrade
 and agent details wrap and scroll independently of selection. The persistent
-tab strip shows locked tabs dimmed and keeps the selected tab visible when the
-whole strip cannot fit. Tab navigation continues to skip locked tabs.
+tab strip hides locked tabs and keeps the selected tab visible when the whole
+strip cannot fit. Activity is hidden; resource details unlock with process access.
 
 The header shows the clock and a short resource summary; the news ticker appears
 on the news view. The footer separates contextual actions from the short global
 navigation hint. The default palette uses neutral text and borders, reserving
 strong colors for selection and warnings; saved color settings remain editable.
 
-Chat history, activity history, file previews, and editor drafts use bounded
+Chat history, file previews, and editor drafts use bounded
 pads. Each pad holds the visible slice, so ncurses allocation stays proportional
 to terminal size rather than document length. The view still owns its offset.
 Pads copy into the owning panel's buffer before composition; this keeps cursor

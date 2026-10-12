@@ -1,4 +1,0 @@
-<RCC><qresource prefix="/gui"><file>Main.qml</file>
-        <file>Workspace.qml</file>
-        <file>ConnectionMap.qml</file>
-        <file>SettingsDialog.qml</file><file>SaveDialog.qml</file></qresource></RCC>

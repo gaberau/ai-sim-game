@@ -44,6 +44,8 @@ std::string fit(const std::string& text, int width) {
 }
 } // namespace
 bool TerminalUI::tab_available(Tab tab) const {
+    if (tab == Tab::Activity)
+        return false;
     if (tab == Tab::Modifications)
         return ChatSystem::interface_visible(people_) && ChatSystem::connected(people_) &&
                people_["upgrades"].is_table() &&
@@ -514,8 +516,8 @@ void TerminalUI::draw_chat(int top, int bottom, int width) {
         chat_offset_ = selected_row;
     chat_offset_ =
         std::clamp(chat_offset_, 0, std::max(0, static_cast<int>(rows.size()) - visible));
-    renderer_->scroll_text("chat", rows, chat_offset_, top + 1 + context_rows,
-                           left, visible, text_width);
+    renderer_->scroll_text("chat", rows, chat_offset_, top + 1 + context_rows, left, visible,
+                           text_width);
     std::string response_controls;
     if (!options.empty()) {
         const int choice_top = bottom - choice_rows;

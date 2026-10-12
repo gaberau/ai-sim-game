@@ -450,12 +450,13 @@ void TerminalUI::draw() {
     std::vector<std::string> labels;
     int selected_index = 0;
     for (const auto& entry : tabs) {
+        if (!tab_available(entry.tab))
+            continue;
         const bool selected = selected_tab_ == entry.tab;
         if (selected)
             selected_index = static_cast<int>(labels.size());
         labels.push_back(selected ? "[ " + std::string(entry.name) + " ]"
-                                  : std::string(entry.name) +
-                                        (tab_available(entry.tab) ? "" : " (locked)"));
+                                  : std::string(entry.name));
     }
     // Show a contiguous strip around the selected tab, without clipping its label.
     const int available = width - 6;
@@ -471,8 +472,7 @@ void TerminalUI::draw() {
         write(2, 1, "<", Footer);
     for (int i = first; i <= last; ++i) {
         const bool selected = i == selected_index;
-        const bool unlocked = tab_available(tabs[i].tab);
-        write(2, tab_column, labels[i], selected ? ActiveTab : InactiveTab, selected, !unlocked);
+        write(2, tab_column, labels[i], selected ? ActiveTab : InactiveTab, selected);
         tab_column += static_cast<int>(labels[i].size()) + 2;
     }
     if (last + 1 < static_cast<int>(labels.size()))
@@ -909,7 +909,9 @@ void TerminalUI::run() {
     renderer_ = &renderer;
     struct Binding {
         ScreenRenderer*& pointer;
-        ~Binding() { pointer = nullptr; }
+        ~Binding() {
+            pointer = nullptr;
+        }
     } binding{renderer_};
     apply_settings();
 

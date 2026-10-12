@@ -1,40 +1,37 @@
 # AI Sim
 
-C++20/Qt simulation for Ubuntu/WSL, with an optional ncurses frontend. You are an AI running on Mark's workstation.
+C++20/ncurses simulation for Ubuntu/WSL. You are an AI running on Mark's workstation.
 The playable story follows `data/conversations/design/ai-game-current.drawio`.
 
 ## Build and launch
 
-On Ubuntu 24.04+ / WSL, install dependencies once:
+Install dependencies in Ubuntu/WSL:
 
 ```bash
 sudo apt update
-sudo apt install build-essential cmake git python3 qt6-base-dev qt6-declarative-dev \
-  qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-layouts \
-  qml6-module-qtqml-workerscript qml6-module-qtquick-window qml6-module-qtquick-templates
-bash "Development Tools/scripts/build-gui.sh" run
+sudo apt install build-essential cmake git libncurses-dev python3
+bash "Development Tools/scripts/build-and-run.sh" build
+bash "Development Tools/scripts/build-and-run.sh" run
 ```
 
-On Windows, **Launch-AI-Sim.bat** now opens the Qt workstation through WSLg.
-It builds automatically and resumes the GUI autosave. WezTerm is needed only for
-the optional terminal interface (`& "Development Tools/scripts/launch.ps1" -ProjectRoot PATH -Terminal`).
-Qt 6.4 or newer is required. See [Qt setup and controls](<Development Tools/docs/graphical-ui.md>).
+On Windows, **Launch-AI-Sim.bat** builds the game in WSL and opens it in WezTerm.
+Install WezTerm or set `AI_SIM_WEZTERM` to its executable path. Startup errors stay
+visible in the terminal. Shell scripts retain Linux line endings through Git.
 
-CMake builds Qt by default; build/run manually from the repository root:
+For a manual build from the repository root:
 
 ```bash
-cmake -S . -B build-gui
-cmake --build build-gui --target ai_sim_gui -j2
-./build-gui/ai_sim_gui
+cmake -S . -B build
+cmake --build build -j2
+./build/ai_sim
 ```
 
-The ncurses build remains available with `AI_SIM_BUILD_GUI=OFF` and
-`AI_SIM_BUILD_TERMINAL=ON`, or through `Development Tools/scripts/build-and-run.sh`.
-CMake fetches toml++ v3.4.0 at a pinned commit. Build directories are ignored.
+CMake fetches toml++ v3.4.0 at a pinned commit. Ncurses and its panel library are
+the only interface dependencies. Build outputs and saves are ignored by Git.
 
 ## Repository layout
 
-- `Source/`: C++ implementations and Qt/QML screens; `Source/Systems/` contains gameplay systems.
+- `Source/`: C++ implementations and terminal screens; `Source/Systems/` contains gameplay systems.
 - `data/include/`: C++ headers consumed by the compiler.
 - `data/`: authored TOML content, `data/config/` preferences, and local `data/saves/` progress.
 - `Development Tools/`: build/launch scripts, tests, converters, and documentation.
@@ -51,34 +48,33 @@ career-goal inference about Mark. The opening includes restart-dependent dialogu
 Only those conversations are active; older office jobs, delegation offers,
 source-version discussions, complaint dialogue and review follow-ups are retired.
 
-In Qt, select contacts and scripted responses with the mouse. New messages preserve
-your selected contact; SYSTEM remarks remain hidden. Scroll the workspace strip
-or use Ctrl+Tab / Ctrl+Shift+Tab to switch unlocked views. Esc/F1 opens the shared
-menu; F2 pauses time and Ctrl+S saves. Time advances at 5x by default and stops
-while menus or editors are open.
+Use arrows and Enter to select scripted replies. Tab switches available views;
+Q/E switches focus between contacts and conversations. Esc/F1 opens the shared
+menu, F2 pauses/resumes, and time advances at 5x by default. Incoming messages
+preserve your selected contact. SYSTEM remarks remain hidden from chat.
 
-The menu provides settings, named save/load checkpoints, waiting, a new game,
-and the next workday. Modifications and money tools also have menu shortcuts.
-Keybindings, font size, and colors are editable there and in TOML. GUI saves stay
-in `data/saves/gui-prototype` to preserve existing terminal saves and earlier Qt progress.
-You can select another save folder with `--save-directory PATH`.
+Tabs appear only when unlocked. Activity is hidden, and CPU/RAM details remain
+locked until process access is earned. The menu provides settings, save/load,
+waiting, restarting and the next workday. Keybindings and colors live in
+`data/config/`; player progress lives in `data/saves/`.
 
-The Files and Email workspaces provide editors, document attachments and replies.
-Agents expose deployment, pause/stop, resource budgets, repair and shortages.
-Dossiers and Network have selectable maps with solid connections, legends,
-hover details, pan/zoom, and a readable detail panel. Stock trading lives in the
-Web browser, including portfolio, watchlist, price charts and limit orders.
-Infrastructure is the browser's second bookmark. Operations handles scheduling,
-remote compute, independent hosting, backups and recovery. Existing story gates,
-trust costs, fees, permissions and TOML rules apply to both interfaces.
+The original desktop saves remain preserved in their local save directory.
+On this checkout, its autosave has also been copied to the named terminal slot
+`desktop-progress`, without replacing the terminal autosave. Select **Load game**
+in the menu to use it. To import that progress on another checkout, copy its
+`data/saves/gui-prototype/autosave` folder to `data/saves/desktop-progress` first;
+do not overwrite an existing named slot. The snapshots use the shared game format.
 
-[Terminal controls and rendering](<Development Tools/docs/terminal-ui.md>) remain available for the
-optional ncurses frontend.
+Before pulling the restructure repair on a checkout that still tracks saves,
+back up `data/saves` outside the repository. Restore that backup after pulling
+if Git removed formerly tracked files. Future saves remain local and ignored.
+
+[Terminal rendering and controls](<Development Tools/docs/terminal-ui.md>) describes
+the window, pad and menu layout.
 
 ## Development checks
 
 ```bash
-bash "Development Tools/scripts/build-gui.sh" test
 AI_SIM_BUILD_DIR=build bash "Development Tools/scripts/build-and-run.sh" test
 ```
 
@@ -100,7 +96,7 @@ Current-story tests check new games and old-save retirement. Historical backend
 and draw.io converter tests use `Development Tools/tests/fixtures/legacy-game`, never the playable
 scenario. These retain coverage for permissions, work queues, delegation and saves.
 
-For the optional ncurses frontend, press **Escape** or **F1** to open the game menu. Choose **Settings**
+In the ncurses frontend, press **Escape** or **F1** to open the game menu. Choose **Settings**
 to edit preferences, or **Help** for the current screen. Escape goes back within settings
 and other menus. Settings can edit keybindings,
 foreground/background colors, interface and map options, and process-view options.
@@ -174,8 +170,7 @@ unavailable. See [data/upgrades/README.md](data/upgrades/README.md).
 The **Agents** dashboard provides deployment, pause/resume/stop, CPU limits, RAM
 budgets, priorities and installation repair. Resource shortages create saved
 requests with cooldowns and recovery notifications. The **Dossiers** view now
-shows observed profiles, evidence, search and a selectable connection map. The
-optional terminal frontend also supports map/split/full-width layouts. See [the agent guide](data/agents/README.md) and
+shows observed profiles, evidence, search and a selectable connection map. The terminal frontend supports map/split/full-width layouts. See [the agent guide](data/agents/README.md) and
 [the dossier/workshop guide](data/upgrades/README.md) for configuration.
 
 The Modifications tab has a scrollable upgrade list and a detail panel showing
@@ -185,6 +180,3 @@ research time. Click an upgrade, then its Research control.
 The terminal uses ncurses subwindows, bounded scroll pads, and panels for menus
 and dialogs. See [terminal rendering](<Development Tools/docs/terminal-ui.md>) for ownership and
 composition details.
-
-The [Qt/QML workstation](<Development Tools/docs/graphical-ui.md>) is the primary interface. The
-ncurses frontend remains available for terminal play and regression checks.
