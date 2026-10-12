@@ -5,12 +5,7 @@
 
 namespace ai_sim::ui {
 void TerminalUI::draw_ai(int top, int bottom, int width) {
-    write(top, 1,
-          std::string(selected_tab() == Tab::Agents  ? "AGENTS"
-                      : selected_tab() == Tab::Phone ? "PHONE ACCESS"
-                                                     : "AI MANAGEMENT") +
-              " | Workday " + std::to_string(computer_.day_index() + 1),
-          Heading, true);
+    write(top, 1, "Workday " + std::to_string(computer_.day_index() + 1), Heading, true);
     std::vector<std::string> lines;
     auto add = [&](const std::string& value) {
         if (value.empty()) {

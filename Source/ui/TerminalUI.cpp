@@ -44,6 +44,7 @@ template <class State> class CallbackPage final : public UIPage {
     std::function<bool(int)> input;
     std::function<void()> cursor;
     bool centered = false, overlay = false;
+    std::function<bool()> centered_now;
     std::function<void()> close;
     std::string_view id() const override {
         return name;
@@ -64,7 +65,7 @@ template <class State> class CallbackPage final : public UIPage {
         return {};
     }
     bool centered_overlay() const override {
-        return centered;
+        return centered_now ? centered_now() : centered;
     }
     bool auto_open() const override {
         return overlay;
@@ -132,6 +133,9 @@ State& TerminalUI::attach_overlay(const char* id, State initial, bool centered) 
                               Prompt);
         };
     } else if constexpr (std::is_same_v<State, MenuPageState>) {
+        page->centered_now = [&state] {
+            return !state.inline_actions_;
+        };
         page->visible = [&state] {
             return state.menu_active_;
         };
@@ -293,6 +297,8 @@ void TerminalUI::select_tab(Tab tab) {
         root_.activate_workspace("web");
 }
 int& TerminalUI::scroll_offset() {
+    if (selected_tab() == Tab::Agents)
+        return agents_ui_.detail_offset_;
     if (selected_tab() == Tab::Phone)
         return phone_ui_.ai_offset_;
     if (selected_tab() == Tab::Money)
@@ -357,6 +363,8 @@ void TerminalUI::restore_world(WorldState world) {
     dossiers_ui_.dossier_search_.clear();
     dossiers_ui_.dossier_filter_ = "all";
     agents_ui_.agent_selected_ = 0;
+    agents_ui_.action_selected_ = agents_ui_.detail_offset_ = 0;
+    agents_ui_.controls_focused_ = false;
     agents_ui_.agent_reveal_ = false;
     modifications_ui_.upgrade_selected_ = operations_ui_.operations_selected_ = 0;
     modifications_ui_.upgrade_detail_offset_ = 0;
@@ -839,6 +847,10 @@ void TerminalUI::toggle_pane_focus() {
     if (selected_tab() == Tab::Chat)
         messages_ui_.chat_contacts_focused_ =
             ChatSystem::contacts_visible(people_) && !messages_ui_.chat_contacts_focused_;
+    else if (selected_tab() == Tab::Agents)
+        agents_ui_.controls_focused_ = !agents_ui_.controls_focused_;
+    else if (selected_tab() == Tab::Files)
+        files_ui_.file_details_focused_ = !files_ui_.file_details_focused_;
     else if (selected_tab() == Tab::People) {
         dossiers_ui_.people_details_focused_ = !dossiers_ui_.people_details_focused_;
         dossiers_ui_.people_reveal_section_ = false;
@@ -866,7 +878,7 @@ void TerminalUI::run() {
         update_people();
         draw();
 
-        const bool modal_was_active = menu_ui_.menu_active_ || text_ui_.text_active_;
+        const bool modal_was_active = root_.modal_active();
         const int key = root_.renderer().input(settings_.refresh_milliseconds);
         const auto now = WallClock::now();
 

@@ -115,7 +115,7 @@ void TerminalUI::draw_news(int top, int bottom, int width) {
     for (int row = top; row <= bottom; ++row) {
         line_cell(row, split, '|', Border);
     }
-    write(top, 1, "NEWS / " + news_ui_.news_filter_, Heading, true);
+    write(top, 1, "Filter: " + news_ui_.news_filter_, Heading, true);
     write(top, split + 2, clipped(news_ui_.news_edition_, detail_width),
           news_ui_.news_details_focused_ ? ActiveTab : Heading, true);
     if (articles.empty()) {

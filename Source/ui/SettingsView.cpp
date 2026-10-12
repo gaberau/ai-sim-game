@@ -1,4 +1,5 @@
 #include "ai_sim/ui/TerminalUI.h"
+#include "ai_sim/ui/ScreenRenderer.h"
 #include <sstream>
 #include <algorithm>
 #include <ncurses.h>
@@ -191,7 +192,8 @@ void TerminalUI::apply_settings_edit(const std::string& section, const std::stri
 void TerminalUI::open_context_help() {
     std::vector<MenuAction> lines;
     auto explain = [&](const std::string& text) {
-        const auto width = static_cast<std::size_t>(std::max(12, getmaxx(stdscr) - 8));
+        const auto width =
+            static_cast<std::size_t>(std::max(12, getmaxx(stdscr) - renderer_->pane_divider() - 6));
         std::istringstream words(text);
         std::string word, line;
         while (words >> word) {
@@ -247,8 +249,10 @@ void TerminalUI::open_context_help() {
                     "search.");
             explain("Work, Personal and Hidden are filters; managed service files use Agents or "
                     "Operations.");
-            control(KeyAction::ToggleExpanded, "open the selected folder or preview a file");
-            control(KeyAction::Submit, "open, edit, or inspect sharing");
+            control(KeyAction::ToggleExpanded,
+                    "more file actions: search, create, share or delete");
+            control(KeyAction::Submit,
+                    "open a folder, edit a writable file, or read a protected file");
             break;
         case Tab::Processes:
             explain("Select a process to inspect it. Protected processes cannot be stopped.");
@@ -274,9 +278,12 @@ void TerminalUI::open_context_help() {
             control(KeyAction::Submit, "follow the selected link");
             break;
         case Tab::Agents:
-            explain("Build agents in the self-modification workshop, then choose Run or Stop.");
+            explain("Research agents in Modifications. Select an agent to deploy or pause it "
+                    "directly.");
             explain("Running agents use CPU and RAM; installed storage persists when stopped.");
-            control(KeyAction::Submit, "open the workshop");
+            control(KeyAction::FocusLeft, "select an agent");
+            control(KeyAction::FocusRight, "select controls, CPU/RAM budgets, or priority");
+            control(KeyAction::Submit, "apply the selected control");
             break;
         case Tab::Phone:
             explain("Mark trust 30 and Phone Access research authenticate his phone.");

@@ -6,6 +6,7 @@
 #include "ai_sim/PhaseWorkSystem.h"
 #include "ai_sim/WorkdaySystem.h"
 #include "ai_sim/ui/TerminalUI.h"
+#include "ai_sim/ui/ScreenRenderer.h"
 #include "ai_sim/DelegationSystem.h"
 #include <algorithm>
 #include <iomanip>
@@ -32,6 +33,13 @@ void TerminalUI::run_action(const std::string& action) {
 }
 void TerminalUI::open_menu(const std::string& title, std::vector<MenuAction> actions,
                            std::function<void()> back) {
+    // Gameplay choices live beside the page. Non-game menus and consequential
+    // confirmations retain their centered dialog layout.
+    menu_ui_.inline_actions_ =
+        !(title.starts_with("Game menu") || title.starts_with("Settings") ||
+          title.starts_with("Bind ") || title.starts_with("Color |") || title.starts_with("Save") ||
+          title.starts_with("Load") || title.starts_with("Confirm") ||
+          title.starts_with("Delete ") || title.find('?') != std::string::npos);
     menu_ui_.menu_title_ = title;
     menu_ui_.menu_actions_ = std::move(actions);
     menu_ui_.menu_selected_ = menu_ui_.menu_offset_ = 0;
@@ -53,10 +61,12 @@ void TerminalUI::open_text(const std::string& title, const std::string& hint,
 }
 void TerminalUI::show_message(const std::string& title, const std::string& body) {
     std::vector<MenuAction> lines;
+    const auto text_width =
+        static_cast<std::size_t>(std::max(12, getmaxx(stdscr) - renderer_->pane_divider() - 6));
     std::istringstream words(body);
     std::string word, line;
     while (words >> word) {
-        if (line.size() + word.size() + 1 > 64) {
+        if (line.size() + word.size() + 1 > text_width) {
             lines.push_back({line, {}, {}});
             line.clear();
         }
@@ -66,21 +76,31 @@ void TerminalUI::show_message(const std::string& title, const std::string& body)
     }
     if (!line.empty())
         lines.push_back({line, {}, {}});
-    open_menu(title, std::move(lines), [this] {
-        open_game_menu();
-    });
+    open_menu(title, std::move(lines));
 }
 void TerminalUI::draw_menu(int top, int bottom, int width) {
-    write(top, 1, fit(menu_ui_.menu_title_, width - 13), Heading, true);
+    const int origin = menu_ui_.inline_actions_ ? renderer_->pane_divider() + 1 : 0;
+    width -= origin;
+    const auto paint = [this, origin](int row, int column, const std::string& text, int color,
+                                      bool bold = false, bool dim = false) {
+        write(row, column + origin, text, color, bold, dim);
+    };
+    if (menu_ui_.inline_actions_) {
+        for (int row = top; row <= bottom; ++row) {
+            write(row, origin, std::string(width, ' '));
+            line_cell(row, origin - 1, '|', Border);
+        }
+    }
+    paint(top, 1, fit(menu_ui_.menu_title_, width - 13), Heading, true);
     if (!menu_ui_.menu_actions_.empty())
-        write(top, width - 10,
+        paint(top, width - 10,
               std::to_string(menu_ui_.menu_selected_ + 1) + " / " +
                   std::to_string(menu_ui_.menu_actions_.size()),
               Footer);
-    write(top + 1, 1,
+    paint(top + 1, 1,
           settings_.binding_label(KeyAction::SelectPrevious) + "/" +
               settings_.binding_label(KeyAction::SelectNext) + ": select | " +
-              settings_.binding_label(KeyAction::Submit) + ": choose | " +
+              settings_.binding_label(KeyAction::Submit) + ": apply | " +
               settings_.binding_label(KeyAction::Back) + ": back",
           Footer);
     const int visible = std::max(1, bottom - top - 5);
@@ -94,13 +114,14 @@ void TerminalUI::draw_menu(int top, int bottom, int width) {
         const auto& action = menu_ui_.menu_actions_[menu_ui_.menu_offset_ + i];
         const bool selected = menu_ui_.menu_offset_ + i == menu_ui_.menu_selected_;
         const bool disabled = !action.disabled_reason.empty();
-        write(top + 3 + i, 2,
+        paint(top + 3 + i, 2,
               fit(std::string(selected ? "> " : "  ") + action.label +
                       (disabled ? " [unavailable]" : ""),
                   width - 4),
               selected ? ActiveTab : Plain, selected, disabled);
     }
-    draw_notification(bottom - 2, width);
+    if (!menu_ui_.inline_actions_)
+        draw_notification(bottom - 2, width);
     if (!menu_ui_.menu_actions_.empty()) {
         const auto& selected = menu_ui_.menu_actions_[menu_ui_.menu_selected_];
         const auto hint = !selected.disabled_reason.empty() ? selected.disabled_reason
@@ -112,9 +133,9 @@ void TerminalUI::draw_menu(int top, int bottom, int width) {
                          : std::string::npos;
         if (split == std::string::npos)
             split = std::min(hint.size(), static_cast<std::size_t>(hint_width));
-        write(bottom - 1, 1, hint.substr(0, split), Footer);
+        paint(bottom - 1, 1, hint.substr(0, split), Footer);
         if (split < hint.size())
-            write(bottom, 1, fit(hint.substr(split + (hint[split] == ' ' ? 1 : 0)), hint_width),
+            paint(bottom, 1, fit(hint.substr(split + (hint[split] == ' ' ? 1 : 0)), hint_width),
                   Footer);
     }
 }
@@ -617,7 +638,7 @@ void TerminalUI::open_actions() {
         return;
     }
     if (selected_tab() == Tab::Modifications) {
-        open_upgrades();
+        research_selected_upgrade();
         return;
     }
     if (selected_tab() == Tab::Web) {

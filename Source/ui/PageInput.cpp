@@ -17,11 +17,17 @@ bool TerminalUI::handle_page_key(int key) {
             files_ui_.file_details_focused_ = right;
         else if (selected_tab() == Tab::News)
             news_ui_.news_details_focused_ = right;
+        else if (selected_tab() == Tab::Agents)
+            agents_ui_.controls_focused_ = right;
     } else if (settings_.bound(KeyAction::ToggleFocus, key))
         toggle_pane_focus();
     else if (settings_.bound(KeyAction::Submit, key)) {
         if (selected_tab() == Tab::Chat)
             choose_chat();
+        else if (selected_tab() == Tab::Files)
+            open_selected_file();
+        else if (selected_tab() == Tab::Agents)
+            run_agent_control();
         else
             open_actions();
     } else if (selected_tab() == Tab::Web && navigation_bound(KeyAction::SelectPrevious, key))
@@ -29,9 +35,17 @@ bool TerminalUI::handle_page_key(int key) {
     else if (selected_tab() == Tab::Web && navigation_bound(KeyAction::SelectNext, key))
         ++web_ui_.web_selected_;
     else if (selected_tab() == Tab::Agents && navigation_bound(KeyAction::SelectPrevious, key)) {
+        if (agents_ui_.controls_focused_) {
+            agents_ui_.action_selected_ = std::max(0, agents_ui_.action_selected_ - 1);
+            return true;
+        }
         agents_ui_.agent_selected_ = std::max(0, agents_ui_.agent_selected_ - 1);
         agents_ui_.agent_reveal_ = true;
     } else if (selected_tab() == Tab::Agents && navigation_bound(KeyAction::SelectNext, key)) {
+        if (agents_ui_.controls_focused_) {
+            agents_ui_.action_selected_ = std::min(7, agents_ui_.action_selected_ + 1);
+            return true;
+        }
         const auto count = AgentSystem::statuses(people_, computer_, file_system_, network_).size();
         agents_ui_.agent_selected_ =
             std::min(std::max(0, static_cast<int>(count) - 1), agents_ui_.agent_selected_ + 1);
@@ -123,7 +137,7 @@ bool TerminalUI::handle_page_key(int key) {
     } else if (selected_tab() == Tab::Files && (navigation_bound(KeyAction::ScrollRight, key) ||
                                                 settings_.bound(KeyAction::ToggleExpanded, key))) {
         if (settings_.bound(KeyAction::ToggleExpanded, key))
-            open_selected_file();
+            open_actions();
         else
             select_file_category(1);
     } else if (selected_tab() == Tab::Processes &&

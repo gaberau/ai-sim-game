@@ -19,7 +19,7 @@ registering a child with an ID, title, availability predicate, draw callback and
 input callback; locked children are omitted from both tabs and navigation.
 
 The main screen has shared-buffer header, body, and footer subwindows. Split
-views add left and right subwindows; writes clip to their own pane. Menus and
+views add left and right subwindows; writes clip to their own pane. Global menus and
 text dialogs use a centered, bordered panel while retaining the existing
 configurable controls and custom menu behavior. Their coordinates are local to
 the dialog. The workspace is rendered underneath without an intermediate screen
@@ -53,3 +53,18 @@ The build requires the ncurses panel library as well as ncurses itself. Ubuntu's
 `libncurses-dev` package supplies both. The renderer test exercises pane clipping,
 large document offsets, modal overlays, cursor styling, and repeated resizing;
 the pseudo-terminal smoke test exercises actual game controls and flows.
+
+Gameplay action lists appear in the workspace's right pane. They keep the selected
+object visible, do not pause simulation time, and close when switching tabs.
+Escape returns to the page; F1 opens the global menu. Settings, save/load, numeric
+or text entry, and consequential confirmations retain centered dialogs. F5 help
+opens in the page as well.
+
+Agents expose deployment, pause/stop, repair and resource controls beside the
+selected agent. Q/E moves between the agent list and its controls; Enter applies
+the selected control (or deploys/pauses the agent when the list has focus). CPU,
+RAM and priority use one numeric entry dialog and return directly to the page.
+Files preview the selection automatically. Enter opens folders, edits writable
+files, or focuses read-only content; Space opens additional file actions. The
+footer shows the action available for the current selection. Messages retain
+contacts, history and response choices together, with extra room for responses.

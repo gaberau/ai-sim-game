@@ -27,6 +27,7 @@ int main() {
         ai_sim::ui::ScreenRenderer renderer;
         renderer.begin(false, false, false);
         renderer.split(4, 26, 30);
+        check(renderer.pane_divider() == 30, "Active pane divider does not match layout");
         renderer.write(5, 1, std::string(90, 'L'), 0, false, false);
         renderer.write(5, 32, "RIGHT", 0, false, false);
         renderer.cell(5, 30, '|', 0);

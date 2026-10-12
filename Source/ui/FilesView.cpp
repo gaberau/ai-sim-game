@@ -103,8 +103,13 @@ void TerminalUI::open_selected_file() {
     }
     (void)file_system_.read(network_, file_identity(), files_ui_.file_host_id_,
                             files_ui_.selected_file_path_);
-    files_ui_.file_details_focused_ = true;
-    files_ui_.file_content_offset_ = 0;
+    if (file_access(entry).first == FileEdit)
+        edit_file(entry.path);
+    else {
+        files_ui_.file_details_focused_ = true;
+        files_ui_.file_content_offset_ = 0;
+        add_log("Read only", NoticeKind::Routine);
+    }
 }
 void TerminalUI::create_category_file(const std::string& name) {
     if (name.empty() || name == "." || name == ".." ||
@@ -219,7 +224,7 @@ void TerminalUI::draw_files(int top, int bottom, int width) {
             return h.id == files_ui_.file_host_id_;
         });
     write(top, 1,
-          fit("FILES | " + (host == network_.hosts().end() ? files_ui_.file_host_id_ : host->name),
+          fit("Host: " + (host == network_.hosts().end() ? files_ui_.file_host_id_ : host->name),
               width - 2),
           Heading, true);
     std::string breadcrumbs = "Path: /";
@@ -241,13 +246,6 @@ void TerminalUI::draw_files(int top, int bottom, int width) {
     renderer_->split(body, bottom - 1, divider);
     for (int row = body; row < bottom; ++row)
         line_cell(row, divider, '|', Border);
-    write(bottom, 1,
-          fit(settings_.binding_label(KeyAction::Submit) + ": actions | " +
-                  settings_.binding_label(KeyAction::ScrollLeft) + "/" +
-                  settings_.binding_label(KeyAction::ScrollRight) + ": filter | " +
-                  settings_.binding_label(KeyAction::ToggleExpanded) + ": open | F5: help",
-              width - 2),
-          Footer);
     std::vector<const FileEntry*> entries;
     try {
         entries = file_entries();
@@ -298,6 +296,16 @@ void TerminalUI::draw_files(int top, int bottom, int width) {
     }
     const auto& entry = **selected;
     const auto [color, access] = file_access(entry);
+    const std::string action = entry.directory     ? "open folder"
+                               : color == FileEdit ? "edit"
+                               : color == FileRead ? "read"
+                                                   : "check access";
+    write(bottom, 1,
+          fit(settings_.binding_label(KeyAction::Submit) + ": " + action + " | " +
+                  settings_.binding_label(KeyAction::ToggleExpanded) + ": more | " +
+                  settings_.binding_label(KeyAction::Help) + ": help",
+              width - 2),
+          Footer);
     write(body, right, fit(entry.path, content_width), Heading, true);
     write(body + 1, right,
           fit(entry.owner + " | " + FileSystem::mode_text(entry.mode) + " | " +

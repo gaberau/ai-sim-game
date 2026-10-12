@@ -132,6 +132,12 @@ void ScreenRenderer::begin(bool modal, bool colors, bool repaint) {
         redrawwin(s.active());
     s.cursor_row = s.cursor_column = 0;
 }
+int ScreenRenderer::pane_divider() const {
+    const auto& state = *impl_;
+    if (state.divided && state.left.window)
+        return getmaxx(state.left.window);
+    return list_divider(state.width);
+}
 void ScreenRenderer::split(int top, int bottom, int column) {
     auto& s = *impl_;
     if (s.modal || top < 0 || bottom >= s.height || bottom < top || column <= 0 ||

@@ -151,7 +151,7 @@ void TerminalUI::draw_network(int top, int bottom, int width) {
     const int map_top = top + 1;
     const int map_bottom = bottom - 3;
 
-    write(top, 1, "NETWORK | Zoom " + number(network_ui_.network_zoom_, 1) + "x",
+    write(top, 1, "Zoom " + number(network_ui_.network_zoom_, 1) + "x",
           network_ui_.network_details_focused_ ? Heading : ActiveTab, true);
 
     if (map_bottom < map_top) {

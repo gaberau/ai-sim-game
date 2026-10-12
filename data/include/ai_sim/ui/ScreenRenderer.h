@@ -24,6 +24,7 @@ class ScreenRenderer {
     };
     DialogLayout dialog_layout() const;
     static int list_divider(int width);
+    int pane_divider() const;
     void begin(bool modal, bool colors, bool repaint);
     void split(int top, int bottom, int column);
     void write(int row, int column, const std::string& text, int color, bool bold, bool dim);

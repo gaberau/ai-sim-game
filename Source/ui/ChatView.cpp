@@ -449,7 +449,7 @@ void TerminalUI::draw_chat(int top, int bottom, int width) {
         return c.id == messages_ui_.chat_contact_id_;
     });
     const std::string name = contact == contacts.end() ? "Engineer" : contact->name;
-    write(top, left, "CHAT | " + name, messages_ui_.chat_contacts_focused_ ? Heading : ActiveTab,
+    write(top, left, name, messages_ui_.chat_contacts_focused_ ? Heading : ActiveTab,
           true);
     using Row = ScreenRenderer::TextRow;
     std::vector<Row> rows;
@@ -504,7 +504,7 @@ void TerminalUI::draw_chat(int top, int bottom, int width) {
     }
     const int choice_rows = options.empty() ? 2
                                             : std::min(static_cast<int>(option_rows.size()) + 2,
-                                                       std::max(3, (bottom - top) / 3));
+                                                       std::max(3, (bottom - top) / 2));
     const int visible = std::max(1, bottom - top - 1 - choice_rows - context_rows);
     if (messages_ui_.chat_follow_latest_)
         messages_ui_.chat_offset_ = std::max(0, static_cast<int>(rows.size()) - visible);

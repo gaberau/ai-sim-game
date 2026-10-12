@@ -27,7 +27,7 @@ void TerminalUI::open_web_address() {
         web_ui_.browser_address_);
 }
 void TerminalUI::draw_web(int top, int bottom, int width) {
-    write(top, 1, "WEB BROWSER | " + web_ui_.browser_address_, Heading, true);
+    write(top, 1, "Address: " + web_ui_.browser_address_, Heading, true);
     const auto site_title =
         people_["stock_market"]["website_title"].value_or(std::string{"Sim Exchange"});
     struct Row {

@@ -206,6 +206,28 @@ void RootUI::handle_key(int key) {
         page->handle_key(context_, key);
         return;
     }
+    if (page && page->id() == "menu" && !page->centered_overlay()) {
+        if (context_.settings.bound(KeyAction::Pause, key)) {
+            if (hooks.pause)
+                hooks.pause();
+            return;
+        }
+        if (context_.settings.bound(KeyAction::Quit, key)) {
+            exit_requested_ = true;
+            return;
+        }
+        if (context_.settings.bound(KeyAction::NextTab, key) ||
+            context_.settings.bound(KeyAction::PreviousTab, key)) {
+            close_overlay();
+            cycle_workspace(context_.settings.bound(KeyAction::NextTab, key) ? 1 : -1);
+            return;
+        }
+        if (!context_.settings.bound(KeyAction::GameMenu, key) &&
+            !context_.settings.bound(KeyAction::Help, key)) {
+            page->handle_key(context_, key);
+            return;
+        }
+    }
     if (key == 27 || context_.settings.bound(KeyAction::GameMenu, key)) {
         if (hooks.menu)
             hooks.menu();
@@ -312,7 +334,8 @@ void RootUI::draw_footer() {
                      settings.binding_label(KeyAction::NextTab) + ": tabs | Esc/" +
                          settings.binding_label(KeyAction::GameMenu) + ": menu | " +
                          settings.binding_label(KeyAction::Pause) +
-                         (context_.world.paused ? ": resume" : ": pause"),
+                         (context_.world.paused ? ": resume" : ": pause") + " | " +
+                         settings.binding_label(KeyAction::Help) + ": help",
                      Footer, false, false);
 }
 void RootUI::draw() {
@@ -340,16 +363,17 @@ void RootUI::draw() {
         draw_tabs();
         if (auto* page = find_child(active_workspace_))
             page->draw(context_, workspace_);
-        for (auto& c : children_)
-            if (c.layer == UIPageLayer::Overlay &&
-                std::find(overlay_stack_.begin(), overlay_stack_.end(), c.page->id()) !=
-                    overlay_stack_.end() &&
-                !c.page->centered_overlay()) {
-                c.page->draw(context_, workspace_);
-                c.page->place_cursor();
-            }
         draw_footer();
     }
+    for (auto& c : children_)
+        if (rows >= 24 && columns >= std::max(80, 72 + context_.settings.activity_bar_width) &&
+            c.layer == UIPageLayer::Overlay &&
+            std::find(overlay_stack_.begin(), overlay_stack_.end(), c.page->id()) !=
+                overlay_stack_.end() &&
+            !c.page->centered_overlay()) {
+            c.page->draw(context_, workspace_);
+            c.page->place_cursor();
+        }
     if (focused && modal_active()) {
         renderer_->begin(true, colors_enabled_, context_.settings.full_redraw);
         auto dialog = renderer_->dialog_layout();

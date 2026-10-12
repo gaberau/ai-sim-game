@@ -59,7 +59,11 @@ int main() {
         UISettings settings;
         settings.keybindings[static_cast<std::size_t>(KeyAction::Quit)].codes = {'q'};
         settings.keybindings[static_cast<std::size_t>(KeyAction::NextTab)].codes = {'t'};
+        settings.keybindings[static_cast<std::size_t>(KeyAction::Pause)].codes = {'p'};
         RootUI root(world, settings);
+        root.hooks.pause = [&world] {
+            world.paused = !world.paused;
+        };
         root.hooks.clock = [] {
             return "TEST CLOCK";
         };
@@ -99,6 +103,22 @@ int main() {
         root.draw();
         check(file->region.height == 33 && file->region.width == 120 && file->selection == 7,
               "Resize reset child state or geometry");
+        auto actions = std::make_unique<Page>("menu");
+        auto* inline_menu = actions.get();
+        root.add_child(std::move(actions), UIPageLayer::Overlay);
+        root.open_overlay("menu");
+        const bool was_paused = world.paused;
+        root.handle_key('p');
+        check(world.paused != was_paused, "Inline controls swallowed pause");
+        check(root.has_overlay() && !root.modal_active(), "Inline controls incorrectly pause time");
+        root.handle_key('x');
+        check(inline_menu->keys == 1, "Inline controls did not receive input");
+        root.draw();
+        check(inline_menu->region.top == 4, "Inline controls were centered as a dialog");
+        root.handle_key('t');
+        check(!root.has_overlay() && root.active_workspace() == "messages",
+              "Tab did not dismiss inline controls");
+        root.activate_workspace("files");
         file->visible = false;
         root.handle_key('x');
         check(root.active_workspace() == "messages" && chat->keys == 1,

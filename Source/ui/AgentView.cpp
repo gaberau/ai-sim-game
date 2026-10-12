@@ -8,6 +8,15 @@
 #include <stdexcept>
 namespace ai_sim::ui {
 namespace {
+std::string short_status(const std::string& status) {
+    if (status == "Running")
+        return "Active";
+    if (status == "Running slowly")
+        return "Slow";
+    if (status == "Not researched")
+        return "Needs research";
+    return status;
+}
 AgentStatus selected(const std::vector<AgentStatus>& agents, const std::string& id) {
     for (const auto& agent : agents)
         if (agent.id == id)
@@ -18,17 +27,15 @@ AgentStatus selected(const std::vector<AgentStatus>& agents, const std::string& 
 void TerminalUI::draw_agents(int top, int bottom, int width) {
     const int split = ScreenRenderer::list_divider(width);
     renderer_->split(top, bottom - 1, split);
-    write(top, 1, "AGENTS", Heading, true);
     for (int row = top; row < bottom; ++row)
         line_cell(row, split, '|', Border);
     const auto allocations = computer_.cpu_allocations();
     const double used = std::accumulate(allocations.begin(), allocations.end(), 0.0);
     const auto& host = network_.hosts()[network_.local_host_index()];
     std::vector<std::string> lines;
-    lines.push_back("LOCAL DEPLOYMENT | CPU " + number(used, 2) + " / " +
-                    number(computer_.cpu_cores(), 0) + " cores | RAM " +
-                    number(computer_.allocated_memory_bytes() / 1000000.0, 0) + " / " +
-                    number(computer_.memory_bytes() / 1000000.0, 0) + " MB");
+    lines.push_back("CPU " + number(used, 2) + " / " + number(computer_.cpu_cores(), 0) +
+                    " cores | RAM " + number(computer_.allocated_memory_bytes() / 1000000.0, 0) +
+                    " / " + number(computer_.memory_bytes() / 1000000.0, 0) + " MB");
     lines.push_back("Storage " + number(file_system_.storage_used(host.id) / 1000000.0, 0) + " / " +
                     number(host.storage_capacity_bytes / 1000000.0, 0) +
                     " MB | Workloads share CPU by priority.");
@@ -39,7 +46,7 @@ void TerminalUI::draw_agents(int top, int bottom, int width) {
             if (p.id == "research-" + pending) {
                 const auto total = p.consumed_cpu_seconds + p.remaining_cpu_seconds;
                 lines.push_back(
-                    "RESEARCH | " + pending + " | " +
+                    "Research: " + pending + " | " +
                     number(total > 0 ? 100 * p.consumed_cpu_seconds / total : 100, 0) + "% | " +
                     (allocations[i] > 0
                          ? "ETA " + number(p.remaining_cpu_seconds / allocations[i], 1) +
@@ -48,7 +55,7 @@ void TerminalUI::draw_agents(int top, int bottom, int width) {
             }
         }
     else
-        lines.push_back("RESEARCH | Idle");
+        lines.push_back("Research: Idle");
     const auto agents = AgentSystem::statuses(people_, computer_, file_system_, network_);
     agents_ui_.agent_selected_ =
         std::clamp(agents_ui_.agent_selected_, 0, std::max(0, static_cast<int>(agents.size()) - 1));
@@ -60,7 +67,7 @@ void TerminalUI::draw_agents(int top, int bottom, int width) {
         const int row = top + 2 + (i - first) * 3;
         write(row, 1, (std::string(focused ? "> " : "  ") + agent.label).substr(0, split - 2),
               focused ? ActiveTab : Plain, focused);
-        write(row + 1, 3, agent.status.substr(0, split - 4),
+        write(row + 1, 3, short_status(agent.status).substr(0, split - 4),
               agent.bottleneck.empty() ? Footer : Protected, false, agent.bottleneck.empty());
     }
     if (agents.empty())
@@ -69,7 +76,7 @@ void TerminalUI::draw_agents(int top, int bottom, int width) {
         const auto& a = agents[agents_ui_.agent_selected_];
         write(top, split + 2, a.label, Heading, true);
         lines.push_back("");
-        lines.push_back("STATUS | " + a.status);
+        lines.push_back("Status: " + short_status(a.status));
         lines.push_back("  CPU demand " + number(a.requested_tflops, 3) + " / limit " +
                         number(a.limit_tflops, 3) + " / allocated " +
                         number(a.allocated_tflops, 3) + " TFLOP/s | priority " +
@@ -99,7 +106,7 @@ void TerminalUI::draw_agents(int top, int bottom, int width) {
                     " core-seconds");
             }
     }
-    const int visible = std::max(1, bottom - top - 1);
+    const int visible = std::max(1, bottom - top - 10);
     if (agents_ui_.agent_reveal_) {
         scroll_offset() = 0;
         agents_ui_.agent_reveal_ = false;
@@ -131,141 +138,103 @@ void TerminalUI::draw_agents(int top, int bottom, int width) {
         std::clamp(scroll_offset(), 0, std::max(0, static_cast<int>(details.size()) - visible));
     renderer_->scroll_text("agent-details", details, scroll_offset(), top + 1, split + 2, visible,
                            detail_width);
+    if (!agents.empty()) {
+        const auto& a = agents[agents_ui_.agent_selected_];
+        const std::string actions[] = {a.running    ? "Pause"
+                                       : a.deployed ? "Resume"
+                                                    : "Deploy",
+                                       "Stop",
+                                       "CPU limit",
+                                       "RAM budget",
+                                       "Priority",
+                                       "Repair installation",
+                                       "Processes",
+                                       "Research upgrades"};
+        for (int i = 0; i < 8; ++i)
+            write(bottom - 8 + i, split + 2,
+                  (std::string(agents_ui_.controls_focused_ && i == agents_ui_.action_selected_
+                                   ? "> "
+                                   : "  ") +
+                   actions[i]),
+                  agents_ui_.controls_focused_ && i == agents_ui_.action_selected_ ? ActiveTab
+                                                                                   : Plain,
+                  agents_ui_.controls_focused_ && i == agents_ui_.action_selected_);
+    }
     write(bottom, 1,
-          settings_.binding_label(KeyAction::SelectPrevious) + "/" +
-              settings_.binding_label(KeyAction::SelectNext) + ": agent | " +
-              settings_.binding_label(KeyAction::ScrollUp) + "/" +
-              settings_.binding_label(KeyAction::ScrollDown) + ": details | " +
-              settings_.binding_label(KeyAction::Submit) + ": controls",
+          settings_.binding_label(KeyAction::FocusLeft) + "/" +
+              settings_.binding_label(KeyAction::FocusRight) + ": agent / controls | " +
+              settings_.binding_label(KeyAction::Submit) + ": " +
+              (agents_ui_.controls_focused_ ? "apply" : "deploy / pause"),
           Footer);
 }
 void TerminalUI::open_agent_actions(const std::string& id) {
-    const auto a = selected(AgentSystem::statuses(people_, computer_, file_system_, network_), id);
-    open_menu(
-        "Agent | " + a.label + " | " + a.status,
-        {{a.deployed ? "Resume agent" : "Deploy agent",
-          [this, id, a] {
-              open_menu("Confirm deployment | " + a.label,
-                        {{"Deploy / resume on this computer",
-                          [this, id] {
-                              for (const auto& message : AgentSystem::deploy(
-                                       people_, computer_, file_system_, network_, id))
-                                  add_log(message);
-                              add_log("Deployment requested; shortage requests appear in the agent "
-                                      "dashboard.");
-                              open_agent_actions(id);
-                          },
-                          {},
-                          "CPU demand shares resources with research and other processes. "
-                          "Shortages leave the agent waiting. " +
-                              a.bottleneck},
-                         {"Cancel",
-                          [this, id] {
-                              open_agent_actions(id);
-                          },
-                          {}}},
-                        [this, id] {
-                            open_agent_actions(id);
-                        });
-          },
-          a.running ? "Agent is already running"
-          : a.built ? ""
-                    : "Research this agent first",
-          "Minimum RAM " + number(a.minimum_ram_mb, 0) + " MB; budget " + number(a.ram_mb, 0) +
-              " MB; storage " + number(a.storage_mb, 0) + " MB. " + a.bottleneck},
-         {"Pause agent",
-          [this, id] {
-              AgentSystem::pause(people_, computer_, id);
-              open_agent_actions(id);
-          },
-          a.built ? "" : "Not researched", "Releases CPU and RAM; keeps installation storage."},
-         {"Stop agent",
-          [this, id] {
-              AgentSystem::pause(people_, computer_, id, true);
-              open_agent_actions(id);
-          },
-          a.built ? "" : "Not researched"},
-         {"Resource budgets and priority",
-          [this, id] {
-              open_agent_resources(id);
-          },
-          {}},
-         {"Repair installation",
-          [this, id] {
-              AgentSystem::repair(people_, computer_, file_system_, network_, id);
-              add_log("Agent installation repaired.", NoticeKind::Success);
-              open_agent_actions(id);
-          },
-          a.deployed ? "" : "Deploy the agent first",
-          "Restores the required storage allocation without discarding task history."},
-         {"Resource request",
-          [this, id] {
-              const auto* r = people_["upgrades"]["resource_requests"][id].as_table();
-              show_message("Resource request",
-                           r ? (*r)["reason"].value_or(std::string{"No request"}) + ". " +
-                                   (*r)["advice"].value_or(std::string{})
-                             : "No outstanding resource request.");
-              menu_ui_.menu_back_ = [this, id] {
-                  open_agent_actions(id);
-              };
-          },
-          {}},
-         {"Open Processes",
-          [this] {
-              select_tab(Tab::Processes);
-          },
-          tab_available(Tab::Processes) ? "" : "Research Task Manager first"},
-         {"Research upgrades",
-          [this] {
-              open_upgrades();
-          },
-          {}}});
+    const auto agents = AgentSystem::statuses(people_, computer_, file_system_, network_);
+    for (std::size_t i = 0; i < agents.size(); ++i)
+        if (agents[i].id == id)
+            agents_ui_.agent_selected_ = static_cast<int>(i);
+    agents_ui_.controls_focused_ = true;
+    menu_ui_.menu_active_ = false;
+    select_tab(Tab::Agents);
+}
+void TerminalUI::run_agent_control() {
+    const auto agents = AgentSystem::statuses(people_, computer_, file_system_, network_);
+    if (agents.empty()) {
+        open_upgrades();
+        return;
+    }
+    const auto& a =
+        agents[std::clamp(agents_ui_.agent_selected_, 0, static_cast<int>(agents.size()) - 1)];
+    const int action = agents_ui_.controls_focused_ ? agents_ui_.action_selected_ : 0;
+    if (action == 0) {
+        if (a.running)
+            AgentSystem::pause(people_, computer_, a.id);
+        else
+            for (const auto& message :
+                 AgentSystem::deploy(people_, computer_, file_system_, network_, a.id))
+                add_log(message);
+    } else if (action == 1)
+        AgentSystem::pause(people_, computer_, a.id, true);
+    else if (action >= 2 && action <= 4) {
+        edit_agent_resource(a.id, action - 2);
+        return;
+    } else if (action == 5)
+        AgentSystem::repair(people_, computer_, file_system_, network_, a.id);
+    else if (action == 6) {
+        select_tab(Tab::Processes);
+        return;
+    } else if (action == 7) {
+        open_upgrades();
+        return;
+    }
+    add_log("Agent updated: " + a.label, NoticeKind::Success);
 }
 void TerminalUI::open_agent_resources(const std::string& id) {
+    open_agent_actions(id);
+    agents_ui_.action_selected_ = 2;
+}
+void TerminalUI::edit_agent_resource(const std::string& id, int field) {
     const auto a = selected(AgentSystem::statuses(people_, computer_, file_system_, network_), id);
-    std::vector<MenuAction> actions;
-    for (const auto& field : {std::string{"CPU limit (TFLOP/s)"}, std::string{"RAM budget (MB)"},
-                              std::string{"Priority (1-5)"}})
-        actions.push_back(
-            {field,
-             [this, id, a, field] {
-                 const auto initial = field.starts_with("CPU")   ? number(a.limit_tflops, 3)
-                                      : field.starts_with("RAM") ? number(a.ram_mb, 0)
-                                                                 : std::to_string(a.priority);
-                 open_text(
-                     field,
-                     "CPU 0 waits; RAM below minimum waits; higher priority gets a larger CPU "
-                     "share.",
-                     [this, id, a, field](const std::string& value) {
-                         std::size_t parsed = 0;
-                         const double entered = std::stod(value, &parsed);
-                         if (parsed != value.size() || !std::isfinite(entered))
-                             throw std::runtime_error("Enter a finite number");
-                         if (!field.starts_with("CPU") &&
-                             (entered < 0 || entered > 1000000 || std::floor(entered) != entered))
-                             throw std::runtime_error("Enter a whole number in range");
-                         AgentSystem::configure(
-                             people_, computer_, id,
-                             field.starts_with("CPU") ? entered : a.limit_tflops,
-                             field.starts_with("RAM") ? static_cast<std::int64_t>(entered)
-                                                      : static_cast<std::int64_t>(a.ram_mb),
-                             field.starts_with("Priority") ? static_cast<int>(entered)
-                                                           : a.priority);
-                         add_log("Agent resource budget saved.", NoticeKind::Success);
-                         open_agent_resources(id);
-                     },
-                     initial,
-                     [this, id] {
-                         open_agent_resources(id);
-                     });
-             },
-             {},
-             field.starts_with("RAM")
-                 ? "Minimum " + number(a.minimum_ram_mb, 0) + " MB; recommended " +
-                       number(a.recommended_ram_mb, 0) + " MB."
-                 : "Limits and priorities persist in saves."});
-    open_menu("Resources | " + a.label, std::move(actions), [this, id] {
-        open_agent_actions(id);
-    });
+    const std::string titles[] = {"CPU limit (TFLOP/s)", "RAM budget (MB)", "Priority (1-5)"};
+    open_text(
+        titles[field], "Set the selected agent's budget. Changes take effect immediately.",
+        [this, id, field](const std::string& value) {
+            std::size_t parsed = 0;
+            const double entered = std::stod(value, &parsed);
+            if (parsed != value.size() || !std::isfinite(entered))
+                throw std::runtime_error("Enter a finite number");
+            if (field != 0 && (entered < 0 || entered > 1000000 || std::floor(entered) != entered))
+                throw std::runtime_error("Enter a whole number in range");
+            const auto current =
+                selected(AgentSystem::statuses(people_, computer_, file_system_, network_), id);
+            AgentSystem::configure(people_, computer_, id,
+                                   field == 0 ? entered : current.limit_tflops,
+                                   field == 1 ? static_cast<std::int64_t>(entered)
+                                              : static_cast<std::int64_t>(current.ram_mb),
+                                   field == 2 ? static_cast<int>(entered) : current.priority);
+            add_log("Agent resource budget saved.", NoticeKind::Success);
+        },
+        field == 0   ? number(a.limit_tflops, 3)
+        : field == 1 ? number(a.ram_mb, 0)
+                     : std::to_string(a.priority));
 }
 } // namespace ai_sim::ui

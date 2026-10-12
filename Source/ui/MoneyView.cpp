@@ -14,7 +14,7 @@ void TerminalUI::draw_progression(int top, int bottom, int width) {
     }
     std::vector<std::string> rows;
     if (selected_tab() == Tab::Money) {
-        rows.push_back("MONEY-MAKING TOOLS | Balance " +
+        rows.push_back("Balance " +
                        EconomySystem::money(EconomySystem::balance(people_)));
         rows.push_back(
             "Earned " +

@@ -14,7 +14,6 @@ const char* capabilities[] = {"task_scheduler", "resource_manager", "remote_comp
 void TerminalUI::draw_operations(int top, int bottom, int width) {
     const int split = std::clamp(width / 3, 24, 40);
     renderer_->split(top, bottom - 1, split);
-    write(top, 1, "OPERATIONS", Heading, true);
     for (int i = 0; i < 5; ++i)
         write(top + 2 + i * 2, 1,
               std::string(i == operations_ui_.operations_selected_ ? "> " : "  ") + labels[i],
@@ -96,7 +95,11 @@ void TerminalUI::draw_operations(int top, int bottom, int width) {
         if (s["recovered"].value_or(false))
             detail("AI is running independently", Stoppable);
     }
-    write(bottom, 1, "Up/Down: select operation | Enter: manage | F5: help", Footer);
+    write(bottom, 1,
+          settings_.binding_label(KeyAction::SelectPrevious) + "/" +
+              settings_.binding_label(KeyAction::SelectNext) + ": operation | " +
+              settings_.binding_label(KeyAction::Submit) + ": manage",
+          Footer);
 }
 void TerminalUI::open_scheduler() {
     std::vector<MenuAction> actions;

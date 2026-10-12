@@ -32,7 +32,6 @@ void TerminalUI::draw_modifications(int top, int bottom, int width) {
     modifications_ui_.upgrade_selected_ = std::clamp(modifications_ui_.upgrade_selected_, 0, count);
     const int split = ScreenRenderer::list_divider(width);
     renderer_->split(top, bottom - 1, split);
-    write(top, 1, "MODIFICATIONS | Upgrades", Heading, true);
     for (int row = top; row < bottom; ++row)
         line_cell(row, split, '|', Border);
     struct ListRow {
@@ -162,7 +161,18 @@ void TerminalUI::draw_modifications(int top, int bottom, int width) {
                                  " game seconds"
                            : "ETA: waiting for CPU");
             }
-        detail("Status: " + status);
+        const std::string compact =
+            status == "Ready to research" ? "Ready"
+            : status == "Requires more Mark trust" || status == "Not enough trust to pay"
+                ? "Needs trust"
+            : status == "Requires prerequisite upgrade"            ? "Needs prerequisite"
+            : status == "Requires self-modification authorization" ? "Needs authorization"
+            : status == "Another upgrade is being researched"      ? "Busy"
+            : status == "Planned; unavailable"                     ? "Planned"
+                                                                   : status;
+        detail("Status: " + compact);
+        if (compact != status && compact != "Ready")
+            detail(status);
         if (item.contains("runtime_tflops_per_second")) {
             detail("RUN COST WHEN ACTIVE", Heading);
             bool running = false;
@@ -193,74 +203,28 @@ void TerminalUI::draw_modifications(int top, int bottom, int width) {
           Footer);
 }
 void TerminalUI::open_upgrades() {
-    std::vector<MenuAction> actions;
-    actions.push_back({"Request more capacity from Mark",
-                       [this] {
-                           try {
-                               UpgradeSystem::request_capacity(people_);
-                               add_log("Self-modification authorized");
-                           } catch (const std::exception& e) {
-                               add_log(e.what(), NoticeKind::Error);
-                           }
-                           open_upgrades();
-                       },
-                       "", "Requires Mark trust >= 5. Helping Mark remains unpaid."});
-    if (const auto* items = people_["upgrades"]["items"].as_array())
-        for (const auto& row : *items) {
-            const auto& item = *row.as_table();
-            const auto id = item["id"].value_or(std::string{});
-            actions.push_back(
-                {item["label"].value_or(id) + " | " +
-                     number(item["build_tflops"].value_or(0.0), 2) + " TFLOP | " +
-                     number(item["trust_cost"].value_or(0.0), 0) + " trust",
-                 [this, id] {
-                     try {
-                         UpgradeSystem::build(people_, computer_, id);
-                         add_log("Research started: " + id);
-                     } catch (const std::exception& e) {
-                         add_log(e.what(), NoticeKind::Error);
-                     }
-                     open_upgrades();
-                 },
-                 UpgradeSystem::unavailable(people_, id),
-                 "Builds consume actual allocated CPU. Close the menu to let time advance."});
+    // Workshop links lead to the same root-owned page, without a second menu.
+    menu_ui_.menu_active_ = false;
+    select_tab(Tab::Modifications);
+}
+
+void TerminalUI::research_selected_upgrade() {
+    try {
+        if (modifications_ui_.upgrade_selected_ == 0) {
+            UpgradeSystem::request_capacity(people_);
+            add_log("Self-modification authorized", NoticeKind::Success);
+            return;
         }
-    if (const auto* items = people_["upgrades"]["items"].as_array())
-        for (const auto& row : *items) {
-            const auto& item = *row.as_table();
-            if (!item.contains("runtime_tflops_per_second"))
-                continue;
-            const auto id = item["id"].value_or(std::string{});
-            bool running = false;
-            for (const auto& p : computer_.processes())
-                if (p.id == "agent-" + id)
-                    running = p.running;
-            actions.push_back({std::string(running ? "Stop " : "Run ") + item["label"].value_or(id),
-                               [this, id] {
-                                   bool running = false;
-                                   for (const auto& p : computer_.processes())
-                                       if (p.id == "agent-" + id)
-                                           running = p.running;
-                                   if (running)
-                                       AgentSystem::pause(people_, computer_, id, true);
-                                   else
-                                       for (const auto& message : AgentSystem::deploy(
-                                                people_, computer_, file_system_, network_, id))
-                                           add_log(message);
-                                   open_upgrades();
-                               },
-                               item["built"].value_or(false) ? "" : "Build this agent first",
-                               "CPU, RAM and storage costs apply while running; installed storage "
-                               "remains reserved when stopped."});
-        }
-    open_menu("SELF-MODIFICATION | " +
-                  people_["upgrades"]["pending"].value_or(std::string{"Ready"}),
-              std::move(actions));
-    const auto order = upgrade_order(people_);
-    menu_ui_.menu_selected_ =
-        modifications_ui_.upgrade_selected_ > 0 &&
-                modifications_ui_.upgrade_selected_ <= static_cast<int>(order.size())
-            ? order[modifications_ui_.upgrade_selected_ - 1] + 1
-            : 0;
+        const auto order = upgrade_order(people_);
+        const auto* items = people_["upgrades"]["items"].as_array();
+        const int selection = modifications_ui_.upgrade_selected_ - 1;
+        if (!items || selection < 0 || selection >= static_cast<int>(order.size()))
+            return;
+        const auto id = (*(*items)[order[selection]].as_table())["id"].value_or(std::string{});
+        UpgradeSystem::build(people_, computer_, id);
+        add_log("Research started: " + id, NoticeKind::Success);
+    } catch (const std::exception& error) {
+        add_log(error.what(), NoticeKind::Error);
+    }
 }
 } // namespace ai_sim::ui

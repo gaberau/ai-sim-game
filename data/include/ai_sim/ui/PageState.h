@@ -75,6 +75,9 @@ struct DossiersPageState {
     std::unordered_map<std::string, std::size_t> people_map_slots_;
 };
 struct AgentsPageState {
+    int action_selected_ = 0;
+    int detail_offset_ = 0;
+    bool controls_focused_ = false;
     int agent_selected_ = 0;
     bool agent_reveal_ = false;
 };
@@ -112,6 +115,7 @@ struct MenuPageState {
         std::string detail = {};
     };
     std::function<void()> menu_back_;
+    bool inline_actions_ = false;
     bool menu_active_ = false;
     std::string menu_title_;
     std::vector<MenuAction> menu_actions_;

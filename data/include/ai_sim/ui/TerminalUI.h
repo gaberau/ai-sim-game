@@ -179,8 +179,11 @@ class TerminalUI {
     void draw_progression(int top, int bottom, int width);
     void open_money_tools();
     void open_upgrades();
+    void research_selected_upgrade();
     void draw_agents(int top, int bottom, int width);
     void open_agent_actions(const std::string& id);
+    void run_agent_control();
+    void edit_agent_resource(const std::string& id, int field);
     void open_agent_resources(const std::string& id);
     std::string market_url() const;
     std::string infrastructure_url() const;
