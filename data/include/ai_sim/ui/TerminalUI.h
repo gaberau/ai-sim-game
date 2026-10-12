@@ -49,7 +49,7 @@ enum class Tab {
 class TerminalUI {
   public:
     explicit TerminalUI(Computer& computer,
-                        const std::filesystem::path& settings_path = "config/settings.toml",
+                        const std::filesystem::path& settings_path = "data/config/settings.toml",
                         const std::filesystem::path& scenario_path = "data/scenarios/hobbyist.toml",
                         bool auto_resume = true);
 

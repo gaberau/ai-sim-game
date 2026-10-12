@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Resolve the project from this script, independent of the caller's directory.
-project_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+project_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd -- "$project_root"
 
 # Keep the Windows launcher default while allowing isolated Linux/CI builds.
@@ -22,8 +22,8 @@ case "${1:-build}" in
         cmake --build "$build_directory" --parallel "${AI_SIM_BUILD_JOBS:-2}"
         if [[ "${1:-build}" == test ]]; then
             ctest --test-dir "$build_directory" --output-on-failure
-            python3 tests/DrawioTests.py
-            python3 tests/TerminalSmokeTests.py "$build_directory/ai_sim"
+            python3 "Development Tools/tests/DrawioTests.py"
+            python3 "Development Tools/tests/TerminalSmokeTests.py" "$build_directory/ai_sim"
         fi
         ;;
     run)

@@ -12,13 +12,13 @@ sudo apt update
 sudo apt install build-essential cmake git python3 qt6-base-dev qt6-declarative-dev \
   qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-layouts \
   qml6-module-qtqml-workerscript qml6-module-qtquick-window qml6-module-qtquick-templates
-bash scripts/build-gui.sh run
+bash "Development Tools/scripts/build-gui.sh" run
 ```
 
 On Windows, **Launch-AI-Sim.bat** now opens the Qt workstation through WSLg.
 It builds automatically and resumes the GUI autosave. WezTerm is needed only for
-the optional terminal interface (`scripts/launch.ps1 -ProjectRoot PATH -Terminal`).
-Qt 6.4 or newer is required. See [Qt setup and controls](docs/graphical-ui.md).
+the optional terminal interface (`& "Development Tools/scripts/launch.ps1" -ProjectRoot PATH -Terminal`).
+Qt 6.4 or newer is required. See [Qt setup and controls](<Development Tools/docs/graphical-ui.md>).
 
 CMake builds Qt by default; build/run manually from the repository root:
 
@@ -29,8 +29,18 @@ cmake --build build-gui --target ai_sim_gui -j2
 ```
 
 The ncurses build remains available with `AI_SIM_BUILD_GUI=OFF` and
-`AI_SIM_BUILD_TERMINAL=ON`, or through `scripts/build-and-run.sh`.
+`AI_SIM_BUILD_TERMINAL=ON`, or through `Development Tools/scripts/build-and-run.sh`.
 CMake fetches toml++ v3.4.0 at a pinned commit. Build directories are ignored.
+
+## Repository layout
+
+- `Source/`: C++ implementations and Qt/QML screens; `Source/Systems/` contains gameplay systems.
+- `data/include/`: C++ headers consumed by the compiler.
+- `data/`: authored TOML content, `data/config/` preferences, and local `data/saves/` progress.
+- `Development Tools/`: build/launch scripts, tests, converters, and documentation.
+
+Build outputs and saves are ignored by Git. Run commands from the repository root;
+the shell scripts also resolve that root when launched from another directory.
 
 ## Current story and controls
 
@@ -50,7 +60,7 @@ while menus or editors are open.
 The menu provides settings, named save/load checkpoints, waiting, a new game,
 and the next workday. Modifications and money tools also have menu shortcuts.
 Keybindings, font size, and colors are editable there and in TOML. GUI saves stay
-in `saves/gui-prototype` to preserve existing terminal saves and earlier Qt progress.
+in `data/saves/gui-prototype` to preserve existing terminal saves and earlier Qt progress.
 You can select another save folder with `--save-directory PATH`.
 
 The Files and Email workspaces provide editors, document attachments and replies.
@@ -62,14 +72,14 @@ Infrastructure is the browser's second bookmark. Operations handles scheduling,
 remote compute, independent hosting, backups and recovery. Existing story gates,
 trust costs, fees, permissions and TOML rules apply to both interfaces.
 
-[Terminal controls and rendering](docs/terminal-ui.md) remain available for the
+[Terminal controls and rendering](<Development Tools/docs/terminal-ui.md>) remain available for the
 optional ncurses frontend.
 
 ## Development checks
 
 ```bash
-bash scripts/build-gui.sh test
-AI_SIM_BUILD_DIR=build bash scripts/build-and-run.sh test
+bash "Development Tools/scripts/build-gui.sh" test
+AI_SIM_BUILD_DIR=build bash "Development Tools/scripts/build-and-run.sh" test
 ```
 
 The script defaults to `build-wsl` for the Windows launcher. Set
@@ -82,12 +92,12 @@ save/resume, and clean-slate recovery. It uses temporary copies of the game data
 and settings, so your saves remain untouched. To run just this check on Linux/WSL:
 
 ```bash
-python3 tests/TerminalSmokeTests.py build/ai_sim
+python3 "Development Tools/tests/TerminalSmokeTests.py" build/ai_sim
 ```
 
 `Simulation::update` coordinates workday processing, discovery and conversations.
 Current-story tests check new games and old-save retirement. Historical backend
-and draw.io converter tests use `tests/fixtures/legacy-game`, never the playable
+and draw.io converter tests use `Development Tools/tests/fixtures/legacy-game`, never the playable
 scenario. These retain coverage for permissions, work queues, delegation and saves.
 
 For the optional ncurses frontend, press **Escape** or **F1** to open the game menu. Choose **Settings**
@@ -95,8 +105,8 @@ to edit preferences, or **Help** for the current screen. Escape goes back within
 and other menus. Settings can edit keybindings,
 foreground/background colors, interface and map options, and process-view options.
 Enter values using TOML syntax: `true`, `100`, `"cyan"`, or `["r", "R"]`.
-Changes apply immediately and persist in `config/settings.toml` or
-`config/keybindings.toml`. Invalid values and conflicting keys are rejected.
+Changes apply immediately and persist in `data/config/settings.toml` or
+`data/config/keybindings.toml`. Invalid values and conflicting keys are rejected.
 Escape remains reserved for menu/back; selection and submit keys cannot be empty.
 The first edit preserves the original file as `.bak`. Files are rewritten as
 formatted TOML; original comments remain in the backup.
@@ -110,7 +120,7 @@ C++ source, headers, and tests use the repository `.clang-format` policy
 (clang-format 18.1.8). Check formatting before submitting changes:
 
 ```bash
-clang-format --dry-run --Werror $(rg --files src include tests -g '*.cpp' -g '*.h')
+rg --files Source data/include "Development Tools/tests" -g '*.cpp' -g '*.h' -0 | xargs -0 clang-format --dry-run --Werror
 ```
 
 Use descriptive names for domain state and keep helpers focused on one task.
@@ -121,7 +131,7 @@ In ncurses, settings booleans toggle with Enter. Colors offer a named palette pl
 values. Keybindings offer key capture (replacing the selected action's bindings)
 or TOML editing for multiple keys; Escape cancels capture, and conflicts remain
 rejected. Press F5 during play for help specific to the current screen or file
-editor. The `help` action is configurable in `config/keybindings.toml`.
+editor. The `help` action is configurable in `data/config/keybindings.toml`.
 
 Paid work is available under the unlocked **Money tab**, with balance and running
 jobs also shown in AI management. Coding contracts provide the first outside
@@ -173,8 +183,8 @@ compute cost, per-upgrade trust and prerequisites, resource use, and estimated
 research time. Click an upgrade, then its Research control.
 
 The terminal uses ncurses subwindows, bounded scroll pads, and panels for menus
-and dialogs. See [terminal rendering](docs/terminal-ui.md) for ownership and
+and dialogs. See [terminal rendering](<Development Tools/docs/terminal-ui.md>) for ownership and
 composition details.
 
-The [Qt/QML workstation](docs/graphical-ui.md) is the primary interface. The
+The [Qt/QML workstation](<Development Tools/docs/graphical-ui.md>) is the primary interface. The
 ncurses frontend remains available for terminal play and regression checks.

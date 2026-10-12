@@ -375,7 +375,8 @@ UISettings UISettings::load(const std::filesystem::path& path) {
         settings.process_view = ProcessViewConfig::load(data);
         return settings;
     } catch (const std::exception& error) {
-        throw std::runtime_error(path.string() + ": " + error.what());
+        // Staged edits have long temporary paths; keep the actionable error readable.
+        throw std::runtime_error(path.filename().string() + ": " + error.what());
     }
 }
 bool UISettings::bound(KeyAction action, int key) const {

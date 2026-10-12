@@ -49,14 +49,14 @@ try {
     }
     if (-not $Terminal) {
         Write-Host "Starting Qt workstation in $linuxRoot ..."
-        & wsl.exe @distributionArguments --cd $linuxRoot --exec bash scripts/build-gui.sh run
+        & wsl.exe @distributionArguments --cd $linuxRoot --exec bash "Development Tools/scripts/build-gui.sh" run
         if ($LASTEXITCODE -ne 0) { throw "The Qt build or game exited with code $LASTEXITCODE. See the output above." }
         return
     }
     if ($RunOnly) {
         $host.UI.RawUI.WindowTitle = 'AI Sim'
         Write-Host "Starting AI Sim in $linuxRoot ..."
-        & wsl.exe @distributionArguments --cd $linuxRoot --exec bash scripts/build-and-run.sh run
+        & wsl.exe @distributionArguments --cd $linuxRoot --exec bash "Development Tools/scripts/build-and-run.sh" run
         if ($LASTEXITCODE -ne 0) {
             throw "The game or WSL exited with code $LASTEXITCODE. See the output above."
         }
@@ -66,7 +66,7 @@ try {
     $wezterm = Find-WezTerm
     Write-Host "Using WezTerm: $wezterm"
     Write-Host "Building AI Sim in $linuxRoot ..."
-    & wsl.exe @distributionArguments --cd $linuxRoot --exec bash scripts/build-and-run.sh build
+    & wsl.exe @distributionArguments --cd $linuxRoot --exec bash "Development Tools/scripts/build-and-run.sh" build
     if ($LASTEXITCODE -ne 0) { throw 'Build failed. The game has not been launched.' }
 
     # Launch a Windows shell that stays alive even when WSL itself fails to start.

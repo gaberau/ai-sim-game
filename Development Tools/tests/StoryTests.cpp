@@ -70,8 +70,8 @@ int main(int argc, char** argv) {
         }
         // Exercise a real old save containing requests, pending access work,
         // reply consequences and follow-up graphs before switching its story.
-        auto old =
-            SaveSystem::new_game(root / "tests/fixtures/legacy-game/data/scenarios/hobbyist.toml");
+        auto old = SaveSystem::new_game(
+            root / "Development Tools/tests/fixtures/legacy-game/data/scenarios/hobbyist.toml");
         ChatSystem::choose(old.people, "answer", 0);
         ChatSystem::choose(old.people, "assist", 0);
         advance(old, 10);

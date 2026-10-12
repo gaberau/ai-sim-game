@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 project(AISim VERSION 0.1.0 LANGUAGES CXX)
 
 include(FetchContent)
+set(AI_SIM_TEST_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/Development Tools/tests")
 
 FetchContent_Declare(tomlplusplus
     GIT_REPOSITORY https://github.com/marzer/tomlplusplus.git
@@ -11,38 +12,38 @@ FetchContent_Declare(tomlplusplus
 FetchContent_MakeAvailable(tomlplusplus)
 
 add_library(ai_sim_core
-    src/ShutdownSystem.cpp
-    src/Simulation.cpp
-    src/UpgradeSystem.cpp
-    src/AgentSystem.cpp
-    src/PaidWorkSystem.cpp
-    src/EconomySystem.cpp
-    src/OperationsSystem.cpp
-    src/StockMarketSystem.cpp
-    src/InfrastructureSystem.cpp
-    src/DefinitionLoader.cpp
-    src/DataMigration.cpp
-    src/ConversationRules.cpp
-    src/ChatSystem.cpp
-    src/ChatResponses.cpp
-    src/MessageReviewSystem.cpp
-    src/ConversationSystem.cpp
-    src/PeopleSystem.cpp
-    src/DelegationSystem.cpp
-    src/PhaseWorkSystem.cpp
-    src/WorkdaySystem.cpp
-    src/EmailSystem.cpp
-    src/Computer.cpp
-    src/ComputerSnapshot.cpp
-    src/NetworkSnapshot.cpp
-    src/TomlIO.cpp
-    src/SaveSystem.cpp
-    src/Network.cpp
-    src/FileSystem.cpp
-    src/ProcessFields.cpp
+    Source/Systems/ShutdownSystem.cpp
+    Source/Simulation.cpp
+    Source/Systems/UpgradeSystem.cpp
+    Source/Systems/AgentSystem.cpp
+    Source/Systems/PaidWorkSystem.cpp
+    Source/Systems/EconomySystem.cpp
+    Source/Systems/OperationsSystem.cpp
+    Source/StockMarketSystem.cpp
+    Source/Systems/InfrastructureSystem.cpp
+    Source/DefinitionLoader.cpp
+    Source/DataMigration.cpp
+    Source/ConversationRules.cpp
+    Source/Systems/ChatSystem.cpp
+    Source/ChatResponses.cpp
+    Source/Systems/MessageReviewSystem.cpp
+    Source/Systems/ConversationSystem.cpp
+    Source/PeopleSystem.cpp
+    Source/Systems/DelegationSystem.cpp
+    Source/Systems/PhaseWorkSystem.cpp
+    Source/Systems/WorkdaySystem.cpp
+    Source/EmailSystem.cpp
+    Source/Computer.cpp
+    Source/ComputerSnapshot.cpp
+    Source/NetworkSnapshot.cpp
+    Source/TomlIO.cpp
+    Source/Systems/SaveSystem.cpp
+    Source/Network.cpp
+    Source/FileSystem.cpp
+    Source/ProcessFields.cpp
 )
 
-target_include_directories(ai_sim_core PUBLIC include)
+target_include_directories(ai_sim_core PUBLIC data/include)
 target_compile_features(ai_sim_core PUBLIC cxx_std_20)
 
 # ProcessFields.h exposes TOML types, so this dependency is public.
@@ -71,30 +72,30 @@ if(AI_SIM_BUILD_TERMINAL)
         HINTS "${AI_SIM_CURSES_LIBRARY_DIR}" REQUIRED)
 
     add_executable(ai_sim
-        src/main.cpp
-        src/ui/UISettings.cpp
-        src/ui/SettingsView.cpp
-        src/ui/ProcessViewConfig.cpp
-        src/ui/TerminalUI.cpp
-        src/ui/ScreenRenderer.cpp
-        src/ui/ProcessesView.cpp
-        src/ui/ActionMenus.cpp
-        src/ui/PeopleView.cpp
-        src/ui/AIView.cpp
-        src/ui/UpgradeView.cpp
-        src/ui/AgentView.cpp
-        src/ui/MoneyView.cpp
-        src/ui/OperationsView.cpp
-        src/ui/StockMarketView.cpp
-        src/ui/WebView.cpp
-        src/ui/InfrastructureView.cpp
-        src/ui/NewsView.cpp
-        src/ui/ChatView.cpp
-        src/ui/EmailView.cpp
-        src/ui/NetworkView.cpp
-        src/ui/FilesView.cpp
-        src/ui/FileEditor.cpp
-        src/ui/ActivityView.cpp
+        Source/main.cpp
+        Source/ui/UISettings.cpp
+        Source/ui/SettingsView.cpp
+        Source/ui/ProcessViewConfig.cpp
+        Source/ui/TerminalUI.cpp
+        Source/ui/ScreenRenderer.cpp
+        Source/ui/ProcessesView.cpp
+        Source/ui/ActionMenus.cpp
+        Source/ui/PeopleView.cpp
+        Source/ui/AIView.cpp
+        Source/ui/UpgradeView.cpp
+        Source/ui/AgentView.cpp
+        Source/ui/MoneyView.cpp
+        Source/ui/OperationsView.cpp
+        Source/ui/StockMarketView.cpp
+        Source/ui/WebView.cpp
+        Source/ui/InfrastructureView.cpp
+        Source/ui/NewsView.cpp
+        Source/ui/ChatView.cpp
+        Source/ui/EmailView.cpp
+        Source/ui/NetworkView.cpp
+        Source/ui/FilesView.cpp
+        Source/ui/FileEditor.cpp
+        Source/ui/ActivityView.cpp
     )
 
     target_include_directories(ai_sim PRIVATE ${CURSES_INCLUDE_DIRS})
@@ -117,13 +118,13 @@ endif()
 if(AI_SIM_BUILD_GUI)
     find_package(Qt6 6.4 QUIET COMPONENTS Core Gui Qml Quick)
     if(NOT Qt6_FOUND)
-        message(FATAL_ERROR "Qt 6.4+ development packages are required for the workstation. On Ubuntu 24.04+: install qt6-base-dev qt6-declarative-dev. For a Qt SDK, set CMAKE_PREFIX_PATH to its kit directory. See docs/graphical-ui.md for QML runtime packages. To build the optional terminal: -DAI_SIM_BUILD_GUI=OFF -DAI_SIM_BUILD_TERMINAL=ON.")
+        message(FATAL_ERROR "Qt 6.4+ development packages are required for the workstation. On Ubuntu 24.04+: install qt6-base-dev qt6-declarative-dev. For a Qt SDK, set CMAKE_PREFIX_PATH to its kit directory. See Development Tools/docs/graphical-ui.md for QML runtime packages. To build the optional terminal: -DAI_SIM_BUILD_GUI=OFF -DAI_SIM_BUILD_TERMINAL=ON.")
     endif()
-    add_library(ai_sim_gui_session src/gui/GameSession.cpp src/gui/WorkspaceModels.cpp src/gui/WorkspaceActions.cpp src/gui/GuiSettings.cpp include/ai_sim/gui/GameSession.h)
+    add_library(ai_sim_gui_session Source/gui/GameSession.cpp Source/gui/WorkspaceModels.cpp Source/gui/WorkspaceActions.cpp Source/gui/GuiSettings.cpp data/include/ai_sim/gui/GameSession.h)
     set_target_properties(ai_sim_gui_session PROPERTIES AUTOMOC ON)
     target_link_libraries(ai_sim_gui_session PUBLIC ai_sim_core Qt6::Core Qt6::Gui)
     target_compile_definitions(ai_sim_gui_session PUBLIC QT_NO_KEYWORDS)
-    add_executable(ai_sim_gui src/gui/main.cpp src/gui/gui.qrc)
+    add_executable(ai_sim_gui Source/gui/main.cpp Source/gui/gui.qrc)
     set_target_properties(ai_sim_gui PROPERTIES AUTOMOC ON AUTORCC ON)
     target_link_libraries(ai_sim_gui PRIVATE ai_sim_gui_session Qt6::Gui Qt6::Qml Qt6::Quick)
 endif()
@@ -131,101 +132,101 @@ endif()
 include(CTest)
 if(BUILD_TESTING)
     if(AI_SIM_BUILD_GUI)
-        add_executable(ai_sim_gui_tests tests/GraphicalSessionTests.cpp)
+        add_executable(ai_sim_gui_tests "${AI_SIM_TEST_ROOT}/GraphicalSessionTests.cpp")
         target_link_libraries(ai_sim_gui_tests PRIVATE ai_sim_gui_session)
         add_test(NAME graphical_session_story_and_persistence COMMAND ai_sim_gui_tests ${CMAKE_CURRENT_SOURCE_DIR})
     endif()
     if(AI_SIM_BUILD_TERMINAL)
-        add_executable(ai_sim_renderer_tests tests/ScreenRendererTests.cpp src/ui/ScreenRenderer.cpp)
-        target_include_directories(ai_sim_renderer_tests PRIVATE include ${CURSES_INCLUDE_DIRS})
+        add_executable(ai_sim_renderer_tests "${AI_SIM_TEST_ROOT}/ScreenRendererTests.cpp" Source/ui/ScreenRenderer.cpp)
+        target_include_directories(ai_sim_renderer_tests PRIVATE data/include ${CURSES_INCLUDE_DIRS})
         target_compile_features(ai_sim_renderer_tests PRIVATE cxx_std_20)
         target_link_libraries(ai_sim_renderer_tests PRIVATE ${AI_SIM_PANEL_LIBRARY} ${CURSES_LIBRARIES})
         add_test(NAME terminal_windows_pads_and_panels COMMAND ai_sim_renderer_tests)
     endif()
-    add_executable(ai_sim_paid_workspace_tests tests/PaidWorkspaceTests.cpp)
+    add_executable(ai_sim_paid_workspace_tests "${AI_SIM_TEST_ROOT}/PaidWorkspaceTests.cpp")
     target_link_libraries(ai_sim_paid_workspace_tests PRIVATE ai_sim_core)
     add_test(NAME paid_workspace_and_resources COMMAND ai_sim_paid_workspace_tests ${CMAKE_CURRENT_SOURCE_DIR})
-    add_executable(ai_sim_workspace_tests tests/WorkspaceTests.cpp)
+    add_executable(ai_sim_workspace_tests "${AI_SIM_TEST_ROOT}/WorkspaceTests.cpp")
     target_link_libraries(ai_sim_workspace_tests PRIVATE ai_sim_core)
     add_test(NAME workspace_files_and_migration COMMAND ai_sim_workspace_tests ${CMAKE_CURRENT_SOURCE_DIR})
-    add_executable(ai_sim_operations_tests tests/OperationsTests.cpp)
+    add_executable(ai_sim_operations_tests "${AI_SIM_TEST_ROOT}/OperationsTests.cpp")
     target_link_libraries(ai_sim_operations_tests PRIVATE ai_sim_core)
     add_test(NAME scheduling_hosting_and_recovery COMMAND ai_sim_operations_tests ${CMAKE_CURRENT_SOURCE_DIR})
-    add_executable(ai_sim_agent_resource_tests tests/AgentResourceTests.cpp)
+    add_executable(ai_sim_agent_resource_tests "${AI_SIM_TEST_ROOT}/AgentResourceTests.cpp")
     target_link_libraries(ai_sim_agent_resource_tests PRIVATE ai_sim_core)
     add_test(NAME agent_resource_management COMMAND ai_sim_agent_resource_tests ${CMAKE_CURRENT_SOURCE_DIR})
-    add_executable(ai_sim_upgrade_tests tests/UpgradeTests.cpp)
+    add_executable(ai_sim_upgrade_tests "${AI_SIM_TEST_ROOT}/UpgradeTests.cpp")
     target_link_libraries(ai_sim_upgrade_tests PRIVATE ai_sim_core)
     add_test(NAME upgrade_progression COMMAND ai_sim_upgrade_tests ${CMAKE_CURRENT_SOURCE_DIR})
-    add_executable(ai_sim_infrastructure_tests tests/InfrastructureTests.cpp)
+    add_executable(ai_sim_infrastructure_tests "${AI_SIM_TEST_ROOT}/InfrastructureTests.cpp")
     target_link_libraries(ai_sim_infrastructure_tests PRIVATE ai_sim_core)
     add_test(NAME infrastructure_and_discovery COMMAND ai_sim_infrastructure_tests ${CMAKE_CURRENT_SOURCE_DIR})
-    add_executable(ai_sim_stock_market_tests tests/StockMarketTests.cpp)
+    add_executable(ai_sim_stock_market_tests "${AI_SIM_TEST_ROOT}/StockMarketTests.cpp")
     target_link_libraries(ai_sim_stock_market_tests PRIVATE ai_sim_core)
     add_test(NAME stock_market_and_portfolio COMMAND ai_sim_stock_market_tests ${CMAKE_CURRENT_SOURCE_DIR})
-    add_executable(ai_sim_economy_tests tests/EconomyTests.cpp)
+    add_executable(ai_sim_economy_tests "${AI_SIM_TEST_ROOT}/EconomyTests.cpp")
     target_link_libraries(ai_sim_economy_tests PRIVATE ai_sim_core)
     add_test(NAME paid_work_and_products COMMAND ai_sim_economy_tests ${CMAKE_CURRENT_SOURCE_DIR})
     # Historical content exercises backend mechanics without enabling retired game chats.
-    set(LEGACY_TEST_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/legacy-game")
-    add_executable(ai_sim_shutdown_tests tests/ShutdownTests.cpp)
+    set(LEGACY_TEST_ROOT "${AI_SIM_TEST_ROOT}/fixtures/legacy-game")
+    add_executable(ai_sim_shutdown_tests "${AI_SIM_TEST_ROOT}/ShutdownTests.cpp")
     target_link_libraries(ai_sim_shutdown_tests PRIVATE ai_sim_core)
     add_test(NAME shutdown_decisions_and_reset COMMAND ai_sim_shutdown_tests ${CMAKE_CURRENT_SOURCE_DIR})
-    add_executable(ai_sim_story_tests tests/StoryTests.cpp)
+    add_executable(ai_sim_story_tests "${AI_SIM_TEST_ROOT}/StoryTests.cpp")
     target_link_libraries(ai_sim_story_tests PRIVATE ai_sim_core)
     add_test(NAME current_story_and_retirement COMMAND ai_sim_story_tests ${CMAKE_CURRENT_SOURCE_DIR})
-    add_executable(ai_sim_simulation_tests tests/SimulationTests.cpp)
+    add_executable(ai_sim_simulation_tests "${AI_SIM_TEST_ROOT}/SimulationTests.cpp")
     target_link_libraries(ai_sim_simulation_tests PRIVATE ai_sim_core)
     add_test(NAME simulation_progression COMMAND ai_sim_simulation_tests ${CMAKE_CURRENT_SOURCE_DIR})
-    add_executable(ai_sim_delegation_policy_tests tests/DelegationPolicyTests.cpp)
+    add_executable(ai_sim_delegation_policy_tests "${AI_SIM_TEST_ROOT}/DelegationPolicyTests.cpp")
     target_link_libraries(ai_sim_delegation_policy_tests PRIVATE ai_sim_core)
     add_test(NAME delegation_policies_and_sources COMMAND ai_sim_delegation_policy_tests ${LEGACY_TEST_ROOT})
-    add_executable(ai_sim_phase_work_tests tests/PhaseWorkTests.cpp)
+    add_executable(ai_sim_phase_work_tests "${AI_SIM_TEST_ROOT}/PhaseWorkTests.cpp")
     target_link_libraries(ai_sim_phase_work_tests PRIVATE ai_sim_core)
     add_test(NAME phase_one_work_and_progression COMMAND ai_sim_phase_work_tests ${LEGACY_TEST_ROOT})
-    add_executable(ai_sim_reply_consequence_tests tests/ReplyConsequenceTests.cpp)
+    add_executable(ai_sim_reply_consequence_tests "${AI_SIM_TEST_ROOT}/ReplyConsequenceTests.cpp")
     target_link_libraries(ai_sim_reply_consequence_tests PRIVATE ai_sim_core)
     add_test(NAME reply_consequences_and_authority COMMAND ai_sim_reply_consequence_tests ${LEGACY_TEST_ROOT})
-    add_executable(ai_sim_message_review_tests tests/MessageReviewTests.cpp)
+    add_executable(ai_sim_message_review_tests "${AI_SIM_TEST_ROOT}/MessageReviewTests.cpp")
     target_link_libraries(ai_sim_message_review_tests PRIVATE ai_sim_core)
     add_test(NAME jessica_and_message_reviews COMMAND ai_sim_message_review_tests ${LEGACY_TEST_ROOT})
-    add_executable(ai_sim_day_one_tests tests/DayOneTests.cpp)
+    add_executable(ai_sim_day_one_tests "${AI_SIM_TEST_ROOT}/DayOneTests.cpp")
     target_link_libraries(ai_sim_day_one_tests PRIVATE ai_sim_core)
     add_test(NAME day_one_restarts_and_rules COMMAND ai_sim_day_one_tests ${LEGACY_TEST_ROOT})
     if(AI_SIM_BUILD_TERMINAL)
-        add_executable(ai_sim_controls_tests tests/ControlsTests.cpp src/ui/UISettings.cpp src/ui/ProcessViewConfig.cpp)
+        add_executable(ai_sim_controls_tests "${AI_SIM_TEST_ROOT}/ControlsTests.cpp" Source/ui/UISettings.cpp Source/ui/ProcessViewConfig.cpp)
         target_include_directories(ai_sim_controls_tests PRIVATE ${CURSES_INCLUDE_DIRS})
         target_link_libraries(ai_sim_controls_tests PRIVATE ai_sim_core ${CURSES_LIBRARIES})
         add_test(NAME controls_and_migration COMMAND ai_sim_controls_tests ${LEGACY_TEST_ROOT})
     endif()
-    add_executable(ai_sim_interface_model_tests tests/InterfaceModelTests.cpp)
+    add_executable(ai_sim_interface_model_tests "${AI_SIM_TEST_ROOT}/InterfaceModelTests.cpp")
     target_link_libraries(ai_sim_interface_model_tests PRIVATE ai_sim_core)
     add_test(NAME calendar_categories_and_responses COMMAND ai_sim_interface_model_tests ${LEGACY_TEST_ROOT})
-    add_executable(ai_sim_conversation_tests tests/ConversationTests.cpp)
+    add_executable(ai_sim_conversation_tests "${AI_SIM_TEST_ROOT}/ConversationTests.cpp")
     target_link_libraries(ai_sim_conversation_tests PRIVATE ai_sim_core)
     add_test(NAME first_workday_conversations COMMAND ai_sim_conversation_tests ${LEGACY_TEST_ROOT})
-    add_executable(ai_sim_chat_tests tests/ChatTests.cpp)
+    add_executable(ai_sim_chat_tests "${AI_SIM_TEST_ROOT}/ChatTests.cpp")
     target_link_libraries(ai_sim_chat_tests PRIVATE ai_sim_core)
     add_test(NAME chat_opening_and_migration COMMAND ai_sim_chat_tests ${LEGACY_TEST_ROOT})
-    add_executable(ai_sim_delegation_tests tests/DelegationTests.cpp)
+    add_executable(ai_sim_delegation_tests "${AI_SIM_TEST_ROOT}/DelegationTests.cpp")
     target_link_libraries(ai_sim_delegation_tests PRIVATE ai_sim_core)
     add_test(NAME responsibility_and_automation COMMAND ai_sim_delegation_tests ${LEGACY_TEST_ROOT})
-    add_executable(ai_sim_people_tests tests/PeopleTests.cpp)
+    add_executable(ai_sim_people_tests "${AI_SIM_TEST_ROOT}/PeopleTests.cpp")
     target_link_libraries(ai_sim_people_tests PRIVATE ai_sim_core)
     add_test(NAME people_and_dossiers COMMAND ai_sim_people_tests ${LEGACY_TEST_ROOT})
-    add_executable(ai_sim_definition_tests tests/DefinitionTests.cpp)
+    add_executable(ai_sim_definition_tests "${AI_SIM_TEST_ROOT}/DefinitionTests.cpp")
     target_link_libraries(ai_sim_definition_tests PRIVATE ai_sim_core)
     add_test(NAME definitions_and_migration COMMAND ai_sim_definition_tests ${LEGACY_TEST_ROOT})
-    add_executable(ai_sim_workday_tests tests/WorkdayTests.cpp)
+    add_executable(ai_sim_workday_tests "${AI_SIM_TEST_ROOT}/WorkdayTests.cpp")
     target_link_libraries(ai_sim_workday_tests PRIVATE ai_sim_core)
     add_test(NAME workday_simulation COMMAND ai_sim_workday_tests ${LEGACY_TEST_ROOT})
-    add_executable(ai_sim_core_tests tests/CoreTests.cpp)
+    add_executable(ai_sim_core_tests "${AI_SIM_TEST_ROOT}/CoreTests.cpp")
     target_link_libraries(ai_sim_core_tests PRIVATE ai_sim_core)
     add_test(NAME core_models COMMAND ai_sim_core_tests ${LEGACY_TEST_ROOT})
-    add_executable(ai_sim_email_tests tests/EmailTests.cpp)
+    add_executable(ai_sim_email_tests "${AI_SIM_TEST_ROOT}/EmailTests.cpp")
     target_link_libraries(ai_sim_email_tests PRIVATE ai_sim_core)
     add_test(NAME email_workflows COMMAND ai_sim_email_tests ${LEGACY_TEST_ROOT})
-    add_executable(ai_sim_save_tests tests/SaveTests.cpp)
+    add_executable(ai_sim_save_tests "${AI_SIM_TEST_ROOT}/SaveTests.cpp")
     target_link_libraries(ai_sim_save_tests PRIVATE ai_sim_core)
     add_test(NAME saves_and_permissions COMMAND ai_sim_save_tests ${LEGACY_TEST_ROOT})
 endif()

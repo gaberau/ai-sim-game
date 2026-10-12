@@ -1,6 +1,6 @@
 # Game definitions
 
-These TOML files define starting worlds and reusable content. `config/` holds
+These TOML files define starting worlds and reusable content. `data/config/` holds
 UI preferences and keys; `saves/` holds the mutable world. The folders are not
 scanned automatically: scenario manifests and explicit `sources` lists decide
 what is loaded, in a stable order.
@@ -66,5 +66,5 @@ continue to merge missing content without resetting existing saved records.
 Place, agent and upgrade data do not add behavior that the backend lacks yet.
 
 The AI workspace and host/folder browser are described in [the filesystem guide](files/README.md).
-Preserved historical migration data is packaged under [archive/](../archive/README.md);
+Preserved historical migration data is packaged under [archive/](archive/README.md);
 new automatic migration backups remain in the ignored runtime `backups/` directory.

@@ -1,4 +1,4 @@
-"""Run with Python 3.11+: python3 tests/DrawioTests.py."""
+"""Run with Python 3.11+: python3 "Development Tools/tests/DrawioTests.py"."""
 from pathlib import Path
 import base64
 import subprocess
@@ -10,9 +10,9 @@ import urllib.parse
 import xml.etree.ElementTree as ET
 import zlib
 
-PROJECT = Path(__file__).resolve().parents[1]
-ROOT = PROJECT / 'tests/fixtures/legacy-game'
-sys.path.insert(0, str(PROJECT / 'tools'))
+PROJECT = Path(__file__).resolve().parents[2]
+ROOT = PROJECT / 'Development Tools/tests/fixtures/legacy-game'
+sys.path.insert(0, str(PROJECT / 'Development Tools/tools'))
 import drawio_to_conversation as converter
 
 class DrawioTests(unittest.TestCase):
@@ -167,7 +167,7 @@ class DrawioTests(unittest.TestCase):
     def test_append_preserves_catalog_and_rejects_duplicates(self):
         with tempfile.TemporaryDirectory() as folder:
             output=Path(folder)/'catalog.toml'
-            base=[sys.executable,str(PROJECT/'tools/drawio_to_conversation.py'),str(ROOT/'data/conversations/first_workday.drawio'),str(output),'--request','missing-document']
+            base=[sys.executable,str(PROJECT/'Development Tools/tools/drawio_to_conversation.py'),str(ROOT/'data/conversations/first_workday.drawio'),str(output),'--request','missing-document']
             subprocess.run(base+['--page','casey-first-document','--id','casey-first-document','--start','approach','--contact','casey','--cancel-when-resolved'],check=True,capture_output=True)
             append=base+['--page','engineer-first-responsibility','--id','engineer-first-responsibility','--start','offer','--contact','engineer','--trigger','verified_delivery','--append']
             subprocess.run(append,check=True,capture_output=True)

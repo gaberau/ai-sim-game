@@ -45,7 +45,8 @@ void GameSession::loadPreferences(const std::filesystem::path& saves) {
                     {"save_key", "Ctrl+S"},
                     {"next_tab_key", "Ctrl+Tab"},
                     {"previous_tab_key", "Ctrl+Shift+Tab"}};
-    const auto defaults = scenario_.parent_path().parent_path().parent_path() / "config/gui.toml";
+    const auto defaults =
+        scenario_.parent_path().parent_path().parent_path() / "data/config/gui.toml";
     for (const auto& path : {defaults, preferences_path_})
         if (std::filesystem::exists(path)) {
             const auto t = toml::parse_file(path.string());

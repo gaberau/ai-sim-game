@@ -14,8 +14,8 @@ jobs:
           AI_SIM_BUILD_DIR: build
           AI_SIM_BUILD_JOBS: '2'
           PYTHONDONTWRITEBYTECODE: '1'
-        run: bash scripts/build-and-run.sh test
+        run: bash "Development Tools/scripts/build-and-run.sh" test
       - name: Build and test Qt workstation
         env:
           AI_SIM_BUILD_JOBS: '2'
-        run: bash scripts/build-gui.sh test
+        run: bash "Development Tools/scripts/build-gui.sh" test

@@ -110,13 +110,13 @@ def read_people(slot):
 
 
 def smoke(executable):
-    root = Path(__file__).resolve().parents[1]
+    root = Path(__file__).resolve().parents[2]
     with tempfile.TemporaryDirectory(prefix="ai-sim-terminal-") as temporary:
         folder = Path(temporary)
-        for name in ("data", "config"):
-            shutil.copytree(root / name, folder / name)
+        # Copy authored data only: never import a developer's saves or header tree.
+        shutil.copytree(root / "data", folder / "data", ignore=shutil.ignore_patterns("saves", "include", "archive"))
         # Even a developer's configured absolute save path must stay isolated.
-        settings_path = folder / "config" / "settings.toml"
+        settings_path = folder / "data" / "config" / "settings.toml"
         settings, replacements = re.subn(
             r"(?m)^save_directory\s*=.*$", 'save_directory = "saves"',
             settings_path.read_text(), count=1,
@@ -156,7 +156,7 @@ def smoke(executable):
             terminal.expect("conflicts with keybindings.submit")
             terminal.send(b"z")
             terminal.expect("Settings saved and applied.")
-            bindings = tomllib.loads((folder / "config" / "keybindings.toml").read_text())
+            bindings = tomllib.loads((folder / "data" / "config" / "keybindings.toml").read_text())
             assert bindings["keybindings"]["back"] == ["z"]
             terminal.send(b"\r")
             terminal.expect("Bind back")
@@ -203,7 +203,7 @@ def smoke(executable):
             terminal.send(b"\x7f" * 3 + b"10\r")
             terminal.expect("activity_bar_width = 10")
             terminal.expect("Settings saved and applied.")
-            settings = tomllib.loads((folder / "config" / "settings.toml").read_text())
+            settings = tomllib.loads((folder / "data" / "config" / "settings.toml").read_text())
             assert settings["interface"]["activity_bar_width"] == 10, "Settings edit was not persisted"
             # Restore the original width so the remaining 80-column checks stay valid.
             terminal.send(b"\r")

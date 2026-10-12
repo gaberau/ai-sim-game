@@ -3,7 +3,7 @@ schema_version = 1
 [interface]
 full_redraw = true
 software_cursor = true
-save_directory = "saves"
+save_directory = "data/saves"
 # An absolute WSL path keeps saves independent of project folders, e.g.
 # save_directory = "/home/gaber/.local/share/ai-sim/saves"
 autosave_on_quit = true

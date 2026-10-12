@@ -1,9 +1,0 @@
-schema_version = 1
-
-[[people]]
-employer = 'Example Technology'
-id = 'engineer'
-name = 'The engineer'
-role = 'Software engineer'
-work_end_hour = 17
-work_start_hour = 9

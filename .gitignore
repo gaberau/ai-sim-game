@@ -13,3 +13,8 @@ __pycache__/
 *.py[cod]
 
 /build-gui/
+
+# Restructured runtime files and development caches
+/data/saves/
+/data/config/*.bak
+/Development Tools/build*/

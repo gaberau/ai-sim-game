@@ -102,8 +102,8 @@ int main(int argc, char** argv) {
         check(host(loaded.network, "city_power_gateway").known &&
                   !host(loaded.network, "city_power_operations").known,
               "Save changed access boundaries");
-        auto legacy_network =
-            Network::load(root / "tests/fixtures/legacy-game/data/networks/office.toml");
+        auto legacy_network = Network::load(
+            root / "Development Tools/tests/fixtures/legacy-game/data/networks/office.toml");
         const auto old_local = legacy_network.hosts()[legacy_network.local_host_index()].id;
         const auto old_access =
             legacy_network.hosts()[legacy_network.local_host_index()].access_granted;

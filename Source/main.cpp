@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
         if (migrate_only)
             return 0;
         ai_sim::Computer computer;
-        ai_sim::ui::TerminalUI interface(computer, "config/settings.toml", computer_path,
+        ai_sim::ui::TerminalUI interface(computer, "data/config/settings.toml", computer_path,
                                          !fresh && !custom);
         interface.run();
     } catch (const std::exception& error) {

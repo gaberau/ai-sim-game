@@ -21,16 +21,29 @@ QQuickItem* findItem(QQuickItem* item, const QString& name) {
 } // namespace
 
 int main(int argc, char** argv) {
+    bool force_software = false;
+    for (int i = 1; i < argc; ++i)
+        if (std::string(argv[i]) == "--software-rendering")
+            force_software = true;
+    // WSL GPU drivers vary by host. This 2D interface also runs on Qt's CPU renderer.
+    const bool wsl =
+        qEnvironmentVariableIsSet("WSL_DISTRO_NAME") || qEnvironmentVariableIsSet("WSL_INTEROP");
+    if (force_software || (wsl && qEnvironmentVariableIsEmpty("QT_QUICK_BACKEND"))) {
+        qputenv("QT_QUICK_BACKEND", "software");
+        qputenv("QT_XCB_GL_INTEGRATION", "none");
+    }
     QGuiApplication app(argc, argv);
     QGuiApplication::setApplicationName("AI Sim Workstation");
     try {
         std::filesystem::path scenario = "data/scenarios/hobbyist.toml";
-        std::filesystem::path saves = "saves/gui-prototype";
+        std::filesystem::path saves = "data/saves/gui-prototype";
         std::filesystem::path screenshot;
         bool fresh = false, smoke = false, smoke_workspaces = false;
         for (int i = 1; i < argc; ++i) {
             const std::string arg = argv[i];
-            if (arg == "--new")
+            if (arg == "--software-rendering") {
+                // Applied before Qt initializes its display connection.
+            } else if (arg == "--new")
                 fresh = true;
             else if (arg == "--screenshot" && i + 1 < argc)
                 screenshot = argv[++i];
@@ -43,8 +56,9 @@ int main(int argc, char** argv) {
             else if (arg == "--scenario" && i + 1 < argc)
                 scenario = argv[++i];
             else
-                throw std::runtime_error("Usage: ai_sim_gui [--new] [--scenario path] "
-                                         "[--save-directory path] [--smoke-test]");
+                throw std::runtime_error(
+                    "Usage: ai_sim_gui [--new] [--scenario path] "
+                    "[--save-directory path] [--software-rendering] [--smoke-test]");
         }
         ai_sim::gui::GameSession session(scenario, saves, fresh);
         QQmlApplicationEngine engine;

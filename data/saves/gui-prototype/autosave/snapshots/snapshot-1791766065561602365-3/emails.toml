@@ -1,7 +1,0 @@
-emails = []
-schema_version = 1
-
-[mailbox]
-address = 'engineer@firm.example'
-host_id = 'engineer_pc'
-max_draft_bytes = 1048576
