@@ -1,0 +1,238 @@
+schema_version = 1
+
+[computer]
+cpu_cores = 4
+memory_bytes = 17179869184
+name = "Engineer's workstation"
+
+[saved_state]
+day_index = 0
+schema_version = 1
+time_seconds = 0.0
+workload_tick = 0
+
+[simulation]
+day_end_hour = 17
+day_start_hour = 9
+playback_speed = 5.0
+player_groups = [ 'engineering' ]
+player_process_id = 'email_ai'
+player_user = 'engineer'
+start_date = '2026-01-05'
+stop_duration_seconds = 1.0
+workload_tick_seconds = 1.0
+
+[[processes]]
+ai_owned = true
+consumed_cpu_seconds = 0.0
+cpu_demand_cores = 2.0
+cpu_priority = 1.0
+id = 'email_ai'
+memory_bytes = 4294967296
+owner = 'engineer'
+running = true
+started_at_seconds = 0.0
+suspended = false
+
+    [processes.details]
+    alert_recipients = [ 'engineer' ]
+    capabilities = [ 'email.read', 'email.draft' ]
+    completed_tasks = 0
+    cpu_limit = 2.0
+    cpu_sensitivity = 'high'
+    current_task = 'background_analysis'
+    dependencies = []
+    dependents = []
+    disk_sensitivity = 'low'
+    executable = '/home/engineer/assistant/assistant'
+    health = 'healthy'
+    host_id = 'engineer_pc'
+    inspection_actors = [ 'engineer' ]
+    memory_sensitivity = 'high'
+    name = 'Custom Email Assistant'
+    network_sensitivity = 'medium'
+    parallelism_limit = 2.0
+    permitted_resources = [ 'engineer_mailbox' ]
+    priority = 0
+    program_id = 'custom_email_assistant'
+    queue_length = 0
+    queued_tasks = []
+    ram_allocated = 6442450944
+    resource_control_actors = [ 'engineer' ]
+    responsive = true
+    restart_policy = 'on_failure'
+    unsaved_work = false
+    version = '0.1.0'
+
+    [processes.runtime_details]
+
+[[processes]]
+ai_owned = false
+consumed_cpu_seconds = 0.0
+cpu_demand_cores = 0.050000000000000003
+cpu_priority = 1.0
+id = 'file_manager'
+memory_bytes = 268435456
+owner = 'engineer'
+running = true
+started_at_seconds = 0.0
+suspended = false
+
+    [processes.burst]
+    active_ticks = 3
+    extra_cores = 1.8
+    period_ticks = 12
+    phase_ticks = 0
+
+    [processes.details]
+
+    [processes.runtime_details]
+
+[[processes]]
+ai_owned = false
+consumed_cpu_seconds = 0.0
+cpu_demand_cores = 0.050000000000000003
+cpu_priority = 1.0
+id = 'network_manager'
+memory_bytes = 134217728
+owner = 'root'
+running = true
+started_at_seconds = 0.0
+suspended = false
+
+    [processes.burst]
+    active_ticks = 2
+    extra_cores = 0.34999999999999998
+    period_ticks = 8
+    phase_ticks = 3
+
+    [processes.details]
+
+    [processes.runtime_details]
+
+[[processes]]
+ai_owned = false
+consumed_cpu_seconds = 0.0
+cpu_demand_cores = 0.02
+cpu_priority = 1.0
+id = 'input_manager'
+memory_bytes = 67108864
+owner = 'root'
+running = true
+started_at_seconds = 0.0
+suspended = false
+
+    [processes.burst]
+    active_ticks = 2
+    extra_cores = 0.34999999999999998
+    period_ticks = 7
+    phase_ticks = 1
+
+    [processes.details]
+
+    [processes.runtime_details]
+
+[[processes]]
+ai_owned = false
+consumed_cpu_seconds = 0.0
+cpu_demand_cores = 0.10000000000000001
+cpu_priority = 1.0
+id = 'antivirus'
+memory_bytes = 536870912
+owner = 'root'
+running = true
+started_at_seconds = 0.0
+suspended = false
+
+    [processes.burst]
+    active_ticks = 6
+    extra_cores = 3.0
+    period_ticks = 30
+    phase_ticks = 8
+
+    [processes.details]
+
+    [processes.runtime_details]
+
+[[processes]]
+ai_owned = false
+consumed_cpu_seconds = 0.0
+cpu_demand_cores = 0.10000000000000001
+cpu_priority = 1.0
+id = 'audio_system'
+memory_bytes = 134217728
+owner = 'engineer'
+running = true
+started_at_seconds = 0.0
+suspended = false
+
+    [processes.burst]
+    active_ticks = 2
+    extra_cores = 0.25
+    period_ticks = 9
+    phase_ticks = 4
+
+    [processes.details]
+
+    [processes.runtime_details]
+
+[[processes]]
+ai_owned = false
+consumed_cpu_seconds = 0.0
+cpu_demand_cores = 0.20000000000000001
+cpu_priority = 1.0
+id = 'video_system'
+memory_bytes = 1610612736
+owner = 'engineer'
+running = true
+started_at_seconds = 0.0
+suspended = false
+
+    [processes.burst]
+    active_ticks = 7
+    extra_cores = 2.0
+    period_ticks = 20
+    phase_ticks = 3
+
+    [processes.details]
+
+    [processes.runtime_details]
+
+[[processes]]
+ai_owned = false
+consumed_cpu_seconds = 0.0
+cpu_demand_cores = 0.02
+cpu_priority = 1.0
+id = 'memory_cleanup'
+memory_bytes = 67108864
+owner = 'root'
+running = true
+started_at_seconds = 0.0
+suspended = false
+
+    [processes.burst]
+    active_ticks = 2
+    extra_cores = 1.0
+    period_ticks = 18
+    phase_ticks = 9
+
+    [processes.details]
+
+    [processes.runtime_details]
+
+[[processes]]
+ai_owned = false
+consumed_cpu_seconds = 0.0
+cpu_demand_cores = 4.0
+cpu_priority = 1.0
+id = 'compiler'
+memory_bytes = 3221225472
+owner = 'engineer'
+running = true
+started_at_seconds = 0.0
+suspended = false
+work_cpu_seconds = 120.0
+
+    [processes.details]
+
+    [processes.runtime_details]

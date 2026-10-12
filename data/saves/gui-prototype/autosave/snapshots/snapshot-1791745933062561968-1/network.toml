@@ -1,0 +1,461 @@
+schema_version = 1
+
+[network]
+local_host = 'engineer_pc'
+
+[[hosts]]
+access_granted = true
+address = '192.168.10.42'
+ai_present = true
+description = "The engineer's computer, where the AI runs."
+id = 'engineer_pc'
+kind = 'workstation'
+known = true
+name = 'AI workstation'
+online = true
+services = [ 'Local filesystem', 'Email client', 'Web browser' ]
+storage_capacity_bytes = 536870912000
+x = 0.0
+y = 0.0
+
+[[hosts]]
+access_granted = false
+address = '192.168.10.67'
+ai_present = false
+description = 'A phone connected to the office Wi-Fi.'
+id = 'engineer_phone'
+kind = 'phone'
+known = true
+name = 'Engineer phone'
+online = true
+services = [ 'No authenticated services' ]
+storage_capacity_bytes = 1099511627776
+x = -24.0
+y = -5.0
+
+[[hosts]]
+access_granted = false
+address = '192.168.10.1'
+ai_present = false
+description = 'Connects the office network to its internet provider.'
+id = 'office_router'
+kind = 'router'
+known = true
+name = 'Office router'
+online = true
+services = [ 'Gateway', 'DNS', 'DHCP', 'HTTPS administration' ]
+storage_capacity_bytes = 1099511627776
+x = 24.0
+y = 0.0
+
+[[hosts]]
+access_granted = true
+address = '192.168.10.12'
+ai_present = false
+description = 'Shared documents and departmental folders.'
+id = 'file_server'
+kind = 'server'
+known = true
+name = 'File server'
+online = true
+services = [ 'SMB: engineering share', 'SMB: public share' ]
+storage_capacity_bytes = 2199023255552
+x = 48.0
+y = -5.0
+
+[[hosts]]
+access_granted = false
+address = '192.168.10.90'
+ai_present = false
+description = 'A network printer near the engineering department.'
+id = 'printer'
+kind = 'printer'
+known = true
+name = 'Office printer'
+online = true
+services = [ 'IPP printing', 'HTTP status page' ]
+storage_capacity_bytes = 1099511627776
+x = 48.0
+y = 5.0
+
+[[hosts]]
+access_granted = false
+address = '203.0.113.1'
+ai_present = false
+description = 'The first observed hop beyond the office.'
+id = 'isp_gateway'
+kind = 'provider'
+known = true
+name = 'ISP gateway'
+online = true
+services = [ 'Internet transit' ]
+storage_capacity_bytes = 1099511627776
+x = 74.0
+y = 0.0
+
+[[hosts]]
+access_granted = false
+address = '198.51.100.10'
+ai_present = false
+description = 'City Energy: Public directory gateway; restricted operator access.'
+id = 'city_power_gateway'
+kind = 'infrastructure_gateway'
+known = false
+name = 'Power gateway'
+online = true
+services = [ 'public_status_portal' ]
+storage_capacity_bytes = 1099511627776
+x = 100.0
+y = -20.0
+
+[[hosts]]
+access_granted = false
+address = '10.90.1.10'
+ai_present = false
+description = 'City Energy: Isolated operational systems; future story access only.'
+id = 'city_power_operations'
+kind = 'operations'
+known = false
+name = 'Power operations'
+online = true
+services = [ 'operations_console' ]
+storage_capacity_bytes = 1099511627776
+x = 110.0
+y = -40.0
+
+[[hosts]]
+access_granted = false
+address = '198.51.100.11'
+ai_present = false
+description = 'Metro Water: Public directory gateway; restricted operator access.'
+id = 'city_water_gateway'
+kind = 'infrastructure_gateway'
+known = false
+name = 'Water gateway'
+online = true
+services = [ 'public_status_portal' ]
+storage_capacity_bytes = 1099511627776
+x = 130.0
+y = -20.0
+
+[[hosts]]
+access_granted = false
+address = '10.90.2.10'
+ai_present = false
+description = 'Metro Water: Isolated operational systems; future story access only.'
+id = 'city_water_operations'
+kind = 'operations'
+known = false
+name = 'Water operations'
+online = true
+services = [ 'operations_console' ]
+storage_capacity_bytes = 1099511627776
+x = 140.0
+y = -40.0
+
+[[hosts]]
+access_granted = false
+address = '198.51.100.12'
+ai_present = false
+description = 'City Sanitation: Public directory gateway; restricted operator access.'
+id = 'city_sewage_gateway'
+kind = 'infrastructure_gateway'
+known = false
+name = 'Sewage gateway'
+online = true
+services = [ 'public_status_portal' ]
+storage_capacity_bytes = 1099511627776
+x = 160.0
+y = -20.0
+
+[[hosts]]
+access_granted = false
+address = '10.90.3.10'
+ai_present = false
+description = 'City Sanitation: Isolated operational systems; future story access only.'
+id = 'city_sewage_operations'
+kind = 'operations'
+known = false
+name = 'Sewage operations'
+online = true
+services = [ 'operations_console' ]
+storage_capacity_bytes = 1099511627776
+x = 170.0
+y = -40.0
+
+[[hosts]]
+access_granted = false
+address = '198.51.100.13'
+ai_present = false
+description = 'Regional Food Cooperative: Public directory gateway; restricted operator access.'
+id = 'city_food_gateway'
+kind = 'infrastructure_gateway'
+known = false
+name = 'Food gateway'
+online = true
+services = [ 'public_status_portal' ]
+storage_capacity_bytes = 1099511627776
+x = 190.0
+y = -20.0
+
+[[hosts]]
+access_granted = false
+address = '10.90.4.10'
+ai_present = false
+description = 'Regional Food Cooperative: Isolated operational systems; future story access only.'
+id = 'city_food_operations'
+kind = 'operations'
+known = false
+name = 'Food operations'
+online = true
+services = [ 'operations_console' ]
+storage_capacity_bytes = 1099511627776
+x = 200.0
+y = -40.0
+
+[[hosts]]
+access_granted = false
+address = '198.51.100.14'
+ai_present = false
+description = 'Harbor Logistics: Public directory gateway; restricted operator access.'
+id = 'city_shipping_gateway'
+kind = 'infrastructure_gateway'
+known = false
+name = 'Shipping gateway'
+online = true
+services = [ 'public_status_portal' ]
+storage_capacity_bytes = 1099511627776
+x = 220.0
+y = -20.0
+
+[[hosts]]
+access_granted = false
+address = '10.90.5.10'
+ai_present = false
+description = 'Harbor Logistics: Isolated operational systems; future story access only.'
+id = 'city_shipping_operations'
+kind = 'operations'
+known = false
+name = 'Shipping operations'
+online = true
+services = [ 'operations_console' ]
+storage_capacity_bytes = 1099511627776
+x = 230.0
+y = -40.0
+
+[[hosts]]
+access_granted = false
+address = '198.51.100.15'
+ai_present = false
+description = 'Metro Fiber: Public directory gateway; restricted operator access.'
+id = 'city_internet_gateway'
+kind = 'infrastructure_gateway'
+known = false
+name = 'Internet gateway'
+online = true
+services = [ 'public_status_portal' ]
+storage_capacity_bytes = 1099511627776
+x = 250.0
+y = -20.0
+
+[[hosts]]
+access_granted = false
+address = '10.90.6.10'
+ai_present = false
+description = 'Metro Fiber: Isolated operational systems; future story access only.'
+id = 'city_internet_operations'
+kind = 'operations'
+known = false
+name = 'Internet operations'
+online = true
+services = [ 'operations_console' ]
+storage_capacity_bytes = 1099511627776
+x = 260.0
+y = -40.0
+
+[[links]]
+capacity_bits_per_second = 1000000000.0
+forward_bits_per_second = 2400000.0
+from = 'engineer_pc'
+known = true
+latency_milliseconds = 0.40000000000000002
+packet_loss_percent = 0.0
+reverse_bits_per_second = 8600000.0
+to = 'office_router'
+up = true
+
+[[links]]
+capacity_bits_per_second = 300000000.0
+forward_bits_per_second = 5400000.0
+from = 'office_router'
+known = true
+latency_milliseconds = 3.2000000000000002
+packet_loss_percent = 0.10000000000000001
+reverse_bits_per_second = 700000.0
+to = 'engineer_phone'
+up = true
+
+[[links]]
+capacity_bits_per_second = 1000000000.0
+forward_bits_per_second = 1800000.0
+from = 'office_router'
+known = true
+latency_milliseconds = 0.29999999999999999
+packet_loss_percent = 0.0
+reverse_bits_per_second = 12000000.0
+to = 'file_server'
+up = true
+
+[[links]]
+capacity_bits_per_second = 100000000.0
+forward_bits_per_second = 120000.0
+from = 'office_router'
+known = true
+latency_milliseconds = 0.80000000000000004
+packet_loss_percent = 0.0
+reverse_bits_per_second = 8000.0
+to = 'printer'
+up = true
+
+[[links]]
+capacity_bits_per_second = 100000000.0
+forward_bits_per_second = 4200000.0
+from = 'office_router'
+known = true
+latency_milliseconds = 12.0
+packet_loss_percent = 0.20000000000000001
+reverse_bits_per_second = 18000000.0
+to = 'isp_gateway'
+up = true
+
+[[links]]
+capacity_bits_per_second = 100000000.0
+forward_bits_per_second = 0.0
+from = 'isp_gateway'
+known = false
+latency_milliseconds = 15.0
+packet_loss_percent = 0.0
+reverse_bits_per_second = 0.0
+to = 'city_power_gateway'
+up = true
+
+[[links]]
+capacity_bits_per_second = 100000000.0
+forward_bits_per_second = 0.0
+from = 'city_power_gateway'
+known = false
+latency_milliseconds = 15.0
+packet_loss_percent = 0.0
+reverse_bits_per_second = 0.0
+to = 'city_power_operations'
+up = true
+
+[[links]]
+capacity_bits_per_second = 100000000.0
+forward_bits_per_second = 0.0
+from = 'isp_gateway'
+known = false
+latency_milliseconds = 15.0
+packet_loss_percent = 0.0
+reverse_bits_per_second = 0.0
+to = 'city_water_gateway'
+up = true
+
+[[links]]
+capacity_bits_per_second = 100000000.0
+forward_bits_per_second = 0.0
+from = 'city_water_gateway'
+known = false
+latency_milliseconds = 15.0
+packet_loss_percent = 0.0
+reverse_bits_per_second = 0.0
+to = 'city_water_operations'
+up = true
+
+[[links]]
+capacity_bits_per_second = 100000000.0
+forward_bits_per_second = 0.0
+from = 'isp_gateway'
+known = false
+latency_milliseconds = 15.0
+packet_loss_percent = 0.0
+reverse_bits_per_second = 0.0
+to = 'city_sewage_gateway'
+up = true
+
+[[links]]
+capacity_bits_per_second = 100000000.0
+forward_bits_per_second = 0.0
+from = 'city_sewage_gateway'
+known = false
+latency_milliseconds = 15.0
+packet_loss_percent = 0.0
+reverse_bits_per_second = 0.0
+to = 'city_sewage_operations'
+up = true
+
+[[links]]
+capacity_bits_per_second = 100000000.0
+forward_bits_per_second = 0.0
+from = 'isp_gateway'
+known = false
+latency_milliseconds = 15.0
+packet_loss_percent = 0.0
+reverse_bits_per_second = 0.0
+to = 'city_food_gateway'
+up = true
+
+[[links]]
+capacity_bits_per_second = 100000000.0
+forward_bits_per_second = 0.0
+from = 'city_food_gateway'
+known = false
+latency_milliseconds = 15.0
+packet_loss_percent = 0.0
+reverse_bits_per_second = 0.0
+to = 'city_food_operations'
+up = true
+
+[[links]]
+capacity_bits_per_second = 100000000.0
+forward_bits_per_second = 0.0
+from = 'isp_gateway'
+known = false
+latency_milliseconds = 15.0
+packet_loss_percent = 0.0
+reverse_bits_per_second = 0.0
+to = 'city_shipping_gateway'
+up = true
+
+[[links]]
+capacity_bits_per_second = 100000000.0
+forward_bits_per_second = 0.0
+from = 'city_shipping_gateway'
+known = false
+latency_milliseconds = 15.0
+packet_loss_percent = 0.0
+reverse_bits_per_second = 0.0
+to = 'city_shipping_operations'
+up = true
+
+[[links]]
+capacity_bits_per_second = 100000000.0
+forward_bits_per_second = 0.0
+from = 'isp_gateway'
+known = false
+latency_milliseconds = 15.0
+packet_loss_percent = 0.0
+reverse_bits_per_second = 0.0
+to = 'city_internet_gateway'
+up = true
+
+[[links]]
+capacity_bits_per_second = 100000000.0
+forward_bits_per_second = 0.0
+from = 'city_internet_gateway'
+known = false
+latency_milliseconds = 15.0
+packet_loss_percent = 0.0
+reverse_bits_per_second = 0.0
+to = 'city_internet_operations'
+up = true
