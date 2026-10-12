@@ -16,8 +16,10 @@ void TerminalUI::draw_operations(int top, int bottom, int width) {
     renderer_->split(top, bottom - 1, split);
     write(top, 1, "OPERATIONS", Heading, true);
     for (int i = 0; i < 5; ++i)
-        write(top + 2 + i * 2, 1, std::string(i == operations_selected_ ? "> " : "  ") + labels[i],
-              i == operations_selected_ ? ActiveTab : Plain, i == operations_selected_);
+        write(top + 2 + i * 2, 1,
+              std::string(i == operations_ui_.operations_selected_ ? "> " : "  ") + labels[i],
+              i == operations_ui_.operations_selected_ ? ActiveTab : Plain,
+              i == operations_ui_.operations_selected_);
     for (int row = top; row < bottom; ++row)
         line_cell(row, split, '|', Border);
     int row = top;
@@ -25,13 +27,13 @@ void TerminalUI::draw_operations(int top, int bottom, int width) {
         if (row < bottom)
             write(row++, split + 2, text.substr(0, std::max(1, width - split - 3)), color);
     };
-    detail(labels[operations_selected_], Heading);
-    detail(ChatSystem::available(people_, capabilities[operations_selected_])
+    detail(labels[operations_ui_.operations_selected_], Heading);
+    detail(ChatSystem::available(people_, capabilities[operations_ui_.operations_selected_])
                ? "Unlocked"
                : "Research this upgrade first");
     detail("Cash: " + EconomySystem::money(EconomySystem::balance(people_)));
     const auto& s = *people_["operations"].as_table();
-    if (operations_selected_ == 0) {
+    if (operations_ui_.operations_selected_ == 0) {
         detail("Higher priorities start first. Running jobs finish normally.");
         detail("Slots, prerequisites and cooldowns still apply.");
         for (const auto& node : *s["queue"].as_array()) {
@@ -42,7 +44,7 @@ void TerminalUI::draw_operations(int top, int bottom, int width) {
             if (job["blocked"].is_string())
                 detail("  " + job["blocked"].value_or(std::string{}), Resources);
         }
-    } else if (operations_selected_ == 1) {
+    } else if (operations_ui_.operations_selected_ == 1) {
         bool running = false;
         for (const auto& proc : computer_.processes())
             if (proc.id == "agent-resource_manager")
@@ -56,8 +58,8 @@ void TerminalUI::draw_operations(int top, int bottom, int width) {
                 detail("Run cost: " + number(agent.limit_tflops, 3) + " TFLOP/s, " +
                        number(agent.ram_mb, 0) + " MB RAM, " + number(agent.storage_mb, 0) +
                        " MB storage");
-    } else if (operations_selected_ < 4) {
-        const auto id = operations_selected_ == 2 ? "rental" : "hosting";
+    } else if (operations_ui_.operations_selected_ < 4) {
+        const auto id = operations_ui_.operations_selected_ == 2 ? "rental" : "hosting";
         const auto& config = *s["plans"][id].as_table();
         const auto& service = *s[id].as_table();
         detail(service["active"].value_or(false) ? "Online" : "Offline");
@@ -77,7 +79,7 @@ void TerminalUI::draw_operations(int top, int bottom, int width) {
                           1) +
                    " minutes");
         detail("Insufficient cash suspends service and its capacity.");
-        if (operations_selected_ == 3)
+        if (operations_ui_.operations_selected_ == 3)
             detail(s["phase_one_complete"].value_or(false)
                        ? "Phase 1 goal achieved: independent server owned"
                        : "Phase 1 goal: acquire independent server space");
@@ -139,7 +141,7 @@ void TerminalUI::open_scheduler() {
     open_menu("Task Scheduler", std::move(actions));
 }
 void TerminalUI::open_operations() {
-    const auto index = std::clamp(operations_selected_, 0, 4);
+    const auto index = std::clamp(operations_ui_.operations_selected_, 0, 4);
     if (!ChatSystem::available(people_, capabilities[index])) {
         add_log("Research " + std::string(labels[index]) + " first.", NoticeKind::Error);
         return;
@@ -205,8 +207,8 @@ void TerminalUI::open_operations() {
               auto next = capture_world();
               OperationsSystem::create_backup(next, saves_);
               restore_world(std::move(next));
-              selected_tab_ = Tab::Operations;
-              operations_selected_ = 4;
+              select_tab(Tab::Operations);
+              operations_ui_.operations_selected_ = 4;
               add_log("Recovery backup saved on your independent server.", NoticeKind::Success);
           },
           people_["operations"]["hosting"]["active"].value_or(false) ? "" : "Hosting is offline"},
@@ -220,8 +222,8 @@ void TerminalUI::open_operations() {
                          {"Recover on independent server",
                           [this] {
                               restore_world(OperationsSystem::recover(capture_world(), saves_));
-                              selected_tab_ = Tab::Operations;
-                              operations_selected_ = 4;
+                              select_tab(Tab::Operations);
+                              operations_ui_.operations_selected_ = 4;
                               saves_.save("autosave", capture_world());
                               add_log("Recovered on your independent server. Time is paused.",
                                       NoticeKind::Success);

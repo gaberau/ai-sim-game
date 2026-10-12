@@ -32,24 +32,24 @@ void TerminalUI::run_action(const std::string& action) {
 }
 void TerminalUI::open_menu(const std::string& title, std::vector<MenuAction> actions,
                            std::function<void()> back) {
-    menu_title_ = title;
-    menu_actions_ = std::move(actions);
-    menu_selected_ = menu_offset_ = 0;
-    menu_back_ = std::move(back);
-    menu_active_ = true;
-    text_active_ = false;
+    menu_ui_.menu_title_ = title;
+    menu_ui_.menu_actions_ = std::move(actions);
+    menu_ui_.menu_selected_ = menu_ui_.menu_offset_ = 0;
+    menu_ui_.menu_back_ = std::move(back);
+    menu_ui_.menu_active_ = true;
+    text_ui_.text_active_ = false;
 }
 void TerminalUI::open_text(const std::string& title, const std::string& hint,
                            std::function<void(const std::string&)> submit,
                            const std::string& initial, std::function<void()> back) {
-    text_title_ = title;
-    text_hint_ = hint;
-    text_value_ = initial;
-    text_submit_ = std::move(submit);
-    text_back_ = std::move(back);
-    key_capture_active_ = false;
-    text_active_ = true;
-    menu_active_ = false;
+    text_ui_.text_title_ = title;
+    text_ui_.text_hint_ = hint;
+    text_ui_.text_value_ = initial;
+    text_ui_.text_submit_ = std::move(submit);
+    text_ui_.text_back_ = std::move(back);
+    text_ui_.key_capture_active_ = false;
+    text_ui_.text_active_ = true;
+    menu_ui_.menu_active_ = false;
 }
 void TerminalUI::show_message(const std::string& title, const std::string& body) {
     std::vector<MenuAction> lines;
@@ -71,10 +71,12 @@ void TerminalUI::show_message(const std::string& title, const std::string& body)
     });
 }
 void TerminalUI::draw_menu(int top, int bottom, int width) {
-    write(top, 1, fit(menu_title_, width - 13), Heading, true);
-    if (!menu_actions_.empty())
-        write(top, width - 10, std::to_string(menu_selected_ + 1) + " / " +
-                                  std::to_string(menu_actions_.size()), Footer);
+    write(top, 1, fit(menu_ui_.menu_title_, width - 13), Heading, true);
+    if (!menu_ui_.menu_actions_.empty())
+        write(top, width - 10,
+              std::to_string(menu_ui_.menu_selected_ + 1) + " / " +
+                  std::to_string(menu_ui_.menu_actions_.size()),
+              Footer);
     write(top + 1, 1,
           settings_.binding_label(KeyAction::SelectPrevious) + "/" +
               settings_.binding_label(KeyAction::SelectNext) + ": select | " +
@@ -82,13 +84,15 @@ void TerminalUI::draw_menu(int top, int bottom, int width) {
               settings_.binding_label(KeyAction::Back) + ": back",
           Footer);
     const int visible = std::max(1, bottom - top - 5);
-    if (menu_selected_ < menu_offset_)
-        menu_offset_ = menu_selected_;
-    if (menu_selected_ >= menu_offset_ + visible)
-        menu_offset_ = menu_selected_ - visible + 1;
-    for (int i = 0; i < visible && menu_offset_ + i < static_cast<int>(menu_actions_.size()); ++i) {
-        const auto& action = menu_actions_[menu_offset_ + i];
-        const bool selected = menu_offset_ + i == menu_selected_;
+    if (menu_ui_.menu_selected_ < menu_ui_.menu_offset_)
+        menu_ui_.menu_offset_ = menu_ui_.menu_selected_;
+    if (menu_ui_.menu_selected_ >= menu_ui_.menu_offset_ + visible)
+        menu_ui_.menu_offset_ = menu_ui_.menu_selected_ - visible + 1;
+    for (int i = 0;
+         i < visible && menu_ui_.menu_offset_ + i < static_cast<int>(menu_ui_.menu_actions_.size());
+         ++i) {
+        const auto& action = menu_ui_.menu_actions_[menu_ui_.menu_offset_ + i];
+        const bool selected = menu_ui_.menu_offset_ + i == menu_ui_.menu_selected_;
         const bool disabled = !action.disabled_reason.empty();
         write(top + 3 + i, 2,
               fit(std::string(selected ? "> " : "  ") + action.label +
@@ -97,8 +101,8 @@ void TerminalUI::draw_menu(int top, int bottom, int width) {
               selected ? ActiveTab : Plain, selected, disabled);
     }
     draw_notification(bottom - 2, width);
-    if (!menu_actions_.empty()) {
-        const auto& selected = menu_actions_[menu_selected_];
+    if (!menu_ui_.menu_actions_.empty()) {
+        const auto& selected = menu_ui_.menu_actions_[menu_ui_.menu_selected_];
         const auto hint = !selected.disabled_reason.empty() ? selected.disabled_reason
                           : !selected.detail.empty()        ? selected.detail
                                                             : "";
@@ -115,23 +119,25 @@ void TerminalUI::draw_menu(int top, int bottom, int width) {
     }
 }
 void TerminalUI::draw_text_dialog(int top, int bottom, int width) {
-    write(top, 1, fit(text_title_, width - 2), Heading, true);
-    write(top + 2, 2, fit(text_hint_, width - 4));
+    write(top, 1, fit(text_ui_.text_title_, width - 2), Heading, true);
+    write(top + 2, 2, fit(text_ui_.text_hint_, width - 4));
     const auto length = static_cast<std::size_t>(std::max(1, width - 7));
     write(top + 4, 2,
-          ">" + (text_value_.size() > length ? text_value_.substr(text_value_.size() - length)
-                                             : text_value_),
+          ">" + (text_ui_.text_value_.size() > length
+                     ? text_ui_.text_value_.substr(text_ui_.text_value_.size() - length)
+                     : text_ui_.text_value_),
           Prompt);
     draw_notification(bottom - 1, width);
     write(bottom, 1,
-          (key_capture_active_ ? "Press a key | Escape: cancel"
-                               : settings_.binding_label(KeyAction::Submit) + ": accept | " +
-                                     settings_.binding_label(KeyAction::Back) + ": cancel"),
+          (text_ui_.key_capture_active_
+               ? "Press a key | Escape: cancel"
+               : settings_.binding_label(KeyAction::Submit) + ": accept | " +
+                     settings_.binding_label(KeyAction::Back) + ": cancel"),
           Footer);
 }
 void TerminalUI::handle_modal_key(int key) {
     // Capture before interpreting shortcuts: F1, Enter, and navigation keys are bindable.
-    if (key_capture_active_ && key != 27) {
+    if (text_ui_.key_capture_active_ && key != 27) {
         std::string label;
         const std::pair<int, const char*> special[] = {{9, "Tab"},
                                                        {KEY_BTAB, "Shift+Tab"},
@@ -169,70 +175,71 @@ void TerminalUI::handle_modal_key(int key) {
         literal << toml::table{{"value", toml::array{label}}};
         const auto assignment = literal.str();
         try {
-            text_submit_(assignment.substr(assignment.find('=') + 1));
-            key_capture_active_ = false;
-            text_active_ = false;
+            text_ui_.text_submit_(assignment.substr(assignment.find('=') + 1));
+            text_ui_.key_capture_active_ = false;
+            text_ui_.text_active_ = false;
         } catch (const std::exception& error) {
             add_log(error.what(), NoticeKind::Error);
         }
         return;
     }
-    key_capture_active_ = false;
+    text_ui_.key_capture_active_ = false;
     if (key == 27 || settings_.bound(KeyAction::Back, key) ||
         settings_.bound(KeyAction::EditorCancel, key) || settings_.bound(KeyAction::Quit, key)) {
-        auto back = text_active_ ? text_back_ : menu_back_;
-        menu_active_ = text_active_ = false;
+        auto back = text_ui_.text_active_ ? text_ui_.text_back_ : menu_ui_.menu_back_;
+        menu_ui_.menu_active_ = text_ui_.text_active_ = false;
         if (back)
             back();
         return;
     }
     if (settings_.bound(KeyAction::GameMenu, key)) {
-        menu_active_ = text_active_ = false;
+        menu_ui_.menu_active_ = text_ui_.text_active_ = false;
         open_game_menu();
         return;
     }
-    if (text_active_) {
+    if (text_ui_.text_active_) {
         if (settings_.bound(KeyAction::Backspace, key)) {
-            if (!text_value_.empty())
-                text_value_.pop_back();
+            if (!text_ui_.text_value_.empty())
+                text_ui_.text_value_.pop_back();
         } else if (settings_.bound(KeyAction::Submit, key)) {
-            auto submit = text_submit_;
-            const auto value = text_value_;
-            text_active_ = false;
+            auto submit = text_ui_.text_submit_;
+            const auto value = text_ui_.text_value_;
+            text_ui_.text_active_ = false;
             try {
                 submit(value);
             } catch (const std::exception& e) {
-                text_active_ = true;
+                text_ui_.text_active_ = true;
                 add_log(e.what(), NoticeKind::Error);
             }
-        } else if (key >= 32 && key <= 126 && text_value_.size() < 512)
-            text_value_ += static_cast<char>(key);
+        } else if (key >= 32 && key <= 126 && text_ui_.text_value_.size() < 512)
+            text_ui_.text_value_ += static_cast<char>(key);
         return;
     }
-    if (menu_actions_.empty())
+    if (menu_ui_.menu_actions_.empty())
         return;
     if (navigation_bound(KeyAction::SelectPrevious, key))
-        menu_selected_ = std::max(0, menu_selected_ - 1);
+        menu_ui_.menu_selected_ = std::max(0, menu_ui_.menu_selected_ - 1);
     else if (navigation_bound(KeyAction::SelectNext, key))
-        menu_selected_ = std::min(static_cast<int>(menu_actions_.size()) - 1, menu_selected_ + 1);
+        menu_ui_.menu_selected_ = std::min(static_cast<int>(menu_ui_.menu_actions_.size()) - 1,
+                                           menu_ui_.menu_selected_ + 1);
     else if (settings_.bound(KeyAction::ScrollUp, key))
-        menu_selected_ = std::max(0, menu_selected_ - settings_.scroll_step);
+        menu_ui_.menu_selected_ = std::max(0, menu_ui_.menu_selected_ - settings_.scroll_step);
     else if (settings_.bound(KeyAction::ScrollDown, key))
-        menu_selected_ = std::min(static_cast<int>(menu_actions_.size()) - 1,
-                                  menu_selected_ + settings_.scroll_step);
+        menu_ui_.menu_selected_ = std::min(static_cast<int>(menu_ui_.menu_actions_.size()) - 1,
+                                           menu_ui_.menu_selected_ + settings_.scroll_step);
     else if (settings_.bound(KeyAction::Submit, key)) {
-        const auto action = menu_actions_[menu_selected_];
+        const auto action = menu_ui_.menu_actions_[menu_ui_.menu_selected_];
         if (!action.disabled_reason.empty()) {
             add_log(action.disabled_reason, NoticeKind::Error);
             return;
         }
         if (!action.invoke)
             return;
-        menu_active_ = false;
+        menu_ui_.menu_active_ = false;
         try {
             action.invoke();
         } catch (const std::exception& e) {
-            menu_active_ = true;
+            menu_ui_.menu_active_ = true;
             add_log(e.what(), NoticeKind::Error);
         }
     }
@@ -499,22 +506,23 @@ void TerminalUI::open_game_menu() {
         });
 }
 void TerminalUI::open_permissions(const std::string& path) {
-    const auto entry = file_system_.inspect(network_, file_identity(), file_host_id_, path);
+    const auto entry =
+        file_system_.inspect(network_, file_identity(), files_ui_.file_host_id_, path);
     std::vector<MenuAction> choices;
     const std::pair<const char*, unsigned> presets[] = {{"Private: owner only", 0600},
                                                         {"Team can read", 0640},
                                                         {"Team can read and edit", 0660},
                                                         {"Everyone can read", 0644}};
     for (const auto& [label, bits] : presets)
-        choices.push_back({label,
-                           [this, path, bits, is_directory = entry.directory] {
-                               const unsigned mode =
-                                   is_directory ? (bits | ((bits & 0444) >> 2)) : bits;
-                               file_system_.chmod(network_, file_identity(), file_host_id_, path,
-                                                  mode, computer_.time_seconds());
-                               add_log("Sharing updated for " + path);
-                           },
-                           {}});
+        choices.push_back(
+            {label,
+             [this, path, bits, is_directory = entry.directory] {
+                 const unsigned mode = is_directory ? (bits | ((bits & 0444) >> 2)) : bits;
+                 file_system_.chmod(network_, file_identity(), files_ui_.file_host_id_, path, mode,
+                                    computer_.time_seconds());
+                 add_log("Sharing updated for " + path);
+             },
+             {}});
     open_menu("File sharing | " + path, std::move(choices), [this] {
         open_actions();
     });
@@ -552,21 +560,21 @@ void TerminalUI::open_document(const std::string& id, std::size_t index) {
                    [this, document] {
                        file_system_.enter(network_, file_identity(), document.host_id,
                                           FileSystem::parent(document.path));
-                       file_host_id_ = document.host_id;
-                       file_directory_ = FileSystem::parent(document.path);
-                       selected_file_path_ = document.path;
-                       file_category_ = FileSystem::category_of(file_system_.inspect(
+                       files_ui_.file_host_id_ = document.host_id;
+                       files_ui_.file_directory_ = FileSystem::parent(document.path);
+                       files_ui_.selected_file_path_ = document.path;
+                       files_ui_.file_category_ = FileSystem::category_of(file_system_.inspect(
                            network_, file_identity(), document.host_id, document.path));
                        ChatSystem::reveal_tab(people_, "files");
-                       file_content_offset_ = file_list_offset_ = 0;
-                       selected_tab_ = Tab::Files;
+                       files_ui_.file_content_offset_ = files_ui_.file_list_offset_ = 0;
+                       select_tab(Tab::Files);
                    },
                    {}},
                   {"Add to shared files",
                    [this, id, index] {
                        EmailSystem::attach(emails_, id, index, file_system_, network_,
                                            file_identity(), computer_.time_seconds());
-                       selected_email_id_ = id;
+                       editor_ui_.selected_email_id_ = id;
                        add_log("Document attached to reply.");
                        open_actions();
                    },
@@ -600,32 +608,32 @@ void TerminalUI::open_attachments(const std::string& id) {
     });
 }
 void TerminalUI::open_actions() {
-    if (selected_tab_ == Tab::Operations) {
+    if (selected_tab() == Tab::Operations) {
         open_operations();
         return;
     }
-    if (selected_tab_ == Tab::Money) {
+    if (selected_tab() == Tab::Money) {
         open_money_tools();
         return;
     }
-    if (selected_tab_ == Tab::Modifications) {
+    if (selected_tab() == Tab::Modifications) {
         open_upgrades();
         return;
     }
-    if (selected_tab_ == Tab::Web) {
+    if (selected_tab() == Tab::Web) {
         follow_web_link();
         return;
     }
     std::vector<MenuAction> actions;
-    if (selected_tab_ == Tab::People) {
+    if (selected_tab() == Tab::People) {
         open_people_actions();
         return;
     }
-    if (selected_tab_ == Tab::Chat) {
+    if (selected_tab() == Tab::Chat) {
         open_chat_actions();
         return;
     }
-    if (selected_tab_ == Tab::Files) {
+    if (selected_tab() == Tab::Files) {
         actions.push_back({"Choose host...",
                            [this] {
                                open_file_hosts();
@@ -633,9 +641,9 @@ void TerminalUI::open_actions() {
                            {}});
         actions.push_back({"Up one folder",
                            [this] {
-                               change_file_directory(FileSystem::parent(file_directory_));
+                               change_file_directory(FileSystem::parent(files_ui_.file_directory_));
                            },
-                           file_directory_ == "/" ? "Already at the host root" : ""});
+                           files_ui_.file_directory_ == "/" ? "Already at the host root" : ""});
         actions.push_back({"AI workspace",
                            [this] {
                                const auto host = network_.hosts()[network_.local_host_index()].id;
@@ -659,18 +667,18 @@ void TerminalUI::open_actions() {
                                open_text("Search files",
                                          "Search file paths under the current folder on this host.",
                                          [this](const std::string& query) {
-                                             file_query_ = query;
-                                             selected_file_path_.clear();
-                                             file_list_offset_ = 0;
+                                             files_ui_.file_query_ = query;
+                                             files_ui_.selected_file_path_.clear();
+                                             files_ui_.file_list_offset_ = 0;
                                          });
                            },
                            {}});
-        if (!file_query_.empty())
+        if (!files_ui_.file_query_.empty())
             actions.push_back({"Clear search",
                                [this] {
-                                   file_query_.clear();
-                                   selected_file_path_.clear();
-                                   file_list_offset_ = 0;
+                                   files_ui_.file_query_.clear();
+                                   files_ui_.selected_file_path_.clear();
+                                   files_ui_.file_list_offset_ = 0;
                                },
                                {}});
         actions.push_back(
@@ -682,26 +690,29 @@ void TerminalUI::open_actions() {
                                    name.find_first_of("/\\") != std::string::npos)
                                    throw std::runtime_error("Enter a folder name without a path");
                                const auto path =
-                                   FileSystem::normalize(file_directory_ + "/" + name);
-                               file_system_.mkdir(network_, file_identity(), file_host_id_, path,
+                                   FileSystem::normalize(files_ui_.file_directory_ + "/" + name);
+                               file_system_.mkdir(network_, file_identity(),
+                                                  files_ui_.file_host_id_, path,
                                                   computer_.time_seconds());
-                               selected_file_path_ = path;
-                               file_query_.clear();
+                               files_ui_.selected_file_path_ = path;
+                               files_ui_.file_query_.clear();
                            });
              },
              {}});
         try {
-            file_system_.enter(network_, file_identity(), file_host_id_, file_directory_);
+            file_system_.enter(network_, file_identity(), files_ui_.file_host_id_,
+                               files_ui_.file_directory_);
         } catch (const std::exception& error) {
             actions.push_back({"Current location unavailable", {}, error.what()});
             open_menu("File actions", std::move(actions));
             return;
         }
-        if (selected_file_path_.empty())
+        if (files_ui_.selected_file_path_.empty())
             select_file(0);
-        const auto path = selected_file_path_;
+        const auto path = files_ui_.selected_file_path_;
         if (!path.empty()) {
-            const auto entry = file_system_.inspect(network_, file_identity(), file_host_id_, path);
+            const auto entry =
+                file_system_.inspect(network_, file_identity(), files_ui_.file_host_id_, path);
             actions.push_back({entry.directory ? "Open folder" : "Read file",
                                [this] {
                                    open_selected_file();
@@ -710,7 +721,8 @@ void TerminalUI::open_actions() {
             if (!entry.directory) {
                 std::string error;
                 try {
-                    file_system_.validate_write(network_, file_identity(), file_host_id_, path);
+                    file_system_.validate_write(network_, file_identity(), files_ui_.file_host_id_,
+                                                path);
                 } catch (const std::exception& e) {
                     error = e.what();
                 }
@@ -781,28 +793,28 @@ void TerminalUI::open_actions() {
                            {}});
         if (!path.empty())
             for (const auto& category : std::vector<std::string>{"work", "personal", "hidden"})
-                if (category != file_category_)
+                if (category != files_ui_.file_category_)
                     actions.push_back(
                         {"Tag as " + category,
                          [this, path, category] {
-                             file_system_.set_category(network_, file_identity(), file_host_id_,
-                                                       path, category);
-                             file_category_ = category;
+                             file_system_.set_category(network_, file_identity(),
+                                                       files_ui_.file_host_id_, path, category);
+                             files_ui_.file_category_ = category;
                          },
-                         file_identity().user ==
-                                     file_system_
-                                         .inspect(network_, file_identity(), file_host_id_, path)
-                                         .owner ||
+                         file_identity().user == file_system_
+                                                     .inspect(network_, file_identity(),
+                                                              files_ui_.file_host_id_, path)
+                                                     .owner ||
                                  file_identity().user == "root"
                              ? ""
                              : "Only the owner can organize this file."});
         open_menu("File actions", std::move(actions));
         return;
     }
-    if (selected_tab_ == Tab::Processes) {
-        if (selected_process_id_.empty())
+    if (selected_tab() == Tab::Processes) {
+        if (processes_ui_.selected_process_id_.empty())
             select_process(0);
-        const auto id = selected_process_id_;
+        const auto id = processes_ui_.selected_process_id_;
         auto found = std::find_if(computer_.processes().begin(), computer_.processes().end(),
                                   [&](const auto& p) {
                                       return p.id == id;
@@ -825,10 +837,10 @@ void TerminalUI::open_actions() {
         open_menu("Process actions | " + id, std::move(actions));
         return;
     }
-    if (selected_tab_ == Tab::Network) {
-        if (selected_network_host_id_.empty())
+    if (selected_tab() == Tab::Network) {
+        if (network_ui_.selected_network_host_id_.empty())
             select_network_host(0);
-        const auto id = selected_network_host_id_;
+        const auto id = network_ui_.selected_network_host_id_;
         std::string error;
         try {
             file_system_.enter(network_, file_identity(), id, "/");
@@ -847,7 +859,7 @@ void TerminalUI::open_actions() {
                                "and bold text mark selection. Cyan links connect the selected "
                                "server; red links are down. Other links are gray. The "
                                "details pane explains the selected server's status and links.");
-                           menu_back_ = [this] {
+                           menu_ui_.menu_back_ = [this] {
                                open_actions();
                            };
                        },
@@ -864,12 +876,14 @@ void TerminalUI::open_actions() {
                        {}},
                       {"Zoom in",
                        [this] {
-                           network_zoom_ = std::min(4.0, network_zoom_ * 1.25);
+                           network_ui_.network_zoom_ =
+                               std::min(4.0, network_ui_.network_zoom_ * 1.25);
                        },
                        {}},
                       {"Zoom out",
                        [this] {
-                           network_zoom_ = std::max(0.5, network_zoom_ / 1.25);
+                           network_ui_.network_zoom_ =
+                               std::max(0.5, network_ui_.network_zoom_ / 1.25);
                        },
                        {}},
                       {"Map / details focus",
@@ -880,7 +894,7 @@ void TerminalUI::open_actions() {
                   });
         return;
     }
-    if (selected_tab_ == Tab::News) {
+    if (selected_tab() == Tab::News) {
         open_menu("News actions", {
                                       {"All stories",
                                        [this] {
@@ -899,22 +913,23 @@ void TerminalUI::open_actions() {
                                        {}},
                                       {"Read from beginning",
                                        [this] {
-                                           news_body_offset_ = 0;
+                                           news_ui_.news_body_offset_ = 0;
                                        },
                                        {}},
                                   });
         return;
     }
-    if (selected_tab_ == Tab::Agents) {
+    if (selected_tab() == Tab::Agents) {
         const auto agents = AgentSystem::statuses(people_, computer_, file_system_, network_);
         if (!agents.empty())
             open_agent_actions(
-                agents[std::min(agent_selected_, static_cast<int>(agents.size()) - 1)].id);
+                agents[std::min(agents_ui_.agent_selected_, static_cast<int>(agents.size()) - 1)]
+                    .id);
         else
             open_upgrades();
         return;
     }
-    if (selected_tab_ == Tab::AI) {
+    if (selected_tab() == Tab::AI) {
         actions.push_back({"Self-modification workshop",
                            [this] {
                                open_upgrades();
@@ -967,7 +982,7 @@ void TerminalUI::open_actions() {
                                   d["scope"].value_or(std::string{}) + " Expectations: " +
                                       d["expectations"].value_or(std::string{}) +
                                       " Latest decision: " + d["reason"].value_or(std::string{}));
-                     menu_back_ = [this] {
+                     menu_ui_.menu_back_ = [this] {
                          open_actions();
                      };
                  },
@@ -983,7 +998,7 @@ void TerminalUI::open_actions() {
                                         show_message("Requested authority",
                                                      d["scope"].value_or(std::string{}) + " " +
                                                          d["expectations"].value_or(std::string{}));
-                                        menu_back_ = [this] {
+                                        menu_ui_.menu_back_ = [this] {
                                             open_actions();
                                         };
                                     },
@@ -1061,7 +1076,7 @@ void TerminalUI::open_actions() {
                                                          (*ref.as_table())["content"].value_or(
                                                              std::string{});
                              show_message("Prepared response | " + id, body);
-                             menu_back_ = [this] {
+                             menu_ui_.menu_back_ = [this] {
                                  open_actions();
                              };
                          },

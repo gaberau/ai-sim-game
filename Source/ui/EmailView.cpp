@@ -50,14 +50,15 @@ void TerminalUI::notify_email_arrivals(double previous_time) {
 std::vector<Email> TerminalUI::filtered_emails() const {
     auto messages = EmailSystem::messages(emails_, computer_.time_seconds());
     std::erase_if(messages, [&](const auto& message) {
-        return ChatSystem::contact_for(people_, message.sender) != chat_contact_id_;
+        return ChatSystem::contact_for(people_, message.sender) != messages_ui_.chat_contact_id_;
     });
     return messages;
 }
 void TerminalUI::cycle_email_folder(int direction) {
-    email_folder_ = static_cast<EmailFolder>((static_cast<int>(email_folder_) + direction + 4) % 4);
-    selected_email_id_.clear();
-    email_body_offset_ = 0;
+    editor_ui_.email_folder_ =
+        static_cast<EmailFolder>((static_cast<int>(editor_ui_.email_folder_) + direction + 4) % 4);
+    editor_ui_.selected_email_id_.clear();
+    editor_ui_.email_body_offset_ = 0;
 }
 
 Email TerminalUI::selected_email() {
@@ -65,7 +66,7 @@ Email TerminalUI::selected_email() {
     if (messages.empty())
         throw std::runtime_error("No messages in this conversation.");
     auto found = std::find_if(messages.begin(), messages.end(), [&](const auto& email) {
-        return email.id == selected_email_id_;
+        return email.id == editor_ui_.selected_email_id_;
     });
     if (found == messages.end()) {
         found = std::prev(messages.end());
@@ -85,8 +86,8 @@ Email TerminalUI::selected_email() {
                     }
                 }
         }
-        selected_email_id_ = found->id;
-        email_body_offset_ = 0;
+        editor_ui_.selected_email_id_ = found->id;
+        editor_ui_.email_body_offset_ = 0;
     }
     return *found;
 }
@@ -96,32 +97,32 @@ void TerminalUI::select_email(int direction) {
     if (messages.empty())
         return;
     const auto found = std::find_if(messages.begin(), messages.end(), [&](const auto& email) {
-        return email.id == selected_email_id_;
+        return email.id == editor_ui_.selected_email_id_;
     });
     const int index = found == messages.end()
                           ? 0
                           : std::clamp(static_cast<int>(found - messages.begin()) + direction, 0,
                                        static_cast<int>(messages.size()) - 1);
-    selected_email_id_ = messages[index].id;
-    email_body_offset_ = 0;
-    if (email_folder_ != EmailFolder::Unread && !messages[index].archived)
-        EmailSystem::mark_read(emails_, selected_email_id_, computer_.time_seconds());
+    editor_ui_.selected_email_id_ = messages[index].id;
+    editor_ui_.email_body_offset_ = 0;
+    if (editor_ui_.email_folder_ != EmailFolder::Unread && !messages[index].archived)
+        EmailSystem::mark_read(emails_, editor_ui_.selected_email_id_, computer_.time_seconds());
 }
 
 void TerminalUI::edit_email(const std::string& id) {
     const auto email = EmailSystem::message(emails_, id, computer_.time_seconds());
     if (email.draft.size() > static_cast<std::size_t>(settings_.editor_max_bytes))
         throw std::runtime_error("Saved draft exceeds the UI editor byte limit");
-    selected_email_id_ = id;
+    editor_ui_.selected_email_id_ = id;
     const auto visible = filtered_emails();
     EmailSystem::mark_read(emails_, id, computer_.time_seconds());
-    if (email_folder_ == EmailFolder::Unread ||
+    if (editor_ui_.email_folder_ == EmailFolder::Unread ||
         std::none_of(visible.begin(), visible.end(), [&](const auto& candidate) {
             return candidate.id == id;
         }))
-        email_folder_ = email.archived ? EmailFolder::Archived : EmailFolder::Inbox;
-    email_original_offset_ = 0;
-    email_original_focused_ = false;
+        editor_ui_.email_folder_ = email.archived ? EmailFolder::Archived : EmailFolder::Inbox;
+    editor_ui_.email_original_offset_ = 0;
+    editor_ui_.email_original_focused_ = false;
     if (auto* tasks = people_["work_requests"].as_array())
         for (auto& n : *tasks) {
             auto& task = *n.as_table();
@@ -134,31 +135,31 @@ void TerminalUI::edit_email(const std::string& id) {
                     "Player chose to compose this reply; automation leaves it to the player.");
             }
         }
-    email_editor_ = true;
-    email_editor_id_ = id;
-    editor_buffer_ = email.draft;
-    editor_cursor_ = 0;
-    editor_offset_ = 0;
-    editor_dirty_ = false;
-    editor_active_ = true;
-    selected_tab_ = Tab::Chat;
+    editor_ui_.email_editor_ = true;
+    editor_ui_.email_editor_id_ = id;
+    editor_ui_.editor_buffer_ = email.draft;
+    editor_ui_.editor_cursor_ = 0;
+    editor_ui_.editor_offset_ = 0;
+    editor_ui_.editor_dirty_ = false;
+    editor_ui_.editor_active_ = true;
+    select_tab(Tab::Chat);
 }
 
 void TerminalUI::email_command(std::istringstream& input) {
     std::string action;
     if (!(input >> action)) {
-        selected_tab_ = Tab::Chat;
+        select_tab(Tab::Chat);
         return;
     }
     if (action == "inbox" || action == "starred" || action == "unread" || action == "archived") {
         no_extra(input);
-        email_folder_ = action == "inbox"     ? EmailFolder::Inbox
-                        : action == "starred" ? EmailFolder::Starred
-                        : action == "unread"  ? EmailFolder::Unread
-                                              : EmailFolder::Archived;
-        selected_email_id_.clear();
-        email_body_offset_ = 0;
-        selected_tab_ = Tab::Chat;
+        editor_ui_.email_folder_ = action == "inbox"     ? EmailFolder::Inbox
+                                   : action == "starred" ? EmailFolder::Starred
+                                   : action == "unread"  ? EmailFolder::Unread
+                                                         : EmailFolder::Archived;
+        editor_ui_.selected_email_id_.clear();
+        editor_ui_.email_body_offset_ = 0;
+        select_tab(Tab::Chat);
         return;
     }
     if (action == "star" || action == "unstar" || action == "archive" || action == "unarchive" ||
@@ -175,14 +176,15 @@ void TerminalUI::email_command(std::istringstream& input) {
         EmailSystem::set_flag(emails_, id, flag, value, computer_.time_seconds());
         // Mark-unread switches to the Unread preview so rendering cannot undo it.
         if (action == "mark-unread")
-            email_folder_ = target.archived ? EmailFolder::Archived : EmailFolder::Unread;
-        chat_contact_id_ = ChatSystem::contact_for(people_, target.sender);
-        chat_follow_latest_ = true;
-        chat_choice_selected_ = chat_offset_ = 0;
-        chat_contacts_focused_ = false;
-        selected_email_id_ = id;
-        email_body_offset_ = 0;
-        selected_tab_ = Tab::Chat;
+            editor_ui_.email_folder_ =
+                target.archived ? EmailFolder::Archived : EmailFolder::Unread;
+        messages_ui_.chat_contact_id_ = ChatSystem::contact_for(people_, target.sender);
+        messages_ui_.chat_follow_latest_ = true;
+        messages_ui_.chat_choice_selected_ = messages_ui_.chat_offset_ = 0;
+        messages_ui_.chat_contacts_focused_ = false;
+        editor_ui_.selected_email_id_ = id;
+        editor_ui_.email_body_offset_ = 0;
+        select_tab(Tab::Chat);
         add_log("Chat " + id + ": " + action);
         return;
     }
@@ -228,7 +230,7 @@ void TerminalUI::email_command(std::istringstream& input) {
                                          computer_.time_seconds());
             add_log("Sent a permission-blocked update; the colleague still needs the document.");
         }
-        selected_tab_ = Tab::Chat;
+        select_tab(Tab::Chat);
         return;
     }
     if (action == "import") {
@@ -237,7 +239,7 @@ void TerminalUI::email_command(std::istringstream& input) {
         const auto count = EmailSystem::import_messages(emails_, source);
         add_log("Imported " + std::to_string(count) +
                 " scenario messages; existing messages retained.");
-        selected_tab_ = Tab::Chat;
+        select_tab(Tab::Chat);
         return;
     }
     if (action == "read" || action == "reply" || action == "send") {
@@ -246,16 +248,16 @@ void TerminalUI::email_command(std::istringstream& input) {
             id = selected_email().id;
         no_extra(input);
         const auto target = EmailSystem::message(emails_, id, computer_.time_seconds());
-        chat_contact_id_ = ChatSystem::contact_for(people_, target.sender);
-        chat_follow_latest_ = true;
-        chat_choice_selected_ = chat_offset_ = 0;
-        chat_contacts_focused_ = false;
+        messages_ui_.chat_contact_id_ = ChatSystem::contact_for(people_, target.sender);
+        messages_ui_.chat_follow_latest_ = true;
+        messages_ui_.chat_choice_selected_ = messages_ui_.chat_offset_ = 0;
+        messages_ui_.chat_contacts_focused_ = false;
         const auto visible = filtered_emails();
         if (action != "reply" &&
             std::none_of(visible.begin(), visible.end(), [&](const auto& email) {
                 return email.id == id;
             }))
-            email_folder_ = target.archived ? EmailFolder::Archived : EmailFolder::Inbox;
+            editor_ui_.email_folder_ = target.archived ? EmailFolder::Archived : EmailFolder::Inbox;
         if (action == "send") {
             bool prepared = false;
             if (auto* tasks = people_["work_requests"].as_array())
@@ -276,16 +278,16 @@ void TerminalUI::email_command(std::istringstream& input) {
             edit_email(id);
         else
             EmailSystem::mark_read(emails_, id, computer_.time_seconds());
-        selected_email_id_ = id;
-        email_body_offset_ = 0;
-        selected_tab_ = Tab::Chat;
+        editor_ui_.selected_email_id_ = id;
+        editor_ui_.email_body_offset_ = 0;
+        select_tab(Tab::Chat);
         return;
     }
     if (action == "clear") {
         no_extra(input);
         EmailSystem::clear_draft(emails_, selected_email().id, computer_.time_seconds());
         add_log("Reply draft and attachments cleared; sent replies retained.");
-        selected_tab_ = Tab::Chat;
+        select_tab(Tab::Chat);
         return;
     }
     if (action == "source" || action == "attach" || action == "detach") {
@@ -299,11 +301,11 @@ void TerminalUI::email_command(std::istringstream& input) {
             EmailSystem::attach(emails_, email.id, index, file_system_, network_, file_identity(),
                                 computer_.time_seconds());
             add_log("Attached source " + std::to_string(number) + " to reply draft.");
-            selected_tab_ = Tab::Chat;
+            select_tab(Tab::Chat);
         } else if (action == "detach") {
             EmailSystem::detach(emails_, email.id, index, computer_.time_seconds());
             add_log("Detached attachment " + std::to_string(number) + ".");
-            selected_tab_ = Tab::Chat;
+            select_tab(Tab::Chat);
         } else {
             if (index >= email.documents.size())
                 throw std::runtime_error("Invalid source document number");
@@ -312,11 +314,11 @@ void TerminalUI::email_command(std::istringstream& input) {
             (void)file_system_.read(network_, file_identity(), source.host_id, source.path);
             file_system_.enter(network_, file_identity(), source.host_id,
                                FileSystem::parent(source.path));
-            file_host_id_ = source.host_id;
-            file_directory_ = FileSystem::parent(source.path);
-            selected_file_path_ = source.path;
-            file_list_offset_ = file_content_offset_ = 0;
-            selected_tab_ = Tab::Files;
+            files_ui_.file_host_id_ = source.host_id;
+            files_ui_.file_directory_ = FileSystem::parent(source.path);
+            files_ui_.selected_file_path_ = source.path;
+            files_ui_.file_list_offset_ = files_ui_.file_content_offset_ = 0;
+            select_tab(Tab::Files);
             add_log("Opened referenced document " + source.host_id + ":" + source.path);
         }
         return;
@@ -327,7 +329,8 @@ void TerminalUI::email_command(std::istringstream& input) {
 }
 
 void TerminalUI::draw_original_email(int top, int bottom, int column, int width) {
-    const auto email = EmailSystem::message(emails_, email_editor_id_, computer_.time_seconds());
+    const auto email =
+        EmailSystem::message(emails_, editor_ui_.email_editor_id_, computer_.time_seconds());
     std::vector<std::string> lines;
     auto add = [&](const std::string& text) {
         auto rows = wrap(text, std::max(1, width));
@@ -342,13 +345,14 @@ void TerminalUI::draw_original_email(int top, int bottom, int column, int width)
     for (const auto& document : email.documents)
         add(document.host_id + ":" + document.path);
     const int visible = std::max(1, bottom - top + 1);
-    email_original_offset_ = std::clamp(email_original_offset_, 0,
-                                        std::max(0, static_cast<int>(lines.size()) - visible));
+    editor_ui_.email_original_offset_ =
+        std::clamp(editor_ui_.email_original_offset_, 0,
+                   std::max(0, static_cast<int>(lines.size()) - visible));
     std::vector<ScreenRenderer::TextRow> original;
     original.reserve(lines.size());
     for (const auto& line : lines)
         original.push_back({line});
-    renderer_->scroll_text("original-email", original, email_original_offset_, top,
+    renderer_->scroll_text("original-email", original, editor_ui_.email_original_offset_, top,
                            column, visible, width);
 }
 

@@ -12,22 +12,22 @@ std::string TerminalUI::market_url() const {
     return people_["stock_market"]["website_url"].value_or(std::string{"https://exchange.sim"});
 }
 void TerminalUI::open_stock_market() {
-    browser_address_ = market_url();
-    web_selected_ = web_offset_ = 0;
-    selected_tab_ = Tab::Web;
-    menu_active_ = text_active_ = false;
+    web_ui_.browser_address_ = market_url();
+    web_ui_.web_selected_ = web_ui_.web_offset_ = 0;
+    select_tab(Tab::Web);
+    menu_ui_.menu_active_ = text_ui_.text_active_ = false;
 }
 void TerminalUI::open_web_address() {
     open_text(
         "Website address", "Enter an in-game website URL, or about:home for bookmarks.",
         [this](const std::string& address) {
-            browser_address_ = address;
-            web_selected_ = web_offset_ = 0;
+            web_ui_.browser_address_ = address;
+            web_ui_.web_selected_ = web_ui_.web_offset_ = 0;
         },
-        browser_address_);
+        web_ui_.browser_address_);
 }
 void TerminalUI::draw_web(int top, int bottom, int width) {
-    write(top, 1, "WEB BROWSER | " + browser_address_, Heading, true);
+    write(top, 1, "WEB BROWSER | " + web_ui_.browser_address_, Heading, true);
     const auto site_title =
         people_["stock_market"]["website_title"].value_or(std::string{"Sim Exchange"});
     struct Row {
@@ -35,7 +35,7 @@ void TerminalUI::draw_web(int top, int bottom, int width) {
         int color = Plain;
     };
     std::vector<Row> rows;
-    if (browser_address_ == market_url() && people_["stock_market"].is_table()) {
+    if (web_ui_.browser_address_ == market_url() && people_["stock_market"].is_table()) {
         const auto title =
             people_["stock_market"]["website_title"].value_or(std::string{"Sim Exchange"});
         write(top + 1, 2,
@@ -57,7 +57,8 @@ void TerminalUI::draw_web(int top, int bottom, int width) {
         rows.push_back({"Watchlist"});
         rows.push_back({"Go to another address"});
         rows.push_back({"Browser home"});
-    } else if (browser_address_ == infrastructure_url() && people_["infrastructure"].is_table()) {
+    } else if (web_ui_.browser_address_ == infrastructure_url() &&
+               people_["infrastructure"].is_table()) {
         write(top + 1, 2,
               people_["infrastructure"]["website_title"].value_or(
                   std::string{"City Infrastructure Directory"}),
@@ -71,7 +72,7 @@ void TerminalUI::draw_web(int top, int bottom, int width) {
         rows.push_back({"Browser home"});
     } else {
         write(top + 1, 2,
-              browser_address_ == "about:home"
+              web_ui_.browser_address_ == "about:home"
                   ? "BOOKMARKS"
                   : "Website not found. Choose a bookmark or another address.",
               Heading);
@@ -80,18 +81,21 @@ void TerminalUI::draw_web(int top, int bottom, int width) {
         rows.push_back({"Go to address"});
         rows.push_back({"Browser home"});
     }
-    web_selected_ = std::clamp(web_selected_, 0, static_cast<int>(rows.size()) - 1);
+    web_ui_.web_selected_ = std::clamp(web_ui_.web_selected_, 0, static_cast<int>(rows.size()) - 1);
     const auto visible = std::max(1, bottom - top - 3);
-    if (web_selected_ < web_offset_)
-        web_offset_ = web_selected_;
-    if (web_selected_ >= web_offset_ + visible)
-        web_offset_ = web_selected_ - visible + 1;
-    for (int row = 0; row < visible && web_offset_ + row < static_cast<int>(rows.size()); ++row) {
-        const auto index = web_offset_ + row;
+    if (web_ui_.web_selected_ < web_ui_.web_offset_)
+        web_ui_.web_offset_ = web_ui_.web_selected_;
+    if (web_ui_.web_selected_ >= web_ui_.web_offset_ + visible)
+        web_ui_.web_offset_ = web_ui_.web_selected_ - visible + 1;
+    for (int row = 0; row < visible && web_ui_.web_offset_ + row < static_cast<int>(rows.size());
+         ++row) {
+        const auto index = web_ui_.web_offset_ + row;
         const auto& entry = rows[index];
         write(top + 3 + row, 2,
-              (index == web_selected_ ? "> " : "  ") + entry.text.substr(0, std::max(0, width - 4)),
-              index == web_selected_ ? ActiveTab : entry.color, index == web_selected_);
+              (index == web_ui_.web_selected_ ? "> " : "  ") +
+                  entry.text.substr(0, std::max(0, width - 4)),
+              index == web_ui_.web_selected_ ? ActiveTab : entry.color,
+              index == web_ui_.web_selected_);
     }
     write(bottom, 1,
           settings_.binding_label(KeyAction::Submit) + ": follow link | " +
@@ -100,11 +104,11 @@ void TerminalUI::draw_web(int top, int bottom, int width) {
           Footer);
 }
 void TerminalUI::follow_web_link() {
-    if (browser_address_ == market_url() && people_["stock_market"].is_table()) {
+    if (web_ui_.browser_address_ == market_url() && people_["stock_market"].is_table()) {
         const auto quotes = StockMarketSystem::quotes(people_);
-        if (web_selected_ < static_cast<int>(quotes.size())) {
-            open_stock(quotes[web_selected_].symbol);
-        } else if (web_selected_ == static_cast<int>(quotes.size())) {
+        if (web_ui_.web_selected_ < static_cast<int>(quotes.size())) {
+            open_stock(quotes[web_ui_.web_selected_].symbol);
+        } else if (web_ui_.web_selected_ == static_cast<int>(quotes.size())) {
             std::int64_t value = 0, basis = 0;
             for (const auto& quote : quotes) {
                 value += quote.shares * quote.price_cents;
@@ -119,14 +123,14 @@ void TerminalUI::follow_web_link() {
                     ". Fee per trade: " + EconomySystem::money(StockMarketSystem::fee(people_)) +
                     ". Prices update in working time. Buying needs cash; selling needs owned "
                     "shares.");
-            menu_back_ = [this] {
+            menu_ui_.menu_back_ = [this] {
                 open_stock_market();
             };
-        } else if (web_selected_ == static_cast<int>(quotes.size()) + 1) {
+        } else if (web_ui_.web_selected_ == static_cast<int>(quotes.size()) + 1) {
             open_stock_orders();
-        } else if (web_selected_ == static_cast<int>(quotes.size()) + 2) {
+        } else if (web_ui_.web_selected_ == static_cast<int>(quotes.size()) + 2) {
             open_stock_history();
-        } else if (web_selected_ == static_cast<int>(quotes.size()) + 3) {
+        } else if (web_ui_.web_selected_ == static_cast<int>(quotes.size()) + 3) {
             std::vector<MenuAction> actions;
             for (const auto& quote : quotes)
                 if (quote.watched)
@@ -145,32 +149,33 @@ void TerminalUI::follow_web_link() {
             open_menu("Sim Exchange | Watchlist", std::move(actions), [this] {
                 open_stock_market();
             });
-        } else if (web_selected_ == static_cast<int>(quotes.size()) + 4) {
+        } else if (web_ui_.web_selected_ == static_cast<int>(quotes.size()) + 4) {
             open_web_address();
         } else {
-            browser_address_ = "about:home";
-            web_selected_ = web_offset_ = 0;
+            web_ui_.browser_address_ = "about:home";
+            web_ui_.web_selected_ = web_ui_.web_offset_ = 0;
         }
-    } else if (browser_address_ == infrastructure_url() && people_["infrastructure"].is_table()) {
+    } else if (web_ui_.browser_address_ == infrastructure_url() &&
+               people_["infrastructure"].is_table()) {
         const auto& sectors = *people_["infrastructure"]["sectors"].as_array();
-        if (web_selected_ < static_cast<int>(sectors.size()))
+        if (web_ui_.web_selected_ < static_cast<int>(sectors.size()))
             open_infrastructure_sector(
-                (*sectors[web_selected_].as_table())["id"].value_or(std::string{}));
-        else if (web_selected_ == static_cast<int>(sectors.size()))
+                (*sectors[web_ui_.web_selected_].as_table())["id"].value_or(std::string{}));
+        else if (web_ui_.web_selected_ == static_cast<int>(sectors.size()))
             open_web_address();
         else {
-            browser_address_ = "about:home";
-            web_selected_ = web_offset_ = 0;
+            web_ui_.browser_address_ = "about:home";
+            web_ui_.web_selected_ = web_ui_.web_offset_ = 0;
         }
-    } else if (web_selected_ == 0) {
+    } else if (web_ui_.web_selected_ == 0) {
         open_stock_market();
-    } else if (web_selected_ == 1) {
+    } else if (web_ui_.web_selected_ == 1) {
         open_infrastructure();
-    } else if (web_selected_ == 2) {
+    } else if (web_ui_.web_selected_ == 2) {
         open_web_address();
     } else {
-        browser_address_ = "about:home";
-        web_selected_ = web_offset_ = 0;
+        web_ui_.browser_address_ = "about:home";
+        web_ui_.web_selected_ = web_ui_.web_offset_ = 0;
     }
 }
 } // namespace ai_sim::ui

@@ -73,7 +73,7 @@ void TerminalUI::open_stock(const std::string& symbol) {
               }
               show_message(symbol + " | " + chart, text + ". Min " + EconomySystem::money(*lo) +
                                                        " / max " + EconomySystem::money(*hi));
-              menu_back_ = [this, symbol] {
+              menu_ui_.menu_back_ = [this, symbol] {
                   open_stock(symbol);
               };
           },

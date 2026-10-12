@@ -6,9 +6,9 @@
 namespace ai_sim::ui {
 void TerminalUI::draw_ai(int top, int bottom, int width) {
     write(top, 1,
-          std::string(selected_tab_ == Tab::Agents  ? "AGENTS"
-                      : selected_tab_ == Tab::Phone ? "PHONE ACCESS"
-                                                    : "AI MANAGEMENT") +
+          std::string(selected_tab() == Tab::Agents  ? "AGENTS"
+                      : selected_tab() == Tab::Phone ? "PHONE ACCESS"
+                                                     : "AI MANAGEMENT") +
               " | Workday " + std::to_string(computer_.day_index() + 1),
           Heading, true);
     std::vector<std::string> lines;
@@ -37,7 +37,7 @@ void TerminalUI::draw_ai(int top, int bottom, int width) {
             lines.push_back(line);
     };
     add("Identity: " + computer_.player_user());
-    if (selected_tab_ == Tab::Phone) {
+    if (selected_tab() == Tab::Phone) {
         add("MARK'S PHONE | Authenticated device access");
         for (const auto& host : network_.hosts())
             if (host.id == "engineer_phone") {
@@ -60,7 +60,7 @@ void TerminalUI::draw_ai(int top, int bottom, int width) {
         add("Research: " +
             people_["upgrades"]["pending"].value_or(std::string{"No build in progress"}));
     }
-    if (selected_tab_ == Tab::Agents) {
+    if (selected_tab() == Tab::Agents) {
         add("AGENT CATALOG | Research prerequisites and resource costs");
         for (const auto& row : *people_["upgrades"]["items"].as_array()) {
             const auto& item = *row.as_table();
@@ -219,9 +219,10 @@ void TerminalUI::draw_ai(int top, int bottom, int width) {
             }
         }
     const int visible = std::max(1, bottom - top - 1);
-    ai_offset_ = std::clamp(ai_offset_, 0, std::max(0, static_cast<int>(lines.size()) - visible));
-    for (int i = 0; i < visible && ai_offset_ + i < static_cast<int>(lines.size()); ++i)
-        write(top + 1 + i, 2, lines[ai_offset_ + i]);
+    scroll_offset() =
+        std::clamp(scroll_offset(), 0, std::max(0, static_cast<int>(lines.size()) - visible));
+    for (int i = 0; i < visible && scroll_offset() + i < static_cast<int>(lines.size()); ++i)
+        write(top + 1 + i, 2, lines[scroll_offset() + i]);
     const std::string hint = settings_.binding_label(KeyAction::Submit) +
                              ": actions | Scroll: " + settings_.binding_label(KeyAction::ScrollUp) +
                              "/" + settings_.binding_label(KeyAction::ScrollDown);

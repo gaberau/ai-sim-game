@@ -6,7 +6,7 @@
 
 namespace ai_sim::ui {
 
-// Owns terminal surfaces only. Selection, scrolling and gameplay stay in TerminalUI.
+// Owns terminal surfaces only. Child pages own interaction state; the game core owns gameplay.
 class ScreenRenderer {
   public:
     struct TextRow {

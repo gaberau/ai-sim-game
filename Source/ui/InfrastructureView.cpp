@@ -8,10 +8,10 @@ std::string TerminalUI::infrastructure_url() const {
         std::string{"https://city.sim/infrastructure"});
 }
 void TerminalUI::open_infrastructure() {
-    browser_address_ = infrastructure_url();
-    web_selected_ = web_offset_ = 0;
-    selected_tab_ = Tab::Web;
-    menu_active_ = text_active_ = false;
+    web_ui_.browser_address_ = infrastructure_url();
+    web_ui_.web_selected_ = web_ui_.web_offset_ = 0;
+    select_tab(Tab::Web);
+    menu_ui_.menu_active_ = text_ui_.text_active_ = false;
 }
 void TerminalUI::open_infrastructure_sector(const std::string& sector) {
     std::vector<MenuAction> actions;
@@ -64,7 +64,7 @@ void TerminalUI::open_infrastructure_facility(const std::string& id) {
               {{"Facility, dependencies, and access boundaries",
                 [this, facility, description] {
                     show_message(facility.name, description);
-                    menu_back_ = [this, id = facility.id] {
+                    menu_ui_.menu_back_ = [this, id = facility.id] {
                         open_infrastructure_facility(id);
                     };
                 },

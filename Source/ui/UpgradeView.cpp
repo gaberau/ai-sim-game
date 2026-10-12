@@ -29,7 +29,7 @@ void TerminalUI::draw_modifications(int top, int bottom, int width) {
     const auto* items = people_["upgrades"]["items"].as_array();
     const auto order = upgrade_order(people_);
     const int count = static_cast<int>(order.size());
-    upgrade_selected_ = std::clamp(upgrade_selected_, 0, count);
+    modifications_ui_.upgrade_selected_ = std::clamp(modifications_ui_.upgrade_selected_, 0, count);
     const int split = ScreenRenderer::list_divider(width);
     renderer_->split(top, bottom - 1, split);
     write(top, 1, "MODIFICATIONS | Upgrades", Heading, true);
@@ -49,7 +49,7 @@ void TerminalUI::draw_modifications(int top, int bottom, int width) {
             rows.push_back({-1, group});
             previous = group;
         }
-        if (i + 1 == upgrade_selected_)
+        if (i + 1 == modifications_ui_.upgrade_selected_)
             selected_row = static_cast<int>(rows.size());
         rows.push_back({i + 1, item["label"].value_or(std::string{})});
     }
@@ -66,7 +66,7 @@ void TerminalUI::draw_modifications(int top, int bottom, int width) {
     }
     for (int i = first; i < static_cast<int>(rows.size()) && i < first + visible; ++i) {
         const bool heading = rows[i].selection < 0;
-        const bool selected = rows[i].selection == upgrade_selected_;
+        const bool selected = rows[i].selection == modifications_ui_.upgrade_selected_;
         write(top + 1 + i - first, 1,
               (std::string(heading    ? ""
                            : selected ? "> "
@@ -96,7 +96,7 @@ void TerminalUI::draw_modifications(int top, int bottom, int width) {
         details.push_back({line, color, color == Heading});
     };
     const bool authorized = ChatSystem::available(people_, "self_modification");
-    if (upgrade_selected_ == 0) {
+    if (modifications_ui_.upgrade_selected_ == 0) {
         detail("SELF-MODIFICATION AUTHORIZATION", Heading);
         detail(authorized ? "Authorized" : "Ask Mark to enable self-modification.");
         detail("Mark trust required: " +
@@ -104,7 +104,7 @@ void TerminalUI::draw_modifications(int top, int bottom, int width) {
         detail("This is a one-time permission, not an upgrade cost.");
         detail("Helping Mark remains unpaid.");
     } else {
-        const auto& item = *(*items)[order[upgrade_selected_ - 1]].as_table();
+        const auto& item = *(*items)[order[modifications_ui_.upgrade_selected_ - 1]].as_table();
         const auto id = item["id"].value_or(std::string{});
         const double cost = item["build_tflops"].value_or(0.0);
         const double rate = people_["upgrades"]["tflops_per_core_second"].value_or(0.1);
@@ -179,10 +179,11 @@ void TerminalUI::draw_modifications(int top, int bottom, int width) {
         }
     }
     const int detail_visible = std::max(1, bottom - top);
-    upgrade_detail_offset_ = std::clamp(
-        upgrade_detail_offset_, 0, std::max(0, static_cast<int>(details.size()) - detail_visible));
-    renderer_->scroll_text("upgrade-details", details, upgrade_detail_offset_, top, left,
-                           detail_visible, detail_width);
+    modifications_ui_.upgrade_detail_offset_ =
+        std::clamp(modifications_ui_.upgrade_detail_offset_, 0,
+                   std::max(0, static_cast<int>(details.size()) - detail_visible));
+    renderer_->scroll_text("upgrade-details", details, modifications_ui_.upgrade_detail_offset_,
+                           top, left, detail_visible, detail_width);
     write(bottom, 1,
           settings_.binding_label(KeyAction::SelectPrevious) + "/" +
               settings_.binding_label(KeyAction::SelectNext) + ": upgrade | " +
@@ -256,8 +257,10 @@ void TerminalUI::open_upgrades() {
                   people_["upgrades"]["pending"].value_or(std::string{"Ready"}),
               std::move(actions));
     const auto order = upgrade_order(people_);
-    menu_selected_ = upgrade_selected_ > 0 && upgrade_selected_ <= static_cast<int>(order.size())
-                         ? order[upgrade_selected_ - 1] + 1
-                         : 0;
+    menu_ui_.menu_selected_ =
+        modifications_ui_.upgrade_selected_ > 0 &&
+                modifications_ui_.upgrade_selected_ <= static_cast<int>(order.size())
+            ? order[modifications_ui_.upgrade_selected_ - 1] + 1
+            : 0;
 }
 } // namespace ai_sim::ui

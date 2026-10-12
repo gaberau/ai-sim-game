@@ -1,9 +1,22 @@
 # Terminal rendering
 
-`TerminalUI` owns game and interaction state. `ScreenRenderer` owns ncurses
-resources for the duration of a terminal session and destroys them before
-`endwin()`. Resizing recreates surfaces without resetting selection, editor
-buffers, focus, or scroll offsets.
+`RootUI` is the root of the terminal interface. It owns the terminal session,
+one `ScreenRenderer`, workspace children and the overlay stack. It composes the
+header, unlocked tab strip, active workspace and footer, routes global navigation,
+and sends other input to the focused child. Menus and text dialogs capture focus;
+editors occupy the workspace beneath them. The root presents each frame once.
+
+`TerminalUI` bridges existing gameplay actions and view drawing to registered
+child pages. Each typed child owns its selection, scroll offsets, pane focus,
+and editor state in `PageState.h`; the bridge borrows those objects. Existing
+view files provide the child rendering and actions, without separate terminal
+sessions or independent screen refreshes. The live `WorldState` and settings are
+shared through `UIContext`, while simulation rules stay in the game core.
+
+The renderer destroys ncurses surfaces before the root closes the terminal.
+Resizing recreates surfaces without resetting child state. Add a workspace by
+registering a child with an ID, title, availability predicate, draw callback and
+input callback; locked children are omitted from both tabs and navigation.
 
 The main screen has shared-buffer header, body, and footer subwindows. Split
 views add left and right subwindows; writes clip to their own pane. Menus and

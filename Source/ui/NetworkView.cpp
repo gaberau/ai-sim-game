@@ -84,7 +84,7 @@ void TerminalUI::select_network_host(int direction) {
     }
 
     const auto found = std::find_if(known.begin(), known.end(), [&](std::size_t i) {
-        return hosts[i].id == selected_network_host_id_;
+        return hosts[i].id == network_ui_.selected_network_host_id_;
     });
 
     int position = 0;
@@ -103,31 +103,33 @@ void TerminalUI::select_network_host(int direction) {
     const auto& selected = hosts[known[position]];
     const auto& local = hosts[network_.local_host_index()];
 
-    selected_network_host_id_ = selected.id;
-    network_detail_offset_ = 0;
+    network_ui_.selected_network_host_id_ = selected.id;
+    network_ui_.network_detail_offset_ = 0;
 
-    network_pan_x_ = selected.x - local.x;
-    network_pan_y_ = selected.y - local.y;
+    network_ui_.network_pan_x_ = selected.x - local.x;
+    network_ui_.network_pan_y_ = selected.y - local.y;
 }
 
 void TerminalUI::pan_network(int horizontal, int vertical) {
-    const double step = static_cast<double>(settings_.scroll_step) / network_zoom_;
+    const double step = static_cast<double>(settings_.scroll_step) / network_ui_.network_zoom_;
 
-    network_pan_x_ = std::clamp(network_pan_x_ + horizontal * step, -20000.0, 20000.0);
+    network_ui_.network_pan_x_ =
+        std::clamp(network_ui_.network_pan_x_ + horizontal * step, -20000.0, 20000.0);
 
-    network_pan_y_ = std::clamp(network_pan_y_ + vertical * step, -20000.0, 20000.0);
+    network_ui_.network_pan_y_ =
+        std::clamp(network_ui_.network_pan_y_ + vertical * step, -20000.0, 20000.0);
 }
 
 void TerminalUI::draw_network(int top, int bottom, int width) {
     const auto& hosts = network_.hosts();
     const auto& links = network_.links();
 
-    if (selected_network_host_id_.empty()) {
+    if (network_ui_.selected_network_host_id_.empty()) {
         select_network_host(0);
     }
 
     const auto selected_it = std::find_if(hosts.begin(), hosts.end(), [&](const auto& host) {
-        return host.id == selected_network_host_id_;
+        return host.id == network_ui_.selected_network_host_id_;
     });
 
     if (selected_it == hosts.end()) {
@@ -149,8 +151,8 @@ void TerminalUI::draw_network(int top, int bottom, int width) {
     const int map_top = top + 1;
     const int map_bottom = bottom - 3;
 
-    write(top, 1, "NETWORK | Zoom " + number(network_zoom_, 1) + "x",
-          network_details_focused_ ? Heading : ActiveTab, true);
+    write(top, 1, "NETWORK | Zoom " + number(network_ui_.network_zoom_, 1) + "x",
+          network_ui_.network_details_focused_ ? Heading : ActiveTab, true);
 
     if (map_bottom < map_top) {
         return;
@@ -164,12 +166,13 @@ void TerminalUI::draw_network(int top, int bottom, int width) {
 
     const double center_y = (map_top + map_bottom) / 2.0;
 
-    const double camera_x = local.x + network_pan_x_;
-    const double camera_y = local.y + network_pan_y_;
+    const double camera_x = local.x + network_ui_.network_pan_x_;
+    const double camera_y = local.y + network_ui_.network_pan_y_;
 
     const auto project = [&](const NetworkHost& host) {
-        return std::pair<double, double>{center_x + (host.x - camera_x) * network_zoom_,
-                                         center_y + (host.y - camera_y) * network_zoom_};
+        return std::pair<double, double>{center_x + (host.x - camera_x) * network_ui_.network_zoom_,
+                                         center_y +
+                                             (host.y - camera_y) * network_ui_.network_zoom_};
     };
 
     const auto plot = [&](int x, int y, char symbol, int color) {
@@ -326,7 +329,7 @@ void TerminalUI::draw_network(int top, int bottom, int width) {
     };
 
     write(top, panel_left, shortened("[DETAILS] " + selected.name, panel_width - 1),
-          network_details_focused_ ? ActiveTab : Heading, true);
+          network_ui_.network_details_focused_ ? ActiveTab : Heading, true);
     const bool selected_reachable = network_.reachable(selected_index);
     detail(!selected.online           ? "x Offline: server is powered off"
            : !selected_reachable      ? "x Unreachable: no observed route"
@@ -408,10 +411,11 @@ void TerminalUI::draw_network(int top, int bottom, int width) {
     detail("", Plain);
     detail(selected.description, Plain);
     const int panel_rows = std::max(0, bottom - top - 1);
-    network_detail_offset_ = std::clamp(network_detail_offset_, 0,
-                                        std::max(0, static_cast<int>(details.size()) - panel_rows));
+    network_ui_.network_detail_offset_ =
+        std::clamp(network_ui_.network_detail_offset_, 0,
+                   std::max(0, static_cast<int>(details.size()) - panel_rows));
     for (int row = 0; row < panel_rows; ++row) {
-        const int index = network_detail_offset_ + row;
+        const int index = network_ui_.network_detail_offset_ + row;
         if (index >= static_cast<int>(details.size()))
             break;
         write(top + 1 + row, panel_left, details[index].first, details[index].second);
@@ -422,10 +426,10 @@ void TerminalUI::draw_network(int top, int bottom, int width) {
            settings_.binding_label(KeyAction::FocusRight)) +
               ": focus | " + settings_.binding_label(KeyAction::SelectPrevious) + "/" +
               settings_.binding_label(KeyAction::SelectNext) +
-              (network_details_focused_ ? ": read details | " : ": host | ") +
+              (network_ui_.network_details_focused_ ? ": read details | " : ": host | ") +
               settings_.binding_label(KeyAction::ScrollUp) + "/" +
               settings_.binding_label(KeyAction::ScrollDown) +
-              (network_details_focused_ ? ": read" : ": pan"),
+              (network_ui_.network_details_focused_ ? ": read" : ": pan"),
           Footer);
 }
 

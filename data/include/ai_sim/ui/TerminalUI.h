@@ -3,6 +3,9 @@
 #include "ai_sim/Computer.h"
 #include "ai_sim/DefinitionLoader.h"
 #include "ai_sim/ui/UISettings.h"
+#include "ai_sim/ui/RootUI.h"
+#include "ai_sim/ui/PageState.h"
+#include "ai_sim/ui/UIStyle.h"
 #include "ai_sim/Network.h"
 #include "ai_sim/FileSystem.h"
 #include "ai_sim/SaveSystem.h"
@@ -48,121 +51,52 @@ enum class Tab {
 
 class TerminalUI {
   public:
-    explicit TerminalUI(Computer& computer,
-                        const std::filesystem::path& settings_path = "data/config/settings.toml",
+    explicit TerminalUI(const std::filesystem::path& settings_path = "data/config/settings.toml",
                         const std::filesystem::path& scenario_path = "data/scenarios/hobbyist.toml",
                         bool auto_resume = true);
 
     void run();
 
   private:
-    ScreenRenderer* renderer_ = nullptr;
-    bool drawing_background_ = false;
-    int upgrade_detail_offset_ = 0;
-    enum Color {
-        Plain = 0,
-        Protected = 1,
-        Stoppable = 2,
-        Player = 3,
-        Heading = 4,
-        Clock = 5,
-        Resources = 6,
-        ActiveTab = 7,
-        InactiveTab = 8,
-        Border = 9,
-        Log = 10,
-        Prompt = 11,
-        Footer = 12,
-        FileEdit = 13,
-        FileRead = 14,
-        FileApproval = 15,
-        FileBlocked = 16,
-        FileUnknown = 17,
-        MapLocked = 18
-    };
+    using EmailFolder = EditorPageState::EmailFolder;
+    using NewsArticle = NewsPageState::NewsArticle;
+    using DossierPosition = DossiersPageState::DossierPosition;
+    using MenuAction = MenuPageState::MenuAction;
 
-    Computer& computer_;
+    WorldState world_;
+    Computer& computer_ = world_.computer;
     std::filesystem::path settings_path_;
     UISettings settings_;
     ScenarioDefinition definitions_;
-    Network network_;
-    FileSystem file_system_;
+    Network& network_ = world_.network;
+    FileSystem& file_system_ = world_.files;
     std::filesystem::path scenario_path_;
     SaveSystem saves_;
-    toml::table people_;
-    toml::table emails_;
-    toml::array pending_events_;
-    std::string scenario_id_;
-    std::string random_state_;
+    toml::table& people_ = world_.people;
+    toml::table& emails_ = world_.emails;
+    toml::array& pending_events_ = world_.pending_events;
+    std::string& scenario_id_ = world_.scenario_id;
+    std::string& random_state_ = world_.random_state;
 
-    enum class EmailFolder { Inbox, Starred, Unread, Archived };
-    EmailFolder email_folder_ = EmailFolder::Inbox;
     std::vector<Email> filtered_emails() const;
     void cycle_email_folder(int direction);
     void draw_original_email(int top, int bottom, int column, int width);
-    int email_original_offset_ = 0;
-    bool email_original_focused_ = false;
-    std::string selected_email_id_;
-    int email_body_offset_ = 0;
-    bool email_editor_ = false;
-    std::string email_editor_id_;
     void notify_email_arrivals(double previous_time);
     Email selected_email();
     void select_email(int direction);
     void email_command(std::istringstream& input);
     void edit_email(const std::string& id);
 
-    bool editor_active_ = false;
-    std::string editor_host_;
-    std::string editor_path_;
-    std::string editor_buffer_;
-    std::size_t editor_cursor_ = 0;
-    int editor_offset_ = 0;
-    bool editor_dirty_ = false;
-    int editor_cursor_row_ = 0;
-    int editor_cursor_column_ = 2;
-
-    std::string selected_network_host_id_;
-
-    double network_pan_x_ = 0.0;
-    double network_pan_y_ = 0.0;
-    double network_zoom_ = 1.0;
-    bool network_details_focused_ = false;
-    int network_detail_offset_ = 0;
-
-    std::string file_host_id_;
-    std::string file_directory_ = "/";
-    std::string file_category_ = "all";
-    std::string file_query_;
     std::vector<const FileEntry*> file_entries() const;
     void open_file_hosts();
-    bool file_details_focused_ = false;
     void select_file_category(int direction);
     void create_category_file(const std::string& name);
-    std::string selected_file_path_;
-    int file_list_offset_ = 0;
-    int file_content_offset_ = 0;
 
-    struct NewsArticle {
-        std::string id, category, headline, source, date, body;
-        double release_seconds = 0.0;
-    };
-    std::vector<NewsArticle> news_articles_;
-    std::string news_edition_;
-    std::string news_filter_ = "all";
-    int news_selected_ = 0;
-    int news_body_offset_ = 0;
-    bool news_details_focused_ = false;
-    bool news_ticker_enabled_ = true;
-    double news_ticker_seconds_ = 120.0;
     void load_news();
     std::vector<const NewsArticle*> available_news() const;
     void draw_news(int top, int bottom, int width);
     void draw_news_ticker(int row, int column, int width);
     void select_news(int direction);
-    int ai_offset_ = 0;
-    int upgrade_selected_ = 0;
-    int operations_selected_ = 0;
     void draw_operations(int top, int bottom, int width);
     void open_operations();
     void open_scheduler();
@@ -171,16 +105,7 @@ class TerminalUI {
     void update_people();
     void advance_time(double seconds);
     void publish_update(const SimulationUpdate& update);
-    std::string selected_person_id_ = "self:assistant";
-    std::unordered_set<std::string> expanded_people_{"self:assistant"};
-    std::unordered_set<std::string> expanded_dossier_sections_{"identity", "relationships"};
-    bool people_reveal_section_ = true;
-    bool people_details_focused_ = false, people_neighborhood_ = false;
-    std::string people_filter_ = "all";
-    std::string dossier_layout_ = "split", dossier_search_, dossier_filter_ = "all";
     std::vector<std::string> dossier_people() const;
-    double people_pan_x_ = 0, people_pan_y_ = 0, people_zoom_ = 1;
-    int people_detail_offset_ = 0, people_section_selected_ = 0;
     void draw_people(int top, int bottom, int width);
     void select_person(int direction);
     void toggle_people();
@@ -190,23 +115,36 @@ class TerminalUI {
     void open_observation(const std::string& id);
     bool navigation_bound(KeyAction action, int key) const;
     void toggle_pane_focus();
-    struct DossierPosition {
-        int offset = 0, section = 0;
-        std::unordered_set<std::string> expanded{"identity"};
-    };
-    std::unordered_map<std::string, DossierPosition> dossier_positions_;
-    std::unordered_map<std::string, std::size_t> people_map_slots_;
+
     void change_person(const std::string& id);
     std::vector<std::string> visible_people() const;
 
-    Tab selected_tab_ = Tab::Chat;
-    std::string chat_contact_id_ = "engineer";
-    bool chat_contacts_focused_ = false;
-    int chat_offset_ = 0, chat_choice_selected_ = 0;
-    bool chat_follow_latest_ = true;
-    std::string chat_message_id_;
-    ChatLine displayed_chat_line_;
-    std::vector<toml::table> displayed_chat_options_;
+    Tab selected_tab() const;
+    void select_tab(Tab tab);
+    int& scroll_offset();
+    bool handle_page_key(int key);
+    template <class State>
+    State& attach_page(Tab tab, const char* id, const char* title,
+                       void (TerminalUI::*draw)(int, int, int));
+    template <class State> State& attach_overlay(const char* id, State initial, bool centered);
+    RootUI root_;
+    ScreenRenderer* renderer_ = &root_.renderer();
+    MessagesPageState& messages_ui_;
+    ProcessesPageState& processes_ui_;
+    NetworkPageState& network_ui_;
+    FilesPageState& files_ui_;
+    NewsPageState& news_ui_;
+    ScrollPageState& ai_ui_;
+    DossiersPageState& dossiers_ui_;
+    WebPageState& web_ui_;
+    AgentsPageState& agents_ui_;
+    ScrollPageState& phone_ui_;
+    ScrollPageState& money_ui_;
+    ModificationsPageState& modifications_ui_;
+    OperationsPageState& operations_ui_;
+    EditorPageState& editor_ui_;
+    MenuPageState& menu_ui_;
+    TextPageState& text_ui_;
     void select_chat_message(int direction);
     ChatLine selected_chat_line() const;
     ChatLine selected_chat_line(const std::vector<ChatLine>& timeline) const;
@@ -223,8 +161,7 @@ class TerminalUI {
     void cycle_tab(int direction);
     bool tab_available(Tab tab) const;
     std::pair<int, std::string> file_access(const FileEntry&) const;
-    bool paused_ = false;
-    bool colors_enabled_ = false;
+    bool& paused_ = world_.paused;
 
     enum class NoticeKind { Routine, Success, Error };
     std::deque<std::string> log_;
@@ -232,23 +169,7 @@ class TerminalUI {
     NoticeKind important_notice_kind_ = NoticeKind::Routine;
     std::chrono::steady_clock::time_point important_notice_until_{};
     void draw_notification(int row, int width);
-    struct MenuAction {
-        std::string label;
-        std::function<void()> invoke;
-        std::string disabled_reason;
-        std::string detail = {};
-    };
-    bool menu_active_ = false;
-    std::string menu_title_;
-    std::vector<MenuAction> menu_actions_;
-    int menu_selected_ = 0;
-    int menu_offset_ = 0;
-    std::function<void()> menu_back_;
-    bool text_active_ = false;
-    bool key_capture_active_ = false;
-    std::string text_title_, text_hint_, text_value_;
-    std::function<void(const std::string&)> text_submit_;
-    std::function<void()> text_back_;
+
     bool quit_requested_ = false;
     void open_menu(const std::string&, std::vector<MenuAction>, std::function<void()> back = {});
     void open_text(const std::string&, const std::string&, std::function<void(const std::string&)>,
@@ -261,10 +182,6 @@ class TerminalUI {
     void draw_agents(int top, int bottom, int width);
     void open_agent_actions(const std::string& id);
     void open_agent_resources(const std::string& id);
-    int agent_selected_ = 0;
-    bool agent_reveal_ = false;
-    std::string browser_address_ = "about:home";
-    int web_selected_ = 0, web_offset_ = 0;
     std::string market_url() const;
     std::string infrastructure_url() const;
     void open_infrastructure();
@@ -299,17 +216,7 @@ class TerminalUI {
     void show_message(const std::string&, const std::string&);
 
     // Vertical offsets count display rows, including expanded details.
-    int process_offset_ = 0;
     int activity_offset_ = 0;
-
-    int process_display_row_count_ = 0;
-
-    int process_horizontal_offset_ = 0;
-
-    std::string selected_process_id_;
-    std::unordered_set<std::string> expanded_processes_;
-
-    bool reveal_selection_ = true;
 
     void apply_settings();
     void draw();

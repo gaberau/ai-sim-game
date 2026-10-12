@@ -8,12 +8,12 @@
 
 namespace ai_sim::ui {
 void TerminalUI::draw_progression(int top, int bottom, int width) {
-    if (selected_tab_ == Tab::Modifications) {
+    if (selected_tab() == Tab::Modifications) {
         draw_modifications(top, bottom, width);
         return;
     }
     std::vector<std::string> rows;
-    if (selected_tab_ == Tab::Money) {
+    if (selected_tab() == Tab::Money) {
         rows.push_back("MONEY-MAKING TOOLS | Balance " +
                        EconomySystem::money(EconomySystem::balance(people_)));
         rows.push_back(
@@ -82,15 +82,15 @@ void TerminalUI::draw_progression(int top, int bottom, int width) {
                                (reason.empty() ? "Ready to research" : reason));
             }
     }
-    ai_offset_ =
-        std::clamp(ai_offset_, 0, std::max(0, static_cast<int>(rows.size()) - (bottom - top)));
-    for (int row = top; row < bottom && ai_offset_ + row - top < static_cast<int>(rows.size());
+    scroll_offset() =
+        std::clamp(scroll_offset(), 0, std::max(0, static_cast<int>(rows.size()) - (bottom - top)));
+    for (int row = top; row < bottom && scroll_offset() + row - top < static_cast<int>(rows.size());
          ++row)
-        write(row, 1, rows[ai_offset_ + row - top].substr(0, std::max(0, width - 2)),
+        write(row, 1, rows[scroll_offset() + row - top].substr(0, std::max(0, width - 2)),
               row == top ? Heading : Plain);
     write(bottom, 1,
           settings_.binding_label(KeyAction::Submit) + ": " +
-              (selected_tab_ == Tab::Money ? "manage tools" : "research and capacity"),
+              (selected_tab() == Tab::Money ? "manage tools" : "research and capacity"),
           Footer);
 }
 void TerminalUI::open_money_tools() {
@@ -198,14 +198,14 @@ void TerminalUI::open_money_tool(const std::string& id) {
         actions.push_back(
             {"Open workspace in Files",
              [this, workspace_host, workspace_path] {
-                 file_host_id_ = workspace_host;
-                 file_directory_ = workspace_path;
-                 file_query_.clear();
-                 file_list_offset_ = file_content_offset_ = 0;
-                 selected_file_path_.clear();
-                 file_category_ = "all";
-                 menu_active_ = false;
-                 selected_tab_ = Tab::Files;
+                 files_ui_.file_host_id_ = workspace_host;
+                 files_ui_.file_directory_ = workspace_path;
+                 files_ui_.file_query_.clear();
+                 files_ui_.file_list_offset_ = files_ui_.file_content_offset_ = 0;
+                 files_ui_.selected_file_path_.clear();
+                 files_ui_.file_category_ = "all";
+                 menu_ui_.menu_active_ = false;
+                 select_tab(Tab::Files);
              },
              ChatSystem::available(people_, "files") ? "" : "Research File Browsing first.",
              workspace_host + ":" + workspace_path});
@@ -234,7 +234,7 @@ void TerminalUI::open_money_tool(const std::string& id) {
                                    " working minutes. Work slots: " + std::to_string(tool.slots) +
                                    ". Completed: " + std::to_string(tool.completed_cycles) + ". " +
                                    tool.unavailable + resources);
-                           menu_back_ = [this, id = tool.id] {
+                           menu_ui_.menu_back_ = [this, id = tool.id] {
                                open_money_tool(id);
                            };
                        },

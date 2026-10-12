@@ -47,12 +47,12 @@ std::vector<std::string> TerminalUI::dossier_people() const {
                         text(f, "claim_type") == "inferred" ||
                         text(f, "claim_type") == "unconfirmed";
                 }
-        if (!dossier_search_.empty() &&
-            lower(searchable).find(lower(dossier_search_)) == std::string::npos)
+        if (!dossiers_ui_.dossier_search_.empty() &&
+            lower(searchable).find(lower(dossiers_ui_.dossier_search_)) == std::string::npos)
             continue;
-        if (dossier_filter_ == "uncertain" && !uncertain)
+        if (dossiers_ui_.dossier_filter_ == "uncertain" && !uncertain)
             continue;
-        if (dossier_filter_ == "recent" &&
+        if (dossiers_ui_.dossier_filter_ == "recent" &&
             computer_.time_seconds() - latest >
                 people_["upgrades"]["dossiers"]["recent_window_seconds"].value_or(3600.0))
             continue;
@@ -62,19 +62,20 @@ std::vector<std::string> TerminalUI::dossier_people() const {
 }
 std::vector<std::string> TerminalUI::visible_people() const {
     const auto all = dossier_people();
-    if (!people_neighborhood_)
+    if (!dossiers_ui_.people_neighborhood_)
         return all;
-    std::unordered_set<std::string> visible{selected_person_id_};
-    std::vector<std::string> frontier{selected_person_id_};
+    std::unordered_set<std::string> visible{dossiers_ui_.selected_person_id_};
+    std::vector<std::string> frontier{dossiers_ui_.selected_person_id_};
     if (auto* edges = people_["known_relationships"].as_array())
         while (!frontier.empty()) {
             const auto id = frontier.back();
             frontier.pop_back();
-            if (!expanded_people_.contains(id))
+            if (!dossiers_ui_.expanded_people_.contains(id))
                 continue;
             for (const auto& n : *edges) {
                 const auto& r = *n.as_table();
-                if (people_filter_ != "all" && text(r, "type") != people_filter_)
+                if (dossiers_ui_.people_filter_ != "all" &&
+                    text(r, "type") != dossiers_ui_.people_filter_)
                     continue;
                 const auto a = text(r, "from"), b = text(r, "to");
                 if (a != id && b != id)
@@ -91,49 +92,51 @@ std::vector<std::string> TerminalUI::visible_people() const {
     return result;
 }
 void TerminalUI::change_person(const std::string& id) {
-    if (id == selected_person_id_)
+    if (id == dossiers_ui_.selected_person_id_)
         return;
     if (!people_.contains("dossier_seen"))
         people_.insert("dossier_seen", toml::table{});
-    people_["dossier_seen"].as_table()->insert_or_assign(selected_person_id_,
+    people_["dossier_seen"].as_table()->insert_or_assign(dossiers_ui_.selected_person_id_,
                                                          computer_.time_seconds());
-    dossier_positions_[selected_person_id_] = {people_detail_offset_, people_section_selected_,
-                                               expanded_dossier_sections_};
-    selected_person_id_ = id;
-    const auto found = dossier_positions_.find(id);
+    dossiers_ui_.dossier_positions_[dossiers_ui_.selected_person_id_] = {
+        dossiers_ui_.people_detail_offset_, dossiers_ui_.people_section_selected_,
+        dossiers_ui_.expanded_dossier_sections_};
+    dossiers_ui_.selected_person_id_ = id;
+    const auto found = dossiers_ui_.dossier_positions_.find(id);
     const DossierPosition saved =
-        found == dossier_positions_.end() ? DossierPosition{} : found->second;
-    people_detail_offset_ = saved.offset;
-    people_section_selected_ = saved.section;
-    expanded_dossier_sections_ = saved.expanded;
-    people_reveal_section_ = false;
-    people_pan_x_ = people_pan_y_ = 0;
+        found == dossiers_ui_.dossier_positions_.end() ? DossierPosition{} : found->second;
+    dossiers_ui_.people_detail_offset_ = saved.offset;
+    dossiers_ui_.people_section_selected_ = saved.section;
+    dossiers_ui_.expanded_dossier_sections_ = saved.expanded;
+    dossiers_ui_.people_reveal_section_ = false;
+    dossiers_ui_.people_pan_x_ = dossiers_ui_.people_pan_y_ = 0;
 }
 void TerminalUI::select_person(int direction) {
-    if (people_details_focused_) {
-        people_reveal_section_ = true;
-        people_section_selected_ = std::clamp(people_section_selected_ + direction, 0,
-                                              static_cast<int>(sections.size()) - 1);
+    if (dossiers_ui_.people_details_focused_) {
+        dossiers_ui_.people_reveal_section_ = true;
+        dossiers_ui_.people_section_selected_ =
+            std::clamp(dossiers_ui_.people_section_selected_ + direction, 0,
+                       static_cast<int>(sections.size()) - 1);
         return;
     }
     const auto ids = dossier_people();
     if (ids.empty())
         return;
-    const auto found = std::find(ids.begin(), ids.end(), selected_person_id_);
+    const auto found = std::find(ids.begin(), ids.end(), dossiers_ui_.selected_person_id_);
     const int current = found == ids.end() ? 0 : static_cast<int>(found - ids.begin());
     change_person(ids[std::clamp(current + direction, 0, static_cast<int>(ids.size()) - 1)]);
 }
 void TerminalUI::toggle_people() {
-    if (people_details_focused_) {
-        people_reveal_section_ = true;
-        const auto& section = sections[people_section_selected_];
-        if (!expanded_dossier_sections_.erase(section))
-            expanded_dossier_sections_.insert(section);
+    if (dossiers_ui_.people_details_focused_) {
+        dossiers_ui_.people_reveal_section_ = true;
+        const auto& section = sections[dossiers_ui_.people_section_selected_];
+        if (!dossiers_ui_.expanded_dossier_sections_.erase(section))
+            dossiers_ui_.expanded_dossier_sections_.insert(section);
     } else {
-        if (!expanded_people_.erase(selected_person_id_))
-            expanded_people_.insert(selected_person_id_);
+        if (!dossiers_ui_.expanded_people_.erase(dossiers_ui_.selected_person_id_))
+            dossiers_ui_.expanded_people_.insert(dossiers_ui_.selected_person_id_);
         // Expanding a node selects the neighborhood mode so the change is visible.
-        people_neighborhood_ = true;
+        dossiers_ui_.people_neighborhood_ = true;
     }
 }
 void TerminalUI::open_observation(const std::string& id) {
@@ -158,7 +161,7 @@ void TerminalUI::open_observation(const std::string& id) {
                                  text(record, "source") + " | +" +
                                      number(record["seconds"].value_or(0.0), 0) + " s | " +
                                      text(record, "direction") + " | " + text(record, "text"));
-                    menu_back_ = [this, id = text(record, "id")] {
+                    menu_ui_.menu_back_ = [this, id = text(record, "id")] {
                         open_observation(id);
                     };
                 },
@@ -168,16 +171,17 @@ void TerminalUI::open_observation(const std::string& id) {
                     if (!email_id.empty())
                         open_chat_request(email_id);
                     else {
-                        chat_contact_id_ = text(record, "person_id");
-                        selected_tab_ = Tab::Chat;
-                        chat_message_id_ = text(record, "id");
-                        chat_follow_latest_ = false;
+                        messages_ui_.chat_contact_id_ = text(record, "person_id");
+                        select_tab(Tab::Chat);
+                        messages_ui_.chat_message_id_ = text(record, "id");
+                        messages_ui_.chat_follow_latest_ = false;
                         if (const auto* transcript = people_["chat"]["transcript"].as_array())
                             for (std::size_t i = 0; i < transcript->size(); ++i)
-                                if (chat_message_id_ == "chat:" + std::to_string(i + 1))
-                                    chat_contact_id_ =
+                                if (messages_ui_.chat_message_id_ ==
+                                    "chat:" + std::to_string(i + 1))
+                                    messages_ui_.chat_contact_id_ =
                                         (*(*transcript)[i].as_table())["contact_id"].value_or(
-                                            chat_contact_id_);
+                                            messages_ui_.chat_contact_id_);
                     }
                 },
                 email_id.empty() && !text(record, "id").starts_with("chat:")
@@ -189,7 +193,7 @@ void TerminalUI::open_observation(const std::string& id) {
 }
 void TerminalUI::open_people_evidence() {
     std::vector<MenuAction> choices;
-    if (const auto* d = PeopleSystem::dossier(people_, selected_person_id_))
+    if (const auto* d = PeopleSystem::dossier(people_, dossiers_ui_.selected_person_id_))
         for (const auto& n : *(*d)["facts"].as_array()) {
             const auto fact = *n.as_table();
             choices.push_back(
@@ -222,7 +226,7 @@ void TerminalUI::open_people_evidence() {
                            std::vector<MenuAction> items;
                            for (const auto& n : *people_["observations"].as_array()) {
                                const auto& e = *n.as_table();
-                               if (text(e, "person_id") != selected_person_id_)
+                               if (text(e, "person_id") != dossiers_ui_.selected_person_id_)
                                    continue;
                                const auto id = text(e, "id");
                                items.push_back({text(e, "direction") + " | " + text(e, "source"),
@@ -250,9 +254,9 @@ void TerminalUI::open_people_connections() {
         for (const auto& n : *edges) {
             const auto r = *n.as_table();
             const auto from = text(r, "from"), to = text(r, "to");
-            if (from != selected_person_id_ && to != selected_person_id_)
+            if (from != dossiers_ui_.selected_person_id_ && to != dossiers_ui_.selected_person_id_)
                 continue;
-            const auto other = from == selected_person_id_ ? to : from;
+            const auto other = from == dossiers_ui_.selected_person_id_ ? to : from;
             const auto label = PeopleSystem::name(people_, from) + " -> " +
                                PeopleSystem::name(people_, to) + ": " + text(r, "label");
             choices.push_back(
@@ -270,7 +274,7 @@ void TerminalUI::open_people_connections() {
                                              " working seconds. Evidence records: " +
                                              std::to_string(r["evidence_ids"].as_array()->size()) +
                                              ". Direction does not imply reciprocal trust.");
-                                     menu_back_ = [this] {
+                                     menu_ui_.menu_back_ = [this] {
                                          open_people_connections();
                                      };
                                  },
@@ -313,15 +317,16 @@ void TerminalUI::open_people_connections() {
 }
 void TerminalUI::open_people_actions() {
     std::vector<MenuAction> choices{
-        {"View layout: " + dossier_layout_,
+        {"View layout: " + dossiers_ui_.dossier_layout_,
          [this] {
              std::vector<MenuAction> layouts;
              for (const auto& layout : {"split", "map", "dossier"})
                  layouts.push_back({layout,
                                     [this, layout] {
-                                        dossier_layout_ = layout;
-                                        people_details_focused_ = dossier_layout_ == "dossier";
-                                        people_detail_offset_ = 0;
+                                        dossiers_ui_.dossier_layout_ = layout;
+                                        dossiers_ui_.people_details_focused_ =
+                                            dossiers_ui_.dossier_layout_ == "dossier";
+                                        dossiers_ui_.people_detail_offset_ = 0;
                                     },
                                     {}});
              open_menu("Dossier layout", std::move(layouts), [this] {
@@ -335,24 +340,24 @@ void TerminalUI::open_people_actions() {
                  "Search dossiers",
                  "Search known names, roles and recorded facts; blank clears the search.",
                  [this](const std::string& query) {
-                     dossier_search_ = query;
+                     dossiers_ui_.dossier_search_ = query;
                      const auto ids = dossier_people();
                      if (!ids.empty())
                          change_person(ids.front());
                  },
-                 dossier_search_,
+                 dossiers_ui_.dossier_search_,
                  [this] {
                      open_people_actions();
                  });
          },
          {}},
-        {"Filter people: " + dossier_filter_,
+        {"Filter people: " + dossiers_ui_.dossier_filter_,
          [this] {
              std::vector<MenuAction> filters;
              for (const auto& filter : {"all", "recent", "uncertain"})
                  filters.push_back({filter,
                                     [this, filter] {
-                                        dossier_filter_ = filter;
+                                        dossiers_ui_.dossier_filter_ = filter;
                                         const auto ids = dossier_people();
                                         if (!ids.empty())
                                             change_person(ids.front());
@@ -371,18 +376,18 @@ void TerminalUI::open_people_actions() {
                  "lines indicate uncertain relationships. A dot marks a moved label's original "
                  "position. Bold labels mark selection. Open Connections and interactions to "
                  "inspect relationship types, confidence and supporting evidence.");
-             menu_back_ = [this] {
+             menu_ui_.menu_back_ = [this] {
                  open_people_actions();
              };
          },
          {}},
-        {people_details_focused_ ? "Focus relationship map" : "Focus dossier sections",
+        {dossiers_ui_.people_details_focused_ ? "Focus relationship map" : "Focus dossier sections",
          [this] {
              toggle_pane_focus();
          },
          {}},
         {"Expand / collapse selected " +
-             std::string(people_details_focused_ ? "section" : "person"),
+             std::string(dossiers_ui_.people_details_focused_ ? "section" : "person"),
          [this] {
              toggle_people();
          },
@@ -391,32 +396,32 @@ void TerminalUI::open_people_actions() {
          [this] {
              std::vector<MenuAction> items;
              for (const auto& s : sections)
-                 items.push_back({std::string(expanded_dossier_sections_.contains(s) ? "Collapse "
-                                                                                     : "Expand ") +
-                                      s,
-                                  [this, s] {
-                                      if (!expanded_dossier_sections_.erase(s))
-                                          expanded_dossier_sections_.insert(s);
-                                      people_details_focused_ = true;
-                                      people_section_selected_ = static_cast<int>(
-                                          std::find(sections.begin(), sections.end(), s) -
-                                          sections.begin());
-                                      people_reveal_section_ = true;
-                                      people_detail_offset_ = 0;
-                                  },
-                                  {}});
+                 items.push_back(
+                     {std::string(dossiers_ui_.expanded_dossier_sections_.contains(s) ? "Collapse "
+                                                                                      : "Expand ") +
+                          s,
+                      [this, s] {
+                          if (!dossiers_ui_.expanded_dossier_sections_.erase(s))
+                              dossiers_ui_.expanded_dossier_sections_.insert(s);
+                          dossiers_ui_.people_details_focused_ = true;
+                          dossiers_ui_.people_section_selected_ = static_cast<int>(
+                              std::find(sections.begin(), sections.end(), s) - sections.begin());
+                          dossiers_ui_.people_reveal_section_ = true;
+                          dossiers_ui_.people_detail_offset_ = 0;
+                      },
+                      {}});
              items.push_back({"Expand all",
                               [this] {
-                                  expanded_dossier_sections_.insert(sections.begin(),
-                                                                    sections.end());
-                                  people_details_focused_ = true;
-                                  people_detail_offset_ = 0;
+                                  dossiers_ui_.expanded_dossier_sections_.insert(sections.begin(),
+                                                                                 sections.end());
+                                  dossiers_ui_.people_details_focused_ = true;
+                                  dossiers_ui_.people_detail_offset_ = 0;
                               },
                               {}});
              items.push_back({"Collapse all",
                               [this] {
-                                  expanded_dossier_sections_.clear();
-                                  people_detail_offset_ = 0;
+                                  dossiers_ui_.expanded_dossier_sections_.clear();
+                                  dossiers_ui_.people_detail_offset_ = 0;
                               },
                               {}});
              open_menu("Dossier sections", std::move(items), [this] {
@@ -440,7 +445,7 @@ void TerminalUI::open_people_actions() {
              for (const auto& filter : {"all", "communication", "organization", "personal"})
                  items.push_back({filter,
                                   [this, filter] {
-                                      people_filter_ = filter;
+                                      dossiers_ui_.people_filter_ = filter;
                                   },
                                   {}});
              open_menu("Connection filter", std::move(items), [this] {
@@ -448,25 +453,25 @@ void TerminalUI::open_people_actions() {
              });
          },
          {}},
-        {people_neighborhood_ ? "Show all known people" : "Show expanded neighborhood",
+        {dossiers_ui_.people_neighborhood_ ? "Show all known people" : "Show expanded neighborhood",
          [this] {
-             people_neighborhood_ = !people_neighborhood_;
-             people_pan_x_ = people_pan_y_ = 0;
+             dossiers_ui_.people_neighborhood_ = !dossiers_ui_.people_neighborhood_;
+             dossiers_ui_.people_pan_x_ = dossiers_ui_.people_pan_y_ = 0;
          },
          {}},
         {"Center map",
          [this] {
-             people_pan_x_ = people_pan_y_ = 0;
+             dossiers_ui_.people_pan_x_ = dossiers_ui_.people_pan_y_ = 0;
          },
          {}},
         {"Zoom in",
          [this] {
-             people_zoom_ = std::min(4.0, people_zoom_ * 1.25);
+             dossiers_ui_.people_zoom_ = std::min(4.0, dossiers_ui_.people_zoom_ * 1.25);
          },
          {}},
         {"Zoom out",
          [this] {
-             people_zoom_ = std::max(.5, people_zoom_ / 1.25);
+             dossiers_ui_.people_zoom_ = std::max(.5, dossiers_ui_.people_zoom_ / 1.25);
          },
          {}},
         {"Add missing people definitions",
@@ -481,7 +486,8 @@ void TerminalUI::open_people_actions() {
         for (std::size_t i = list->size(); i > 0; --i) {
             const auto& e = *(*list)[i - 1].as_table();
             const auto source = text(e, "id");
-            if (text(e, "person_id") != selected_person_id_ || !source.starts_with("email:"))
+            if (text(e, "person_id") != dossiers_ui_.selected_person_id_ ||
+                !source.starts_with("email:"))
                 continue;
             const auto id = source.substr(6);
             choices.insert(choices.begin(), {"Open latest conversation",
@@ -491,7 +497,8 @@ void TerminalUI::open_people_actions() {
                                              {}});
             break;
         }
-    open_menu("Dossier | " + PeopleSystem::name(people_, selected_person_id_), std::move(choices));
+    open_menu("Dossier | " + PeopleSystem::name(people_, dossiers_ui_.selected_person_id_),
+              std::move(choices));
 }
 void TerminalUI::draw_people(int top, int bottom, int width) {
     const auto known = dossier_people();
@@ -499,20 +506,23 @@ void TerminalUI::draw_people(int top, int bottom, int width) {
         write(top, 1, "DOSSIERS | No matching people. Enter to change search or filters.", Heading);
         return;
     }
-    if (std::find(known.begin(), known.end(), selected_person_id_) == known.end())
+    if (std::find(known.begin(), known.end(), dossiers_ui_.selected_person_id_) == known.end())
         change_person(known.front());
     const auto ids = visible_people();
     const int panel = std::min(width - 20, width >= 110 ? settings_.people_wide_panel_width
                                                         : settings_.people_panel_width),
-              divider = dossier_layout_ == "map" ? width - 1 : width - panel - 1;
-    if (dossier_layout_ != "map" && dossier_layout_ != "dossier")
+              divider = dossiers_ui_.dossier_layout_ == "map" ? width - 1 : width - panel - 1;
+    if (dossiers_ui_.dossier_layout_ != "map" && dossiers_ui_.dossier_layout_ != "dossier")
         renderer_->split(top, bottom - 1, divider);
     const int left = 1, right = divider - 2, map_top = top + 2, map_bottom = bottom - 3;
-    if (dossier_layout_ != "dossier") {
-        write(top, 1, "DOSSIERS | " + std::to_string(known.size()) + " known | " + people_filter_,
-              people_details_focused_ ? Heading : ActiveTab, true);
+    if (dossiers_ui_.dossier_layout_ != "dossier") {
+        write(top, 1,
+              "DOSSIERS | " + std::to_string(known.size()) + " known | " +
+                  dossiers_ui_.people_filter_,
+              dossiers_ui_.people_details_focused_ ? Heading : ActiveTab, true);
         write(top + 1, 1,
-              fit(std::string(people_details_focused_ ? "Focus: dossier | " : "Focus: map | ") +
+              fit(std::string(dossiers_ui_.people_details_focused_ ? "Focus: dossier | "
+                                                                   : "Focus: map | ") +
                       (settings_.binding_label(KeyAction::FocusLeft) + "/" +
                        settings_.binding_label(KeyAction::FocusRight)) +
                       ": switch",
@@ -528,19 +538,21 @@ void TerminalUI::draw_people(int top, int bottom, int width) {
         for (const auto& id : known)
             if (id != "self:assistant")
                 others.push_back(id);
-        positions["self:assistant"] = {cx - people_pan_x_ * people_zoom_,
-                                       cy - people_pan_y_ * people_zoom_};
+        positions["self:assistant"] = {cx - dossiers_ui_.people_pan_x_ * dossiers_ui_.people_zoom_,
+                                       cy - dossiers_ui_.people_pan_y_ * dossiers_ui_.people_zoom_};
         const double rx = std::max(8.0, (right - left) * .35),
                      ry = std::max(3.0, (map_bottom - map_top) * .38);
         for (std::size_t i = 0; i < others.size(); ++i) {
-            const auto [slot, inserted] =
-                people_map_slots_.try_emplace(others[i], people_map_slots_.size());
+            const auto [slot, inserted] = dossiers_ui_.people_map_slots_.try_emplace(
+                others[i], dossiers_ui_.people_map_slots_.size());
             (void)inserted;
             const double angle = 6.283185307 * (slot->second % 12) / 12;
             const double ring = 1.0 + static_cast<double>(slot->second / 12) * .7;
             positions[others[i]] = {
-                cx + (rx * ring * std::cos(angle) - people_pan_x_) * people_zoom_,
-                cy + (ry * ring * std::sin(angle) - people_pan_y_) * people_zoom_};
+                cx + (rx * ring * std::cos(angle) - dossiers_ui_.people_pan_x_) *
+                         dossiers_ui_.people_zoom_,
+                cy + (ry * ring * std::sin(angle) - dossiers_ui_.people_pan_y_) *
+                         dossiers_ui_.people_zoom_};
         }
         for (auto it = positions.begin(); it != positions.end();)
             if (std::find(ids.begin(), ids.end(), it->first) == ids.end())
@@ -556,7 +568,8 @@ void TerminalUI::draw_people(int top, int bottom, int width) {
             for (const auto& n : *edges) {
                 const auto& e = *n.as_table();
                 const auto from = text(e, "from"), to = text(e, "to");
-                if (people_filter_ != "all" && text(e, "type") != people_filter_)
+                if (dossiers_ui_.people_filter_ != "all" &&
+                    text(e, "type") != dossiers_ui_.people_filter_)
                     continue;
                 if (!positions.contains(from) || !positions.contains(to))
                     continue;
@@ -569,8 +582,8 @@ void TerminalUI::draw_people(int top, int bottom, int width) {
                 const bool recent =
                     text(e, "type") == "communication" &&
                     computer_.time_seconds() - e["last_seen_seconds"].value_or(0.0) < 90;
-                const bool selected_connection =
-                    from == selected_person_id_ || to == selected_person_id_;
+                const bool selected_connection = from == dossiers_ui_.selected_person_id_ ||
+                                                 to == dossiers_ui_.selected_person_id_;
                 const int color = confidence < settings_.uncertain_relationship_threshold
                                       ? MapLocked
                                   : selected_connection ? Heading
@@ -596,22 +609,23 @@ void TerminalUI::draw_people(int top, int bottom, int width) {
             int x, y, width;
         };
         std::vector<Label> labels;
-        std::vector<std::string> draw_order{selected_person_id_};
+        std::vector<std::string> draw_order{dossiers_ui_.selected_person_id_};
         for (const auto& id : ids)
-            if (id != selected_person_id_)
+            if (id != dossiers_ui_.selected_person_id_)
                 draw_order.push_back(id);
         int hidden_labels = 0;
         for (const auto& id : draw_order) {
             const auto [x, y] = positions[id];
-            const bool selected = id == selected_person_id_;
+            const bool selected = id == dossiers_ui_.selected_person_id_;
             const int px = std::clamp(static_cast<int>(std::lround(x)), left, right);
             const int py = std::clamp(static_cast<int>(std::lround(y)), map_top, map_bottom);
             if (!selected && (x < left || x > right || y < map_top || y > map_bottom)) {
                 ++hidden_labels;
                 continue;
             }
-            const auto full = std::string(expanded_people_.contains(id) ? "[-] " : "[+] ") +
-                              PeopleSystem::name(people_, id);
+            const auto full =
+                std::string(dossiers_ui_.expanded_people_.contains(id) ? "[-] " : "[+] ") +
+                PeopleSystem::name(people_, id);
             const auto label = fit(full, std::min(23, right - left + 1));
             const int lx = std::clamp(px - static_cast<int>(label.size()) / 2, left,
                                       right - static_cast<int>(label.size()) + 1);
@@ -649,19 +663,20 @@ void TerminalUI::draw_people(int top, int bottom, int width) {
                   fit("DOSSIERS | " + std::to_string(known.size()) + " known | " +
                           std::to_string(hidden_labels) + " hidden labels",
                       right),
-                  people_details_focused_ ? Heading : ActiveTab, true);
+                  dossiers_ui_.people_details_focused_ ? Heading : ActiveTab, true);
         write(bottom - 2, left, "Selected connections", Heading);
         write(bottom - 1, left, fit("Yellow: uncertain | . moved label", right - left + 1),
               MapLocked);
     }
-    if (dossier_layout_ == "map") {
+    if (dossiers_ui_.dossier_layout_ == "map") {
         write(bottom, 1, "Up/Down: person | Enter: dossier actions and view layouts", Footer);
         return;
     }
-    const int detail_x = dossier_layout_ == "dossier" ? 1 : divider + 2,
+    const int detail_x = dossiers_ui_.dossier_layout_ == "dossier" ? 1 : divider + 2,
               detail_width = width - detail_x - 1;
-    write(top, detail_x, fit(PeopleSystem::name(people_, selected_person_id_), detail_width),
-          people_details_focused_ ? ActiveTab : Heading, true);
+    write(top, detail_x,
+          fit(PeopleSystem::name(people_, dossiers_ui_.selected_person_id_), detail_width),
+          dossiers_ui_.people_details_focused_ ? ActiveTab : Heading, true);
     std::vector<std::pair<std::string, int>> lines;
     auto add = [&](const std::string& s, int color = Plain) {
         if (s.empty()) {
@@ -688,8 +703,8 @@ void TerminalUI::draw_people(int top, int bottom, int width) {
             lines.emplace_back("  " + row, color);
     };
     std::vector<int> section_rows;
-    const auto* d = PeopleSystem::dossier(people_, selected_person_id_);
-    const auto seen = people_["dossier_seen"][selected_person_id_].value_or(-1.0);
+    const auto* d = PeopleSystem::dossier(people_, dossiers_ui_.selected_person_id_);
+    const auto seen = people_["dossier_seen"][dossiers_ui_.selected_person_id_].value_or(-1.0);
     auto is_new = [&](const toml::table& fact) {
         return fact["last_seen_seconds"].value_or(0.0) > seen &&
                computer_.time_seconds() - fact["last_seen_seconds"].value_or(0.0) <=
@@ -710,7 +725,7 @@ void TerminalUI::draw_people(int top, int bottom, int width) {
     if (const auto* observations = people_["observations"].as_array())
         for (const auto& row : *observations) {
             const auto& o = *row.as_table();
-            if (text(o, "person_id") == selected_person_id_ &&
+            if (text(o, "person_id") == dossiers_ui_.selected_person_id_ &&
                 (!latest || o["seconds"].value_or(0.0) > (*latest)["seconds"].value_or(0.0)))
                 latest = &o;
         }
@@ -726,18 +741,21 @@ void TerminalUI::draw_people(int top, int bottom, int width) {
         const auto& section = sections[i];
         section_rows.push_back(static_cast<int>(lines.size()));
         lines.emplace_back(
-            std::string(people_details_focused_ && static_cast<int>(i) == people_section_selected_
+            std::string(dossiers_ui_.people_details_focused_ &&
+                                static_cast<int>(i) == dossiers_ui_.people_section_selected_
                             ? "> "
                             : "  ") +
-                (expanded_dossier_sections_.contains(section) ? "[-] " : "[+] ") + section,
+                (dossiers_ui_.expanded_dossier_sections_.contains(section) ? "[-] " : "[+] ") +
+                section,
             Heading);
-        if (!expanded_dossier_sections_.contains(section))
+        if (!dossiers_ui_.expanded_dossier_sections_.contains(section))
             continue;
         bool found = false;
         if (section == "relationships") {
             for (const auto& n : *people_["known_relationships"].as_array()) {
                 const auto& r = *n.as_table();
-                if (text(r, "from") != selected_person_id_ && text(r, "to") != selected_person_id_)
+                if (text(r, "from") != dossiers_ui_.selected_person_id_ &&
+                    text(r, "to") != dossiers_ui_.selected_person_id_)
                     continue;
                 found = true;
                 add(PeopleSystem::name(people_, text(r, "from")) + " -> " +
@@ -753,7 +771,7 @@ void TerminalUI::draw_people(int top, int bottom, int width) {
         } else if (section == "observations") {
             for (const auto& n : *people_["observations"].as_array()) {
                 const auto& e = *n.as_table();
-                if (text(e, "person_id") != selected_person_id_)
+                if (text(e, "person_id") != dossiers_ui_.selected_person_id_)
                     continue;
                 found = true;
                 add("+" + number(e["seconds"].value_or(0.0), 0) + " s | " + text(e, "direction") +
@@ -818,19 +836,21 @@ void TerminalUI::draw_people(int top, int bottom, int width) {
             add("Unknown; no supporting observations.", Footer);
     }
     const int visible = std::max(1, bottom - top - 1);
-    if (people_details_focused_ && people_reveal_section_) {
-        people_reveal_section_ = false;
-        const int cursor = section_rows[people_section_selected_];
-        if (cursor < people_detail_offset_)
-            people_detail_offset_ = cursor;
-        else if (cursor >= people_detail_offset_ + visible)
-            people_detail_offset_ = cursor - visible + 1;
+    if (dossiers_ui_.people_details_focused_ && dossiers_ui_.people_reveal_section_) {
+        dossiers_ui_.people_reveal_section_ = false;
+        const int cursor = section_rows[dossiers_ui_.people_section_selected_];
+        if (cursor < dossiers_ui_.people_detail_offset_)
+            dossiers_ui_.people_detail_offset_ = cursor;
+        else if (cursor >= dossiers_ui_.people_detail_offset_ + visible)
+            dossiers_ui_.people_detail_offset_ = cursor - visible + 1;
     }
-    people_detail_offset_ =
-        std::clamp(people_detail_offset_, 0, std::max(0, static_cast<int>(lines.size()) - visible));
-    for (int i = 0; i < visible && people_detail_offset_ + i < static_cast<int>(lines.size());
+    dossiers_ui_.people_detail_offset_ =
+        std::clamp(dossiers_ui_.people_detail_offset_, 0,
+                   std::max(0, static_cast<int>(lines.size()) - visible));
+    for (int i = 0;
+         i < visible && dossiers_ui_.people_detail_offset_ + i < static_cast<int>(lines.size());
          ++i) {
-        const auto& [s, color] = lines[people_detail_offset_ + i];
+        const auto& [s, color] = lines[dossiers_ui_.people_detail_offset_ + i];
         write(top + 1 + i, detail_x, fit(s, detail_width), color);
     }
     write(bottom, 1,
@@ -838,7 +858,8 @@ void TerminalUI::draw_people(int top, int bottom, int width) {
                settings_.binding_label(KeyAction::FocusRight)) +
                   ": focus | " + settings_.binding_label(KeyAction::SelectPrevious) + "/" +
                   settings_.binding_label(KeyAction::SelectNext) +
-                  (people_details_focused_ ? ": section | PgUp/PgDn: read | " : ": person | ") +
+                  (dossiers_ui_.people_details_focused_ ? ": section | PgUp/PgDn: read | "
+                                                        : ": person | ") +
                   settings_.binding_label(KeyAction::Submit) + ": actions",
               width - 2),
           Footer);

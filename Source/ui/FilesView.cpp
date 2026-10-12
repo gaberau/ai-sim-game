@@ -43,77 +43,78 @@ std::vector<std::string> content_lines(const std::string& content, int width) {
 void TerminalUI::switch_file_host(const std::string& host) {
     // Validate before changing the UI so failed access preserves the location.
     file_system_.enter(network_, file_identity(), host, "/");
-    file_host_id_ = host;
-    file_directory_ = "/";
-    file_category_ = "all";
-    file_query_.clear();
-    selected_file_path_.clear();
-    file_list_offset_ = 0;
-    file_content_offset_ = 0;
-    selected_tab_ = Tab::Files;
+    files_ui_.file_host_id_ = host;
+    files_ui_.file_directory_ = "/";
+    files_ui_.file_category_ = "all";
+    files_ui_.file_query_.clear();
+    files_ui_.selected_file_path_.clear();
+    files_ui_.file_list_offset_ = 0;
+    files_ui_.file_content_offset_ = 0;
+    select_tab(Tab::Files);
 }
 
 void TerminalUI::change_file_directory(const std::string& path) {
     const auto absolute = FileSystem::normalize(
-        !path.empty() && path.front() == '/' ? path : file_directory_ + "/" + path);
-    file_system_.enter(network_, file_identity(), file_host_id_, absolute);
-    file_directory_ = absolute;
-    selected_file_path_ = absolute;
-    file_query_.clear();
-    file_details_focused_ = false;
-    file_list_offset_ = 0;
-    file_content_offset_ = 0;
-    selected_tab_ = Tab::Files;
+        !path.empty() && path.front() == '/' ? path : files_ui_.file_directory_ + "/" + path);
+    file_system_.enter(network_, file_identity(), files_ui_.file_host_id_, absolute);
+    files_ui_.file_directory_ = absolute;
+    files_ui_.selected_file_path_ = absolute;
+    files_ui_.file_query_.clear();
+    files_ui_.file_details_focused_ = false;
+    files_ui_.file_list_offset_ = 0;
+    files_ui_.file_content_offset_ = 0;
+    select_tab(Tab::Files);
 }
 
 void TerminalUI::select_file_category(int direction) {
     const std::vector<std::string> categories{"all", "work", "personal", "hidden"};
-    const auto found = std::find(categories.begin(), categories.end(), file_category_);
+    const auto found = std::find(categories.begin(), categories.end(), files_ui_.file_category_);
     const int index = (static_cast<int>(found - categories.begin()) + direction + 4) % 4;
-    file_category_ = categories[index];
-    selected_file_path_.clear();
-    file_list_offset_ = file_content_offset_ = 0;
+    files_ui_.file_category_ = categories[index];
+    files_ui_.selected_file_path_.clear();
+    files_ui_.file_list_offset_ = files_ui_.file_content_offset_ = 0;
 }
 void TerminalUI::select_file(int direction) {
     const auto entries = file_entries();
     if (entries.empty()) {
-        selected_file_path_.clear();
+        files_ui_.selected_file_path_.clear();
         return;
     }
     const auto found = std::find_if(entries.begin(), entries.end(), [&](const auto* e) {
-        return e->host_id == file_host_id_ && e->path == selected_file_path_;
+        return e->host_id == files_ui_.file_host_id_ && e->path == files_ui_.selected_file_path_;
     });
     const int index = found == entries.end()
                           ? 0
                           : std::clamp(static_cast<int>(found - entries.begin()) + direction, 0,
                                        static_cast<int>(entries.size()) - 1);
-    selected_file_path_ = entries[index]->path;
-    file_content_offset_ = 0;
+    files_ui_.selected_file_path_ = entries[index]->path;
+    files_ui_.file_content_offset_ = 0;
 }
 void TerminalUI::open_selected_file() {
-    if (selected_file_path_.empty())
+    if (files_ui_.selected_file_path_.empty())
         select_file(0);
-    if (selected_file_path_.empty())
+    if (files_ui_.selected_file_path_.empty())
         return;
-    const auto& entry =
-        file_system_.inspect(network_, file_identity(), file_host_id_, selected_file_path_);
+    const auto& entry = file_system_.inspect(network_, file_identity(), files_ui_.file_host_id_,
+                                             files_ui_.selected_file_path_);
     if (entry.directory) {
         change_file_directory(entry.path);
         return;
     }
-    (void)file_system_.read(network_, file_identity(), file_host_id_, selected_file_path_);
-    file_details_focused_ = true;
-    file_content_offset_ = 0;
+    (void)file_system_.read(network_, file_identity(), files_ui_.file_host_id_,
+                            files_ui_.selected_file_path_);
+    files_ui_.file_details_focused_ = true;
+    files_ui_.file_content_offset_ = 0;
 }
 void TerminalUI::create_category_file(const std::string& name) {
     if (name.empty() || name == "." || name == ".." ||
         name.find_first_of("/\\") != std::string::npos)
         throw std::runtime_error("Enter a file name without a path");
     const auto actor = file_identity();
-    const auto host = file_host_id_;
+    const auto host = files_ui_.file_host_id_;
     auto candidate = file_system_;
-    candidate.enter(network_, actor, host, file_directory_);
-    const auto path = FileSystem::normalize(file_directory_ + "/" + name);
+    candidate.enter(network_, actor, host, files_ui_.file_directory_);
+    const auto path = FileSystem::normalize(files_ui_.file_directory_ + "/" + name);
     try {
         (void)candidate.inspect(network_, actor, host, path);
         throw std::runtime_error("A file with that name already exists");
@@ -122,13 +123,13 @@ void TerminalUI::create_category_file(const std::string& name) {
             throw;
     }
     candidate.write(network_, actor, host, path, "", computer_.time_seconds());
-    if (file_category_ != "all")
-        candidate.set_category(network_, actor, host, path, file_category_);
+    if (files_ui_.file_category_ != "all")
+        candidate.set_category(network_, actor, host, path, files_ui_.file_category_);
     file_system_ = std::move(candidate);
-    file_host_id_ = host;
-    file_directory_ = FileSystem::parent(path);
-    selected_file_path_ = path;
-    file_query_.clear();
+    files_ui_.file_host_id_ = host;
+    files_ui_.file_directory_ = FileSystem::parent(path);
+    files_ui_.selected_file_path_ = path;
+    files_ui_.file_query_.clear();
     edit_file(path);
 }
 
@@ -166,18 +167,20 @@ std::pair<int, std::string> TerminalUI::file_access(const FileEntry& entry) cons
 
 std::vector<const FileEntry*> TerminalUI::file_entries() const {
     std::vector<const FileEntry*> entries;
-    if (!file_query_.empty()) {
-        entries = file_system_.search(network_, file_identity(), file_host_id_, file_directory_,
-                                      file_query_);
+    if (!files_ui_.file_query_.empty()) {
+        entries = file_system_.search(network_, file_identity(), files_ui_.file_host_id_,
+                                      files_ui_.file_directory_, files_ui_.file_query_);
     } else {
-        entries.push_back(&file_system_.inspect(network_, file_identity(), file_host_id_, "/"));
+        entries.push_back(
+            &file_system_.inspect(network_, file_identity(), files_ui_.file_host_id_, "/"));
         const auto walk = [&](const auto& self, const std::string& directory) -> void {
             try {
-                for (const auto* entry :
-                     file_system_.list(network_, file_identity(), file_host_id_, directory)) {
+                for (const auto* entry : file_system_.list(network_, file_identity(),
+                                                           files_ui_.file_host_id_, directory)) {
                     entries.push_back(entry);
-                    if (entry->directory && (entry->path == file_directory_ ||
-                                             file_directory_.starts_with(entry->path + "/")))
+                    if (entry->directory &&
+                        (entry->path == files_ui_.file_directory_ ||
+                         files_ui_.file_directory_.starts_with(entry->path + "/")))
                         self(self, entry->path);
                 }
             } catch (const std::exception&) {
@@ -186,8 +189,8 @@ std::vector<const FileEntry*> TerminalUI::file_entries() const {
         walk(walk, "/");
     }
     std::erase_if(entries, [&](const auto* entry) {
-        return !entry->directory && file_category_ != "all" &&
-               FileSystem::category_of(*entry) != file_category_;
+        return !entry->directory && files_ui_.file_category_ != "all" &&
+               FileSystem::category_of(*entry) != files_ui_.file_category_;
     });
     return entries;
 }
@@ -213,14 +216,14 @@ void TerminalUI::open_file_hosts() {
 void TerminalUI::draw_files(int top, int bottom, int width) {
     const auto host =
         std::find_if(network_.hosts().begin(), network_.hosts().end(), [&](const auto& h) {
-            return h.id == file_host_id_;
+            return h.id == files_ui_.file_host_id_;
         });
-    write(
-        top, 1,
-        fit("FILES | " + (host == network_.hosts().end() ? file_host_id_ : host->name), width - 2),
-        Heading, true);
+    write(top, 1,
+          fit("FILES | " + (host == network_.hosts().end() ? files_ui_.file_host_id_ : host->name),
+              width - 2),
+          Heading, true);
     std::string breadcrumbs = "Path: /";
-    std::istringstream path(file_directory_);
+    std::istringstream path(files_ui_.file_directory_);
     std::string part;
     while (std::getline(path, part, '/'))
         if (!part.empty())
@@ -228,10 +231,10 @@ void TerminalUI::draw_files(int top, int bottom, int width) {
     write(top + 1, 1, fit(breadcrumbs, width - 2), Resources);
     std::string filters = "Filter: ";
     for (const auto* category : {"all", "work", "personal", "hidden"})
-        filters += file_category_ == category ? "[" + std::string(category) + "] "
-                                              : std::string(category) + " ";
-    if (!file_query_.empty())
-        filters += "| Search: " + file_query_;
+        filters += files_ui_.file_category_ == category ? "[" + std::string(category) + "] "
+                                                        : std::string(category) + " ";
+    if (!files_ui_.file_query_.empty())
+        filters += "| Search: " + files_ui_.file_query_;
     write(top + 2, 1, fit(filters, width - 2), Footer);
     const int body = top + 4, divider = ScreenRenderer::list_divider(width), right = divider + 2;
     const int content_width = std::max(1, width - right - 2);
@@ -253,28 +256,29 @@ void TerminalUI::draw_files(int top, int bottom, int width) {
         return;
     }
     if (entries.empty()) {
-        selected_file_path_.clear();
+        files_ui_.selected_file_path_.clear();
         write(body, 1, "No matching files.");
         return;
     }
     auto selected = std::find_if(entries.begin(), entries.end(), [&](const auto* entry) {
-        return entry->path == selected_file_path_;
+        return entry->path == files_ui_.selected_file_path_;
     });
     if (selected == entries.end()) {
         selected = entries.begin();
-        selected_file_path_ = (*selected)->path;
+        files_ui_.selected_file_path_ = (*selected)->path;
     }
     const auto index = static_cast<int>(selected - entries.begin());
     const int visible = std::max(1, bottom - body);
-    if (index < file_list_offset_)
-        file_list_offset_ = index;
-    if (index >= file_list_offset_ + visible)
-        file_list_offset_ = index - visible + 1;
-    file_list_offset_ =
-        std::clamp(file_list_offset_, 0, std::max(0, static_cast<int>(entries.size()) - visible));
+    if (index < files_ui_.file_list_offset_)
+        files_ui_.file_list_offset_ = index;
+    if (index >= files_ui_.file_list_offset_ + visible)
+        files_ui_.file_list_offset_ = index - visible + 1;
+    files_ui_.file_list_offset_ = std::clamp(
+        files_ui_.file_list_offset_, 0, std::max(0, static_cast<int>(entries.size()) - visible));
     for (int line = 0;
-         line < visible && file_list_offset_ + line < static_cast<int>(entries.size()); ++line) {
-        const int item = file_list_offset_ + line;
+         line < visible && files_ui_.file_list_offset_ + line < static_cast<int>(entries.size());
+         ++line) {
+        const int item = files_ui_.file_list_offset_ + line;
         const auto& entry = *entries[item];
         const auto [color, access] = file_access(entry);
         const auto depth =
@@ -282,14 +286,15 @@ void TerminalUI::draw_files(int top, int bottom, int width) {
                 ? 0
                 : static_cast<int>(std::count(entry.path.begin(), entry.path.end(), '/')) - 1;
         const auto name = entry.path == "/" ? "/" : entry.path.substr(entry.path.rfind('/') + 1);
-        const auto label = !file_query_.empty() ? entry.path
-                                                : std::string(std::min(depth * 2, 10), ' ') +
-                                                      (entry.directory              ? "+ "
-                                                       : entry.service_kind.empty() ? "  "
-                                                                                    : "* ") +
-                                                      name;
+        const auto label = !files_ui_.file_query_.empty()
+                               ? entry.path
+                               : std::string(std::min(depth * 2, 10), ' ') +
+                                     (entry.directory              ? "+ "
+                                      : entry.service_kind.empty() ? "  "
+                                                                   : "* ") +
+                                     name;
         write(body + line, 1, fit(std::string(item == index ? "> " : "  ") + label, divider - 2),
-              color, item == index && !file_details_focused_);
+              color, item == index && !files_ui_.file_details_focused_);
     }
     const auto& entry = **selected;
     const auto [color, access] = file_access(entry);
@@ -304,9 +309,9 @@ void TerminalUI::draw_files(int top, int bottom, int width) {
         write(body + 4, right, fit("Managed " + entry.service_kind + " storage", content_width),
               Heading);
         write(body + 5, right,
-              fit(entry.service_kind == "agent"
-                      ? "Manage through the Agents tab."
-                      : entry.service_kind == "work" ? "Manage through the Money tab."
+              fit(entry.service_kind == "agent" ? "Manage through the Agents tab."
+                  : entry.service_kind == "work"
+                      ? "Manage through the Money tab."
                       : "Manage through Operations > Backup and Recovery.",
                   content_width));
         return;
@@ -315,24 +320,25 @@ void TerminalUI::draw_files(int top, int bottom, int width) {
         std::vector<std::string> lines;
         if (entry.directory) {
             for (const auto* child :
-                 file_system_.list(network_, file_identity(), file_host_id_, entry.path))
+                 file_system_.list(network_, file_identity(), files_ui_.file_host_id_, entry.path))
                 lines.push_back(std::string(child->directory ? "+ " : "  ") +
                                 child->path.substr(child->path.rfind('/') + 1));
             if (lines.empty())
                 lines.push_back("(empty folder)");
         } else
             lines = content_lines(
-                file_system_.read(network_, file_identity(), file_host_id_, entry.path),
+                file_system_.read(network_, file_identity(), files_ui_.file_host_id_, entry.path),
                 content_width);
         const int readable = std::max(0, bottom - body - 4);
-        file_content_offset_ = std::clamp(file_content_offset_, 0,
-                                          std::max(0, static_cast<int>(lines.size()) - readable));
+        files_ui_.file_content_offset_ =
+            std::clamp(files_ui_.file_content_offset_, 0,
+                       std::max(0, static_cast<int>(lines.size()) - readable));
         std::vector<ScreenRenderer::TextRow> preview;
         preview.reserve(lines.size());
         for (const auto& line : lines)
             preview.push_back({fit(line, content_width)});
-        renderer_->scroll_text("files", preview, file_content_offset_, body + 4, right,
-                          readable, content_width);
+        renderer_->scroll_text("files", preview, files_ui_.file_content_offset_, body + 4, right,
+                               readable, content_width);
     } catch (const std::exception& error) {
         write(body + 4, right, fit(error.what(), content_width), FileBlocked);
     }

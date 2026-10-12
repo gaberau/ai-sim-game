@@ -50,13 +50,13 @@ void TerminalUI::draw_agents(int top, int bottom, int width) {
     else
         lines.push_back("RESEARCH | Idle");
     const auto agents = AgentSystem::statuses(people_, computer_, file_system_, network_);
-    agent_selected_ =
-        std::clamp(agent_selected_, 0, std::max(0, static_cast<int>(agents.size()) - 1));
+    agents_ui_.agent_selected_ =
+        std::clamp(agents_ui_.agent_selected_, 0, std::max(0, static_cast<int>(agents.size()) - 1));
     const int slots = std::max(1, (bottom - top - 2) / 3);
-    const int first = std::max(0, agent_selected_ - slots + 1);
+    const int first = std::max(0, agents_ui_.agent_selected_ - slots + 1);
     for (int i = first; i < static_cast<int>(agents.size()) && i < first + slots; ++i) {
         const auto& agent = agents[i];
-        const bool focused = i == agent_selected_;
+        const bool focused = i == agents_ui_.agent_selected_;
         const int row = top + 2 + (i - first) * 3;
         write(row, 1, (std::string(focused ? "> " : "  ") + agent.label).substr(0, split - 2),
               focused ? ActiveTab : Plain, focused);
@@ -66,7 +66,7 @@ void TerminalUI::draw_agents(int top, int bottom, int width) {
     if (agents.empty())
         write(top + 2, 1, "No agents available.", Footer);
     else {
-        const auto& a = agents[agent_selected_];
+        const auto& a = agents[agents_ui_.agent_selected_];
         write(top, split + 2, a.label, Heading, true);
         lines.push_back("");
         lines.push_back("STATUS | " + a.status);
@@ -100,9 +100,9 @@ void TerminalUI::draw_agents(int top, int bottom, int width) {
             }
     }
     const int visible = std::max(1, bottom - top - 1);
-    if (agent_reveal_) {
-        ai_offset_ = 0;
-        agent_reveal_ = false;
+    if (agents_ui_.agent_reveal_) {
+        scroll_offset() = 0;
+        agents_ui_.agent_reveal_ = false;
     }
     const int detail_width = width - split - 4;
     std::vector<ScreenRenderer::TextRow> details;
@@ -127,8 +127,9 @@ void TerminalUI::draw_agents(int top, int bottom, int width) {
                                      ? Protected
                                      : Plain});
     }
-    ai_offset_ = std::clamp(ai_offset_, 0, std::max(0, static_cast<int>(details.size()) - visible));
-    renderer_->scroll_text("agent-details", details, ai_offset_, top + 1, split + 2, visible,
+    scroll_offset() =
+        std::clamp(scroll_offset(), 0, std::max(0, static_cast<int>(details.size()) - visible));
+    renderer_->scroll_text("agent-details", details, scroll_offset(), top + 1, split + 2, visible,
                            detail_width);
     write(bottom, 1,
           settings_.binding_label(KeyAction::SelectPrevious) + "/" +
@@ -204,14 +205,14 @@ void TerminalUI::open_agent_actions(const std::string& id) {
                            r ? (*r)["reason"].value_or(std::string{"No request"}) + ". " +
                                    (*r)["advice"].value_or(std::string{})
                              : "No outstanding resource request.");
-              menu_back_ = [this, id] {
+              menu_ui_.menu_back_ = [this, id] {
                   open_agent_actions(id);
               };
           },
           {}},
          {"Open Processes",
           [this] {
-              selected_tab_ = Tab::Processes;
+              select_tab(Tab::Processes);
           },
           tab_available(Tab::Processes) ? "" : "Research Task Manager first"},
          {"Research upgrades",

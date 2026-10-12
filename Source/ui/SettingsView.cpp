@@ -113,7 +113,7 @@ void TerminalUI::open_settings_section(const std::string& section, bool editing_
                                          [this, section] {
                                              open_settings_section(section, true);
                                          });
-                                     key_capture_active_ = true;
+                                     text_ui_.key_capture_active_ = true;
                                  },
                                  {}},
                                 {"Edit TOML (multiple keys)",
@@ -210,7 +210,7 @@ void TerminalUI::open_context_help() {
         explain(settings_.binding_label(action) + ": " + text);
     };
     std::string title = "Help";
-    if (editor_active_) {
+    if (editor_ui_.editor_active_) {
         title += " | File editor";
         explain("Edit the working copy; save keeps changes, cancel discards them.");
         control(KeyAction::EditorSave, "keep edits");
@@ -220,8 +220,8 @@ void TerminalUI::open_context_help() {
         const char* names[] = {"Chat",  "Processes", "Activity",      "Network",   "Files",
                                "News",  "AI",        "Dossiers",      "Web",       "Agents",
                                "Phone", "Money",     "Modifications", "Operations"};
-        title += " | " + std::string(names[static_cast<int>(selected_tab_)]);
-        switch (selected_tab_) {
+        title += " | " + std::string(names[static_cast<int>(selected_tab())]);
+        switch (selected_tab()) {
         case Tab::Chat:
             explain("Choose a response at the bottom. Waiting advances to a pending reply.");
             control(KeyAction::FocusLeft, "select contacts");
@@ -301,7 +301,7 @@ void TerminalUI::open_context_help() {
         }
         control(KeyAction::SelectPrevious, "previous selection");
         control(KeyAction::SelectNext, "next selection");
-        if (selected_tab_ != Tab::Chat) {
+        if (selected_tab() != Tab::Chat) {
             control(KeyAction::FocusLeft, "focus the left pane");
             control(KeyAction::FocusRight, "focus the right pane");
             control(KeyAction::ScrollUp, "scroll up / older history");

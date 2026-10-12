@@ -74,6 +74,8 @@ add_executable(ai_sim
     Source/ui/SettingsView.cpp
     Source/ui/ProcessViewConfig.cpp
     Source/ui/TerminalUI.cpp
+    Source/ui/RootUI.cpp
+    Source/ui/PageInput.cpp
     Source/ui/ScreenRenderer.cpp
     Source/ui/ProcessesView.cpp
     Source/ui/ActionMenus.cpp
@@ -112,6 +114,10 @@ endif()
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(ai_sim_root_ui_tests "${AI_SIM_TEST_ROOT}/RootUITests.cpp" Source/ui/RootUI.cpp Source/ui/ScreenRenderer.cpp Source/ui/UISettings.cpp Source/ui/ProcessViewConfig.cpp)
+    target_include_directories(ai_sim_root_ui_tests PRIVATE ${CURSES_INCLUDE_DIRS})
+    target_link_libraries(ai_sim_root_ui_tests PRIVATE ai_sim_core ${AI_SIM_PANEL_LIBRARY} ${CURSES_LIBRARIES})
+    add_test(NAME root_ui_children_focus_and_resize COMMAND ai_sim_root_ui_tests)
     add_executable(ai_sim_renderer_tests "${AI_SIM_TEST_ROOT}/ScreenRendererTests.cpp" Source/ui/ScreenRenderer.cpp)
     target_include_directories(ai_sim_renderer_tests PRIVATE data/include ${CURSES_INCLUDE_DIRS})
     target_compile_features(ai_sim_renderer_tests PRIVATE cxx_std_20)

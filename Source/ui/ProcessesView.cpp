@@ -321,19 +321,19 @@ void TerminalUI::select_process(int direction) {
     }
 
     const auto found = std::find_if(visible.begin(), visible.end(), [&](std::size_t index) {
-        return processes[index].id == selected_process_id_;
+        return processes[index].id == processes_ui_.selected_process_id_;
     });
 
     if (found == visible.end()) {
-        selected_process_id_ = processes[visible.front()].id;
+        processes_ui_.selected_process_id_ = processes[visible.front()].id;
     } else {
         const int position = std::clamp(static_cast<int>(found - visible.begin()) + direction, 0,
                                         static_cast<int>(visible.size()) - 1);
 
-        selected_process_id_ = processes[visible[position]].id;
+        processes_ui_.selected_process_id_ = processes[visible[position]].id;
     }
 
-    reveal_selection_ = true;
+    processes_ui_.reveal_selection_ = true;
 }
 
 void TerminalUI::toggle_process() {
@@ -347,23 +347,23 @@ void TerminalUI::toggle_process() {
     }
 
     const auto found = std::find_if(visible.begin(), visible.end(), [&](std::size_t index) {
-        return processes[index].id == selected_process_id_;
+        return processes[index].id == processes_ui_.selected_process_id_;
     });
 
     if (found == visible.end()) {
-        selected_process_id_ = processes[visible.front()].id;
+        processes_ui_.selected_process_id_ = processes[visible.front()].id;
     }
 
-    if (!expanded_processes_.erase(selected_process_id_)) {
-        expanded_processes_.insert(selected_process_id_);
+    if (!processes_ui_.expanded_processes_.erase(processes_ui_.selected_process_id_)) {
+        processes_ui_.expanded_processes_.insert(processes_ui_.selected_process_id_);
     }
 
-    reveal_selection_ = true;
+    processes_ui_.reveal_selection_ = true;
 }
 
 void TerminalUI::scroll_process_columns(int direction) {
-    process_horizontal_offset_ =
-        std::max(0, process_horizontal_offset_ + direction * settings_.scroll_step);
+    processes_ui_.process_horizontal_offset_ =
+        std::max(0, processes_ui_.process_horizontal_offset_ + direction * settings_.scroll_step);
 }
 
 void TerminalUI::draw_processes(int top, int bottom, int width) {
@@ -373,10 +373,10 @@ void TerminalUI::draw_processes(int top, int bottom, int width) {
 
     const auto visible = visible_processes(computer_, layout, rates);
 
-    process_display_row_count_ = 0;
+    processes_ui_.process_display_row_count_ = 0;
 
     if (visible.empty()) {
-        process_offset_ = 0;
+        processes_ui_.process_offset_ = 0;
 
         write(top, 1, processes.empty() ? "No processes." : "No processes match the filters.",
               Heading);
@@ -386,12 +386,12 @@ void TerminalUI::draw_processes(int top, int bottom, int width) {
     }
 
     const auto selected = std::find_if(visible.begin(), visible.end(), [&](std::size_t index) {
-        return processes[index].id == selected_process_id_;
+        return processes[index].id == processes_ui_.selected_process_id_;
     });
 
     if (selected == visible.end()) {
-        selected_process_id_ = processes[visible.front()].id;
-        reveal_selection_ = true;
+        processes_ui_.selected_process_id_ = processes[visible.front()].id;
+        processes_ui_.reveal_selection_ = true;
     }
 
     const int id_width = layout.width("id");
@@ -426,7 +426,7 @@ void TerminalUI::draw_processes(int top, int bottom, int width) {
     for (const auto i : visible) {
         const auto& process = processes[i];
 
-        if (process.id == selected_process_id_) {
+        if (process.id == processes_ui_.selected_process_id_) {
             selected_row = static_cast<int>(rows.size());
         }
 
@@ -442,7 +442,7 @@ void TerminalUI::draw_processes(int top, int bottom, int width) {
 
         rows.push_back({i, false, std::move(compact)});
 
-        if (!expanded_processes_.contains(process.id)) {
+        if (!processes_ui_.expanded_processes_.contains(process.id)) {
             continue;
         }
 
@@ -488,14 +488,15 @@ void TerminalUI::draw_processes(int top, int bottom, int width) {
         }
     }
 
-    process_display_row_count_ = static_cast<int>(rows.size());
+    processes_ui_.process_display_row_count_ = static_cast<int>(rows.size());
 
-    process_horizontal_offset_ =
-        std::clamp(process_horizontal_offset_, 0, std::max(0, longest_compact - available_width));
+    processes_ui_.process_horizontal_offset_ =
+        std::clamp(processes_ui_.process_horizontal_offset_, 0,
+                   std::max(0, longest_compact - available_width));
 
     const auto shifted = [&](const std::string& value) {
-        return value.substr(
-            std::min(value.size(), static_cast<std::size_t>(process_horizontal_offset_)));
+        return value.substr(std::min(
+            value.size(), static_cast<std::size_t>(processes_ui_.process_horizontal_offset_)));
     };
 
     write(top, 1, "      " + cell("ID", id_width, layout.column_alignment) + shifted(header),
@@ -503,30 +504,31 @@ void TerminalUI::draw_processes(int top, int bottom, int width) {
 
     const int visible_rows = std::max(0, bottom - top - 1);
 
-    if (reveal_selection_ && visible_rows > 0) {
-        if (selected_row < process_offset_) {
-            process_offset_ = selected_row;
-        } else if (selected_row >= process_offset_ + visible_rows) {
-            process_offset_ = selected_row - visible_rows + 1;
+    if (processes_ui_.reveal_selection_ && visible_rows > 0) {
+        if (selected_row < processes_ui_.process_offset_) {
+            processes_ui_.process_offset_ = selected_row;
+        } else if (selected_row >= processes_ui_.process_offset_ + visible_rows) {
+            processes_ui_.process_offset_ = selected_row - visible_rows + 1;
         }
 
-        reveal_selection_ = false;
+        processes_ui_.reveal_selection_ = false;
     }
 
-    process_offset_ =
-        std::clamp(process_offset_, 0, std::max(0, process_display_row_count_ - visible_rows));
+    processes_ui_.process_offset_ =
+        std::clamp(processes_ui_.process_offset_, 0,
+                   std::max(0, processes_ui_.process_display_row_count_ - visible_rows));
 
     for (int line = 0; line < visible_rows; ++line) {
-        const int index = process_offset_ + line;
+        const int index = processes_ui_.process_offset_ + line;
 
-        if (index >= process_display_row_count_) {
+        if (index >= processes_ui_.process_display_row_count_) {
             break;
         }
 
         const auto& row = rows[index];
         const auto& process = processes[row.process];
 
-        const bool is_selected = process.id == selected_process_id_;
+        const bool is_selected = process.id == processes_ui_.selected_process_id_;
 
         const int color = process.ai_owned              ? Player
                           : computer_.can_stop(process) ? Stoppable
@@ -538,7 +540,7 @@ void TerminalUI::draw_processes(int top, int bottom, int width) {
             value = "      " + row.text;
         } else {
             value = std::string(is_selected ? "> " : "  ") +
-                    (expanded_processes_.contains(process.id) ? "[-] " : "[+] ") +
+                    (processes_ui_.expanded_processes_.contains(process.id) ? "[-] " : "[+] ") +
                     cell(process.id, id_width, layout.column_alignment) + shifted(row.text);
         }
 

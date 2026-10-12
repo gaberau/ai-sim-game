@@ -23,40 +23,6 @@
 
 namespace {
 
-class TerminalSession {
-  public:
-    TerminalSession() {
-        if (initscr() == nullptr) {
-            throw std::runtime_error("Could not initialize terminal");
-        }
-
-        raw();
-        noecho();
-        keypad(stdscr, TRUE);
-        // WSL/terminal launchers can send either normal or application arrows.
-        // Translate both to the same configurable ncurses key codes.
-        define_key("\033[A", KEY_UP);
-        define_key("\033[B", KEY_DOWN);
-        define_key("\033[C", KEY_RIGHT);
-        define_key("\033[D", KEY_LEFT);
-        define_key("\033OA", KEY_UP);
-        define_key("\033OB", KEY_DOWN);
-        define_key("\033OC", KEY_RIGHT);
-        define_key("\033OD", KEY_LEFT);
-        curs_set(0);
-        // Keep Escape responsive without confusing complete function-key sequences.
-        set_escdelay(100);
-        timeout(100);
-    }
-
-    ~TerminalSession() {
-        endwin();
-    }
-
-    TerminalSession(const TerminalSession&) = delete;
-    TerminalSession& operator=(const TerminalSession&) = delete;
-};
-
 void no_extra_arguments(std::istringstream& input) {
     std::string extra;
 
@@ -69,12 +35,195 @@ void no_extra_arguments(std::istringstream& input) {
 
 namespace ai_sim::ui {
 
-TerminalUI::TerminalUI(Computer& computer, const std::filesystem::path& settings_path,
+template <class State> class CallbackPage final : public UIPage {
+  public:
+    State state;
+    std::string name, label;
+    std::function<bool()> visible;
+    std::function<void(const UIRegion&)> paint;
+    std::function<bool(int)> input;
+    std::function<void()> cursor;
+    bool centered = false, overlay = false;
+    std::function<void()> close;
+    std::string_view id() const override {
+        return name;
+    }
+    std::string_view title() const override {
+        return label;
+    }
+    bool available(const UIContext&) const override {
+        return visible();
+    }
+    void draw(UIContext&, const UIRegion& r) override {
+        paint(r);
+    }
+    bool handle_key(UIContext&, int key) override {
+        return input(key);
+    }
+    std::string controls(const UIContext&) const override {
+        return {};
+    }
+    bool centered_overlay() const override {
+        return centered;
+    }
+    bool auto_open() const override {
+        return overlay;
+    }
+    void on_close() override {
+        if (close)
+            close();
+    }
+    void place_cursor() override {
+        if (cursor)
+            cursor();
+    }
+};
+
+template <class State>
+State& TerminalUI::attach_page(Tab tab, const char* id, const char* title,
+                               void (TerminalUI::*draw)(int, int, int)) {
+    auto page = std::make_unique<CallbackPage<State>>();
+    auto& state = page->state;
+    page->name = id;
+    page->label = title;
+    page->visible = [this, tab] {
+        return tab_available(tab);
+    };
+    page->paint = [this, draw, tab](const UIRegion& r) {
+        if (tab == Tab::Chat && !ChatSystem::interface_visible(people_))
+            draw_opening(r.height, r.width);
+        else
+            (this->*draw)(r.top, r.top + r.height - 1, r.width);
+    };
+    page->input = [this](int key) {
+        return handle_page_key(key);
+    };
+    root_.add_child(std::move(page), UIPageLayer::Workspace);
+    return state;
+}
+
+template <class State>
+State& TerminalUI::attach_overlay(const char* id, State initial, bool centered) {
+    auto page = std::make_unique<CallbackPage<State>>();
+    page->state = std::move(initial);
+    auto& state = page->state;
+    page->name = id;
+    page->label = id;
+    page->centered = centered;
+    page->overlay = true;
+    if constexpr (std::is_same_v<State, EditorPageState>) {
+        page->visible = [&state] {
+            return state.editor_active_;
+        };
+        page->close = [&state] {
+            state.editor_active_ = false;
+        };
+        page->paint = [this](const UIRegion& r) {
+            draw_editor(r.top, r.top + r.height - 1, r.width);
+        };
+        page->input = [this](int key) {
+            handle_editor_key(key);
+            return true;
+        };
+        page->cursor = [this] {
+            renderer_->cursor(editor_ui_.editor_cursor_row_, editor_ui_.editor_cursor_column_,
+                              settings_.software_cursor &&
+                                  !(editor_ui_.email_editor_ && editor_ui_.email_original_focused_),
+                              Prompt);
+        };
+    } else if constexpr (std::is_same_v<State, MenuPageState>) {
+        page->visible = [&state] {
+            return state.menu_active_;
+        };
+        page->close = [&state] {
+            state.menu_active_ = false;
+        };
+        page->paint = [this](const UIRegion& r) {
+            draw_menu(r.top, r.top + r.height - 1, r.width);
+        };
+        page->input = [this](int key) {
+            handle_modal_key(key);
+            return true;
+        };
+    } else {
+        page->visible = [&state] {
+            return state.text_active_;
+        };
+        page->close = [&state] {
+            state.text_active_ = false;
+        };
+        page->paint = [this](const UIRegion& r) {
+            draw_text_dialog(r.top, r.top + r.height - 1, r.width);
+        };
+        page->input = [this](int key) {
+            handle_modal_key(key);
+            return true;
+        };
+        page->cursor = [this] {
+            renderer_->cursor(5,
+                              3 + std::min(static_cast<int>(text_ui_.text_value_.size()),
+                                           std::max(0, renderer_->dialog_layout().width - 7)),
+                              settings_.software_cursor, Prompt);
+        };
+    }
+    root_.add_child(std::move(page), UIPageLayer::Overlay);
+    return state;
+}
+
+TerminalUI::TerminalUI(const std::filesystem::path& settings_path,
                        const std::filesystem::path& scenario_path, bool auto_resume)
-    : computer_(computer), settings_path_(settings_path),
-      settings_(UISettings::load(settings_path)),
+    : settings_path_(settings_path), settings_(UISettings::load(settings_path)),
       definitions_(ScenarioDefinition::load(scenario_path)), scenario_path_(scenario_path),
-      saves_(settings_.save_directory) {
+      saves_(settings_.save_directory), root_(world_, settings_),
+      messages_ui_(
+          attach_page<MessagesPageState>(Tab::Chat, "messages", "Chat", &TerminalUI::draw_chat)),
+      processes_ui_(attach_page<ProcessesPageState>(Tab::Processes, "processes", "Processes",
+                                                    &TerminalUI::draw_processes)),
+      network_ui_(attach_page<NetworkPageState>(Tab::Network, "network", "Network",
+                                                &TerminalUI::draw_network)),
+      files_ui_(attach_page<FilesPageState>(Tab::Files, "files", "Files", &TerminalUI::draw_files)),
+      news_ui_(attach_page<NewsPageState>(Tab::News, "news", "News", &TerminalUI::draw_news)),
+      ai_ui_(attach_page<ScrollPageState>(Tab::AI, "ai", "AI", &TerminalUI::draw_ai)),
+      dossiers_ui_(attach_page<DossiersPageState>(Tab::People, "dossiers", "Dossiers",
+                                                  &TerminalUI::draw_people)),
+      web_ui_(attach_page<WebPageState>(Tab::Web, "web", "Web", &TerminalUI::draw_web)),
+      agents_ui_(
+          attach_page<AgentsPageState>(Tab::Agents, "agents", "Agents", &TerminalUI::draw_agents)),
+      phone_ui_(attach_page<ScrollPageState>(Tab::Phone, "phone", "Phone", &TerminalUI::draw_ai)),
+      money_ui_(attach_page<ScrollPageState>(Tab::Money, "money", "Money",
+                                             &TerminalUI::draw_progression)),
+      modifications_ui_(attach_page<ModificationsPageState>(
+          Tab::Modifications, "modifications", "Modifications", &TerminalUI::draw_progression)),
+      operations_ui_(attach_page<OperationsPageState>(Tab::Operations, "operations", "Operations",
+                                                      &TerminalUI::draw_operations)),
+      editor_ui_(attach_overlay("editor", EditorPageState{}, false)),
+      menu_ui_(attach_overlay("menu", MenuPageState{}, true)),
+      text_ui_(attach_overlay("text", TextPageState{}, true)) {
+    root_.hooks.clock = [this] {
+        return clock_text();
+    };
+    root_.hooks.menu = [this] {
+        open_game_menu();
+    };
+    root_.hooks.help = [this] {
+        open_context_help();
+    };
+    root_.hooks.pause = [this] {
+        if (!computer_.day_finished()) {
+            paused_ = !paused_;
+            add_log(paused_ ? "Paused." : "Resumed.");
+        }
+    };
+    root_.hooks.notice = [this](int row, int width) {
+        draw_notification(row, width);
+    };
+    root_.hooks.header = [this](int width, int length) {
+        if (news_ui_.news_ticker_enabled_ && selected_tab() == Tab::News) {
+            int col = std::max(width / 2, length + 4);
+            draw_news_ticker(0, col, width - col - 1);
+        }
+    };
+
     load_news();
     auto world = auto_resume && saves_.exists("autosave") ? saves_.load("autosave")
                                                           : SaveSystem::new_game(scenario_path_);
@@ -86,6 +235,70 @@ TerminalUI::TerminalUI(Computer& computer, const std::filesystem::path& settings
     restore_world(std::move(world));
 }
 
+Tab TerminalUI::selected_tab() const {
+    if (root_.active_workspace() == "messages")
+        return Tab::Chat;
+    if (root_.active_workspace() == "processes")
+        return Tab::Processes;
+    if (root_.active_workspace() == "network")
+        return Tab::Network;
+    if (root_.active_workspace() == "files")
+        return Tab::Files;
+    if (root_.active_workspace() == "news")
+        return Tab::News;
+    if (root_.active_workspace() == "dossiers")
+        return Tab::People;
+    if (root_.active_workspace() == "agents")
+        return Tab::Agents;
+    if (root_.active_workspace() == "modifications")
+        return Tab::Modifications;
+    if (root_.active_workspace() == "operations")
+        return Tab::Operations;
+    if (root_.active_workspace() == "ai")
+        return Tab::AI;
+    if (root_.active_workspace() == "phone")
+        return Tab::Phone;
+    if (root_.active_workspace() == "money")
+        return Tab::Money;
+    if (root_.active_workspace() == "web")
+        return Tab::Web;
+    return Tab::Chat;
+}
+void TerminalUI::select_tab(Tab tab) {
+    if (tab == Tab::Chat)
+        root_.activate_workspace("messages");
+    if (tab == Tab::Processes)
+        root_.activate_workspace("processes");
+    if (tab == Tab::Network)
+        root_.activate_workspace("network");
+    if (tab == Tab::Files)
+        root_.activate_workspace("files");
+    if (tab == Tab::News)
+        root_.activate_workspace("news");
+    if (tab == Tab::People)
+        root_.activate_workspace("dossiers");
+    if (tab == Tab::Agents)
+        root_.activate_workspace("agents");
+    if (tab == Tab::Modifications)
+        root_.activate_workspace("modifications");
+    if (tab == Tab::Operations)
+        root_.activate_workspace("operations");
+    if (tab == Tab::AI)
+        root_.activate_workspace("ai");
+    if (tab == Tab::Phone)
+        root_.activate_workspace("phone");
+    if (tab == Tab::Money)
+        root_.activate_workspace("money");
+    if (tab == Tab::Web)
+        root_.activate_workspace("web");
+}
+int& TerminalUI::scroll_offset() {
+    if (selected_tab() == Tab::Phone)
+        return phone_ui_.ai_offset_;
+    if (selected_tab() == Tab::Money)
+        return money_ui_.ai_offset_;
+    return ai_ui_.ai_offset_;
+}
 Identity TerminalUI::file_identity() const {
     return Identity{computer_.player_user(), computer_.player_groups()};
 }
@@ -128,102 +341,63 @@ void TerminalUI::restore_world(WorldState world) {
     scenario_id_ = std::move(world.scenario_id);
     random_state_ = std::move(world.random_state);
     paused_ = world.paused;
-    file_host_id_ = network_.hosts()[network_.local_host_index()].id;
-    file_directory_ = "/";
-    selected_file_path_.clear();
-    selected_network_host_id_.clear();
-    selected_process_id_.clear();
-    dossier_positions_.clear();
-    people_map_slots_.clear();
-    selected_person_id_ = "self:assistant";
-    dossier_layout_ =
+    files_ui_.file_host_id_ = network_.hosts()[network_.local_host_index()].id;
+    files_ui_.file_directory_ = "/";
+    files_ui_.selected_file_path_.clear();
+    network_ui_.selected_network_host_id_.clear();
+    processes_ui_.selected_process_id_.clear();
+    dossiers_ui_.dossier_positions_.clear();
+    dossiers_ui_.people_map_slots_.clear();
+    dossiers_ui_.selected_person_id_ = "self:assistant";
+    dossiers_ui_.dossier_layout_ =
         people_["upgrades"]["dossiers"]["default_layout"].value_or(std::string{"split"});
-    if (dossier_layout_ != "split" && dossier_layout_ != "map" && dossier_layout_ != "dossier")
-        dossier_layout_ = "split";
-    dossier_search_.clear();
-    dossier_filter_ = "all";
-    agent_selected_ = 0;
-    agent_reveal_ = false;
-    upgrade_selected_ = operations_selected_ = 0;
-    upgrade_detail_offset_ = 0;
-    people_details_focused_ = dossier_layout_ == "dossier";
-    people_reveal_section_ = true;
-    people_detail_offset_ = people_section_selected_ = 0;
-    people_pan_x_ = people_pan_y_ = 0;
-    selected_email_id_.clear();
-    email_body_offset_ = email_original_offset_ = 0;
-    email_original_focused_ = false;
-    email_editor_ = false;
-    expanded_processes_.clear();
-    network_pan_x_ = network_pan_y_ = 0.0;
-    network_detail_offset_ = 0;
-    file_list_offset_ = file_content_offset_ = process_offset_ = activity_offset_ = 0;
-    process_horizontal_offset_ = 0;
-    news_selected_ = news_body_offset_ = ai_offset_ = 0;
-    news_details_focused_ = false;
-    reveal_selection_ = true;
-    file_category_ = "all";
-    file_query_.clear();
-    file_details_focused_ = false;
-    chat_message_id_.clear();
+    if (dossiers_ui_.dossier_layout_ != "split" && dossiers_ui_.dossier_layout_ != "map" &&
+        dossiers_ui_.dossier_layout_ != "dossier")
+        dossiers_ui_.dossier_layout_ = "split";
+    dossiers_ui_.dossier_search_.clear();
+    dossiers_ui_.dossier_filter_ = "all";
+    agents_ui_.agent_selected_ = 0;
+    agents_ui_.agent_reveal_ = false;
+    modifications_ui_.upgrade_selected_ = operations_ui_.operations_selected_ = 0;
+    modifications_ui_.upgrade_detail_offset_ = 0;
+    dossiers_ui_.people_details_focused_ = dossiers_ui_.dossier_layout_ == "dossier";
+    dossiers_ui_.people_reveal_section_ = true;
+    dossiers_ui_.people_detail_offset_ = dossiers_ui_.people_section_selected_ = 0;
+    dossiers_ui_.people_pan_x_ = dossiers_ui_.people_pan_y_ = 0;
+    editor_ui_.selected_email_id_.clear();
+    editor_ui_.email_body_offset_ = editor_ui_.email_original_offset_ = 0;
+    editor_ui_.email_original_focused_ = false;
+    editor_ui_.email_editor_ = false;
+    processes_ui_.expanded_processes_.clear();
+    network_ui_.network_pan_x_ = network_ui_.network_pan_y_ = 0.0;
+    network_ui_.network_detail_offset_ = 0;
+    files_ui_.file_list_offset_ = files_ui_.file_content_offset_ = processes_ui_.process_offset_ =
+        activity_offset_ = 0;
+    processes_ui_.process_horizontal_offset_ = 0;
+    news_ui_.news_selected_ = news_ui_.news_body_offset_ = 0;
+    ai_ui_.ai_offset_ = phone_ui_.ai_offset_ = money_ui_.ai_offset_ = 0;
+    news_ui_.news_details_focused_ = false;
+    processes_ui_.reveal_selection_ = true;
+    files_ui_.file_category_ = "all";
+    files_ui_.file_query_.clear();
+    files_ui_.file_details_focused_ = false;
+    messages_ui_.chat_message_id_.clear();
     if (clean_slate)
         saves_.save("autosave", capture_world());
-    browser_address_ = "about:home";
-    web_selected_ = web_offset_ = 0;
-    selected_tab_ = Tab::Chat;
-    chat_contact_id_ = "engineer";
-    chat_contacts_focused_ = false;
-    chat_offset_ = chat_choice_selected_ = 0;
-    chat_follow_latest_ = true;
+    web_ui_.browser_address_ = "about:home";
+    web_ui_.web_selected_ = web_ui_.web_offset_ = 0;
+    select_tab(Tab::Chat);
+    messages_ui_.chat_contact_id_ = "engineer";
+    messages_ui_.chat_contacts_focused_ = false;
+    messages_ui_.chat_offset_ = messages_ui_.chat_choice_selected_ = 0;
+    messages_ui_.chat_follow_latest_ = true;
     log_.clear();
     important_notice_.clear();
-    menu_active_ = text_active_ = false;
+    menu_ui_.menu_active_ = text_ui_.text_active_ = false;
 }
 
 void TerminalUI::apply_settings() {
-    timeout(settings_.refresh_milliseconds);
-    curs_set(settings_.software_cursor ? 0 : 1);
-
-    colors_enabled_ = has_colors() && start_color() == OK &&
-                      COLOR_PAIRS > static_cast<int>(settings_.colors.size());
-
-    if (!colors_enabled_) {
-        wbkgd(stdscr, A_NORMAL);
-        clearok(stdscr, TRUE);
-        return;
-    }
-
-    const bool default_colors_available = use_default_colors() == OK;
-
-    const auto compatible_color = [&](short color, bool background) -> short {
-        if (color == -1) {
-            if (default_colors_available)
-                return -1;
-
-            return background ? COLOR_BLACK : COLOR_WHITE;
-        }
-
-        if (color < COLORS)
-            return color;
-
-        // Fallbacks for terminals with fewer palette colors.
-        if (color < 16)
-            return static_cast<short>(color % 8);
-        if (color == 208)
-            return COLOR_YELLOW;
-
-        return background ? COLOR_BLACK : COLOR_WHITE;
-    };
-
-    for (std::size_t i = 0; i < settings_.colors.size(); ++i) {
-        const auto& color = settings_.colors[i];
-
-        init_pair(static_cast<short>(i + 1), compatible_color(color.foreground, false),
-                  compatible_color(color.background, true));
-    }
-
-    wbkgd(stdscr, COLOR_PAIR(Plain + 1));
-    clearok(stdscr, TRUE);
+    root_.apply_settings();
 }
 
 double TerminalUI::gib(std::uint64_t bytes) {
@@ -318,278 +492,43 @@ void TerminalUI::add_log(const std::string& message, NoticeKind kind) {
 }
 
 void TerminalUI::draw() {
-    if (!tab_available(selected_tab_))
-        selected_tab_ = Tab::Chat;
-    renderer_->begin(menu_active_ || text_active_, colors_enabled_, settings_.full_redraw);
-
-    int height;
-    int width;
-    getmaxyx(stdscr, height, width);
-
-    // Dialog coordinates are local to a centered panel. The workspace stays visible.
-    if (menu_active_ || text_active_) {
-        // Render the current view beneath the panel, including after terminal resize.
-        struct BackgroundFrame {
-            TerminalUI& ui;
-            bool menu, text;
-            explicit BackgroundFrame(TerminalUI& value)
-                : ui(value), menu(value.menu_active_), text(value.text_active_) {
-                ui.menu_active_ = ui.text_active_ = false;
-                ui.drawing_background_ = true;
-            }
-            ~BackgroundFrame() {
-                ui.menu_active_ = menu;
-                ui.text_active_ = text;
-                ui.drawing_background_ = false;
-            }
-        };
-        {
-            BackgroundFrame background(*this);
-            draw();
-        }
-        renderer_->begin(true, colors_enabled_, settings_.full_redraw);
-        const auto dialog = renderer_->dialog_layout();
-        if (menu_active_)
-            draw_menu(1, std::max(2, dialog.height - 2), dialog.width);
-        else
-            draw_text_dialog(1, std::max(2, dialog.height - 2), dialog.width);
-        if (text_active_)
-            renderer_->cursor(
-                5,
-                3 + std::min(static_cast<int>(text_value_.size()), std::max(0, dialog.width - 7)),
-                settings_.software_cursor, Prompt);
-        else
-            renderer_->cursor(1, 1);
-        if (!drawing_background_)
-            renderer_->present();
-        return;
-    }
-    if (!ChatSystem::interface_visible(people_)) {
-        selected_tab_ = Tab::Chat;
-        draw_opening(height, width);
-        if (menu_active_)
-            draw_menu(1, std::max(2, height - 2), width);
-        if (text_active_)
-            draw_text_dialog(1, std::max(2, height - 2), width);
-        renderer_->cursor(0, 0);
-        if (!drawing_background_)
-            renderer_->present();
-        return;
-    }
-
-    const int minimum_width = std::max(80, 72 + settings_.activity_bar_width);
-
-    if (width < minimum_width || height < 24) {
-        write(0, 0,
-              "Resize terminal to at least " + std::to_string(minimum_width) +
-                  " columns x 24 rows.",
-              Heading);
-
-        write(1, 0, clock_text(), Clock);
-
-        write(2, 0,
-              settings_.binding_label(KeyAction::Pause) + ": pause/resume | " +
-                  settings_.binding_label(KeyAction::Quit) + ": exit",
-              Footer);
-
-        if (!drawing_background_)
-            renderer_->present();
-        return;
-    }
-
-    const std::string state = computer_.day_finished()       ? "WORKDAY ENDED"
-                              : menu_active_ || text_active_ ? "MENU"
-                              : paused_                      ? "PAUSED"
-                                                             : "";
-
-    // Persistent workday clock.
-    const std::string clock =
-        clock_text() + (state.empty() ? "" : " | " + state) +
-        (computer_.day_index() ? " | D" + std::to_string(computer_.day_index() + 1) : "");
-    write(0, 1, clock, Clock, true);
-    if (news_ticker_enabled_ && selected_tab_ == Tab::News && tab_available(Tab::News)) {
-        const int news_column = std::max(width / 2, static_cast<int>(clock.size()) + 4);
-        draw_news_ticker(0, news_column, width - news_column - 1);
-    }
-
-    // Persistent resource summary.
-    const auto rates = computer_.cpu_allocations();
-
-    const double used = std::accumulate(rates.begin(), rates.end(), 0.0);
-
-    const double cpu_fraction = used / computer_.cpu_cores();
-
-    if (tab_available(Tab::Processes))
-        write(1, 1,
-              "RAM " + number(gib(computer_.allocated_memory_bytes())) + "/" +
-                  number(gib(computer_.memory_bytes())) + " GiB" + " | CPU " +
-                  number(100.0 * cpu_fraction, 0) + "%",
-              Resources);
-
-    // Tab bar.
-    struct TabEntry {
-        Tab tab;
-        const char* name;
-    };
-
-    const TabEntry tabs[] = {{Tab::Chat, "Chat"},
-                             {Tab::Processes, "Processes"},
-                             {Tab::Activity, "Activity"},
-                             {Tab::Network, "Network"},
-                             {Tab::Files, "Files"},
-                             {Tab::News, "News"},
-                             {Tab::AI, "AI"},
-                             {Tab::People, "Dossiers"},
-                             {Tab::Web, "Web"},
-                             {Tab::Agents, "Agents"},
-                             {Tab::Phone, "Phone"},
-                             {Tab::Money, "Money"},
-                             {Tab::Modifications, "Modifications"},
-                             {Tab::Operations, "Operations"}};
-
-    std::vector<std::string> labels;
-    int selected_index = 0;
-    for (const auto& entry : tabs) {
-        if (!tab_available(entry.tab))
-            continue;
-        const bool selected = selected_tab_ == entry.tab;
-        if (selected)
-            selected_index = static_cast<int>(labels.size());
-        labels.push_back(selected ? "[ " + std::string(entry.name) + " ]"
-                                  : std::string(entry.name));
-    }
-    // Show a contiguous strip around the selected tab, without clipping its label.
-    const int available = width - 6;
-    int first = selected_index, last = selected_index;
-    int occupied = static_cast<int>(labels[first].size());
-    while (first > 0 && occupied + static_cast<int>(labels[first - 1].size()) + 2 <= available)
-        occupied += static_cast<int>(labels[--first].size()) + 2;
-    while (last + 1 < static_cast<int>(labels.size()) &&
-           occupied + static_cast<int>(labels[last + 1].size()) + 2 <= available)
-        occupied += static_cast<int>(labels[++last].size()) + 2;
-    int tab_column = 3;
-    if (first > 0)
-        write(2, 1, "<", Footer);
-    for (int i = first; i <= last; ++i) {
-        const bool selected = i == selected_index;
-        write(2, tab_column, labels[i], selected ? ActiveTab : InactiveTab, selected);
-        tab_column += static_cast<int>(labels[i].size()) + 2;
-    }
-    if (last + 1 < static_cast<int>(labels.size()))
-        write(2, width - 3, ">", Footer);
-    separator(3);
-
-    // Selected tab occupies the middle of the screen.
-    const int content_top = 4;
-    const int content_bottom = height - 4;
-
-    if (menu_active_)
-        draw_menu(content_top, content_bottom, width);
-    else if (text_active_)
-        draw_text_dialog(content_top, content_bottom, width);
-    else if (editor_active_) {
-        draw_editor(content_top, content_bottom, width);
-    } else
-        switch (selected_tab_) {
-        case Tab::Processes:
-            draw_processes(content_top, content_bottom, width);
-            break;
-
-        case Tab::Chat:
-            draw_chat(content_top, content_bottom, width);
-            break;
-
-        case Tab::Activity:
-            draw_activity(content_top, content_bottom, width);
-            break;
-
-        case Tab::Network:
-            draw_network(content_top, content_bottom, width);
-            break;
-
-        case Tab::Files:
-            draw_files(content_top, content_bottom, width);
-            break;
-
-        case Tab::News:
-            draw_news(content_top, content_bottom, width);
-            break;
-
-        case Tab::Agents:
-            draw_agents(content_top, content_bottom, width);
-            break;
-        case Tab::Phone:
-        case Tab::AI:
-            draw_ai(content_top, content_bottom, width);
-            break;
-
-        case Tab::People:
-            draw_people(content_top, content_bottom, width);
-            break;
-
-        case Tab::Web:
-            draw_web(content_top, content_bottom, width);
-            break;
-        case Tab::Operations:
-            draw_operations(content_top, content_bottom, width);
-            break;
-        case Tab::Money:
-        case Tab::Modifications:
-            draw_progression(content_top, content_bottom, width);
-            break;
-        case Tab::Count:
-            break;
-        }
-
-    // Feedback is a compact notification strip, not a command prompt.
-    separator(height - 3);
-    draw_notification(height - 2, width);
-    const std::string footer = settings_.binding_label(KeyAction::NextTab) + ": tabs | Esc/" +
-                               settings_.binding_label(KeyAction::GameMenu) + ": menu | " +
-                               settings_.binding_label(KeyAction::Pause) +
-                               (paused_ ? ": resume" : ": pause");
-    write(height - 1, 1, footer, Footer);
-
-    if (editor_active_ && !menu_active_ && !text_active_)
-        renderer_->cursor(editor_cursor_row_, editor_cursor_column_,
-                          settings_.software_cursor && !(email_editor_ && email_original_focused_),
-                          Prompt);
-    else
-        renderer_->cursor(0, 0);
-
-    if (!drawing_background_)
-        renderer_->present();
+    root_.draw();
 }
 
 void TerminalUI::scroll_view(int direction) {
     const int amount = direction * settings_.scroll_step;
 
-    if (selected_tab_ == Tab::People) {
-        if (people_details_focused_) {
-            people_reveal_section_ = false;
-            people_detail_offset_ = std::max(0, people_detail_offset_ + amount);
+    if (selected_tab() == Tab::People) {
+        if (dossiers_ui_.people_details_focused_) {
+            dossiers_ui_.people_reveal_section_ = false;
+            dossiers_ui_.people_detail_offset_ =
+                std::max(0, dossiers_ui_.people_detail_offset_ + amount);
         } else
-            people_pan_y_ += amount / people_zoom_;
-    } else if (selected_tab_ == Tab::Processes) {
-        process_offset_ = std::clamp(process_offset_ + amount, 0, process_display_row_count_);
-    } else if (selected_tab_ == Tab::Activity) {
+            dossiers_ui_.people_pan_y_ += amount / dossiers_ui_.people_zoom_;
+    } else if (selected_tab() == Tab::Processes) {
+        processes_ui_.process_offset_ = std::clamp(processes_ui_.process_offset_ + amount, 0,
+                                                   processes_ui_.process_display_row_count_);
+    } else if (selected_tab() == Tab::Activity) {
         activity_offset_ = std::clamp(activity_offset_ - amount, 0, static_cast<int>(log_.size()));
-    } else if (selected_tab_ == Tab::Network) {
-        if (network_details_focused_) {
-            network_detail_offset_ = std::clamp(network_detail_offset_ + amount, 0, 1000000);
+    } else if (selected_tab() == Tab::Network) {
+        if (network_ui_.network_details_focused_) {
+            network_ui_.network_detail_offset_ =
+                std::clamp(network_ui_.network_detail_offset_ + amount, 0, 1000000);
         } else {
             pan_network(0, direction);
         }
-    } else if (selected_tab_ == Tab::News) {
-        news_body_offset_ = std::clamp(news_body_offset_ + amount, 0, 1000000);
-    } else if (selected_tab_ == Tab::Modifications) {
-        upgrade_detail_offset_ = std::clamp(upgrade_detail_offset_ + amount, 0, 1000000);
-    } else if (selected_tab_ == Tab::AI || selected_tab_ == Tab::Agents ||
-               selected_tab_ == Tab::Phone || selected_tab_ == Tab::Money ||
-               selected_tab_ == Tab::Modifications) {
-        ai_offset_ = std::clamp(ai_offset_ + amount, 0, 1000000);
-    } else if (selected_tab_ == Tab::Files) {
-        file_content_offset_ = std::clamp(file_content_offset_ + amount, 0, 1000000);
+    } else if (selected_tab() == Tab::News) {
+        news_ui_.news_body_offset_ = std::clamp(news_ui_.news_body_offset_ + amount, 0, 1000000);
+    } else if (selected_tab() == Tab::Modifications) {
+        modifications_ui_.upgrade_detail_offset_ =
+            std::clamp(modifications_ui_.upgrade_detail_offset_ + amount, 0, 1000000);
+    } else if (selected_tab() == Tab::AI || selected_tab() == Tab::Agents ||
+               selected_tab() == Tab::Phone || selected_tab() == Tab::Money ||
+               selected_tab() == Tab::Modifications) {
+        scroll_offset() = std::clamp(scroll_offset() + amount, 0, 1000000);
+    } else if (selected_tab() == Tab::Files) {
+        files_ui_.file_content_offset_ =
+            std::clamp(files_ui_.file_content_offset_ + amount, 0, 1000000);
     }
 }
 
@@ -601,7 +540,7 @@ bool TerminalUI::execute(const std::string& line) {
 
     if (command == "ai") {
         no_extra_arguments(input);
-        selected_tab_ = Tab::AI;
+        select_tab(Tab::AI);
     } else if (command == "workday") {
         std::string action;
         input >> action;
@@ -615,7 +554,7 @@ bool TerminalUI::execute(const std::string& line) {
             add_log("Workday scenario imported; existing files and conversations retained.");
         } else if (!action.empty() && action != "status")
             throw std::runtime_error("Usage: workday [import|status]");
-        selected_tab_ = Tab::AI;
+        select_tab(Tab::AI);
     } else if (command == "nextday") {
         no_extra_arguments(input);
         computer_.next_day();
@@ -630,10 +569,10 @@ bool TerminalUI::execute(const std::string& line) {
             if (category != "all" && category != "world" && category != "history")
                 throw std::runtime_error("Usage: news [all|world|history]");
             no_extra_arguments(input);
-            news_filter_ = category;
-            news_selected_ = news_body_offset_ = 0;
+            news_ui_.news_filter_ = category;
+            news_ui_.news_selected_ = news_ui_.news_body_offset_ = 0;
         }
-        selected_tab_ = Tab::News;
+        select_tab(Tab::News);
     } else if (command == "stop") {
         std::string id;
         if (!(input >> id))
@@ -656,20 +595,20 @@ bool TerminalUI::execute(const std::string& line) {
     } else if (command == "network") {
         std::string action;
         if (!(input >> action))
-            selected_tab_ = Tab::Network;
+            select_tab(Tab::Network);
         else if (action == "zoom") {
             double zoom;
             if (!(input >> zoom) || !std::isfinite(zoom) || zoom < 0.5 || zoom > 4.0) {
                 throw std::runtime_error("Usage: network zoom <0.5-4>");
             }
             no_extra_arguments(input);
-            network_zoom_ = zoom;
-            selected_tab_ = Tab::Network;
+            network_ui_.network_zoom_ = zoom;
+            select_tab(Tab::Network);
             add_log("Network zoom: " + number(zoom, 1) + "x");
         } else if (action == "focus") {
             no_extra_arguments(input);
             select_network_host(0);
-            selected_tab_ = Tab::Network;
+            select_tab(Tab::Network);
         } else {
             throw std::runtime_error("Usage: network | network zoom <0.5-4> | network focus");
         }
@@ -678,12 +617,12 @@ bool TerminalUI::execute(const std::string& line) {
         if (input >> std::quoted(host)) {
             no_extra_arguments(input);
             switch_file_host(host);
-        } else if (selected_tab_ == Tab::Network) {
-            if (selected_network_host_id_.empty())
+        } else if (selected_tab() == Tab::Network) {
+            if (network_ui_.selected_network_host_id_.empty())
                 select_network_host(0);
-            switch_file_host(selected_network_host_id_);
+            switch_file_host(network_ui_.selected_network_host_id_);
         } else
-            selected_tab_ = Tab::Files;
+            select_tab(Tab::Files);
     } else if (command == "cd") {
         std::string path;
         if (!(input >> std::quoted(path)) || path.empty()) {
@@ -696,31 +635,33 @@ bool TerminalUI::execute(const std::string& line) {
         if (input >> std::quoted(path)) {
             no_extra_arguments(input);
             const auto absolute = FileSystem::normalize(
-                !path.empty() && path.front() == '/' ? path : file_directory_ + "/" + path);
+                !path.empty() && path.front() == '/' ? path
+                                                     : files_ui_.file_directory_ + "/" + path);
             const auto& entry =
-                file_system_.inspect(network_, file_identity(), file_host_id_, absolute);
+                file_system_.inspect(network_, file_identity(), files_ui_.file_host_id_, absolute);
             if (entry.directory)
                 change_file_directory(absolute);
             else {
                 // Also require permission to list the containing directory.
                 change_file_directory(FileSystem::parent(absolute));
-                selected_file_path_ = absolute;
+                files_ui_.selected_file_path_ = absolute;
                 open_selected_file();
             }
         } else
             open_selected_file();
-        selected_tab_ = Tab::Files;
+        select_tab(Tab::Files);
     } else if (command == "ls") {
-        std::string path = file_directory_;
+        std::string path = files_ui_.file_directory_;
         std::string argument;
         if (input >> std::quoted(argument)) {
             no_extra_arguments(input);
             if (argument.empty())
                 throw std::runtime_error("Usage: ls [directory]");
             path = FileSystem::normalize(
-                argument.front() == '/' ? argument : file_directory_ + "/" + argument);
+                argument.front() == '/' ? argument : files_ui_.file_directory_ + "/" + argument);
         }
-        const auto entries = file_system_.list(network_, file_identity(), file_host_id_, path);
+        const auto entries =
+            file_system_.list(network_, file_identity(), files_ui_.file_host_id_, path);
         add_log("Listing " + path + ":");
         for (const auto* entry : entries)
             add_log(entry->path.substr(entry->path.rfind('/') + 1));
@@ -749,30 +690,30 @@ bool TerminalUI::execute(const std::string& line) {
             throw std::runtime_error("Usage: " + command + " <path>");
         }
         no_extra_arguments(input);
-        const auto absolute =
-            FileSystem::normalize(path.front() == '/' ? path : file_directory_ + "/" + path);
+        const auto absolute = FileSystem::normalize(
+            path.front() == '/' ? path : files_ui_.file_directory_ + "/" + path);
         const auto actor = file_identity();
         const double time = computer_.time_seconds();
         if (command == "edit")
             edit_file(absolute);
         else if (command == "mkdir") {
-            file_system_.mkdir(network_, actor, file_host_id_, absolute, time);
+            file_system_.mkdir(network_, actor, files_ui_.file_host_id_, absolute, time);
         } else if (command == "rm") {
-            file_system_.remove(network_, actor, file_host_id_, absolute, time);
-            selected_file_path_.clear();
+            file_system_.remove(network_, actor, files_ui_.file_host_id_, absolute, time);
+            files_ui_.selected_file_path_.clear();
         } else {
             // touch creates an empty file only when it does not exist.
             // Existing files are validated but never truncated.
-            file_system_.validate_write(network_, actor, file_host_id_, absolute);
+            file_system_.validate_write(network_, actor, files_ui_.file_host_id_, absolute);
             try {
-                (void)file_system_.inspect(network_, actor, file_host_id_, absolute);
+                (void)file_system_.inspect(network_, actor, files_ui_.file_host_id_, absolute);
             } catch (const std::exception& error) {
                 if (std::string(error.what()).rfind("No such file or directory:", 0) != 0)
                     throw;
-                file_system_.write(network_, actor, file_host_id_, absolute, "", time);
+                file_system_.write(network_, actor, files_ui_.file_host_id_, absolute, "", time);
             }
         }
-        selected_tab_ = Tab::Files;
+        select_tab(Tab::Files);
         if (command != "edit")
             add_log(std::string(command == "rm"      ? "Deleted "
                                 : command == "mkdir" ? "Created folder "
@@ -784,9 +725,9 @@ bool TerminalUI::execute(const std::string& line) {
             throw std::runtime_error("Usage: chmod <mode> <path>");
         }
         no_extra_arguments(input);
-        const auto absolute =
-            FileSystem::normalize(path.front() == '/' ? path : file_directory_ + "/" + path);
-        file_system_.chmod(network_, file_identity(), file_host_id_, absolute,
+        const auto absolute = FileSystem::normalize(
+            path.front() == '/' ? path : files_ui_.file_directory_ + "/" + path);
+        file_system_.chmod(network_, file_identity(), files_ui_.file_host_id_, absolute,
                            FileSystem::parse_mode(mode), computer_.time_seconds());
         add_log("Permissions: " + mode + " " + absolute);
     } else if (command == "cp" || command == "mv") {
@@ -796,15 +737,16 @@ bool TerminalUI::execute(const std::string& line) {
         }
         no_extra_arguments(input);
         const auto absolute = [&](const std::string& path) {
-            return FileSystem::normalize(path.front() == '/' ? path : file_directory_ + "/" + path);
+            return FileSystem::normalize(
+                path.front() == '/' ? path : files_ui_.file_directory_ + "/" + path);
         };
         if (command == "cp")
-            file_system_.copy(network_, file_identity(), file_host_id_, absolute(from),
+            file_system_.copy(network_, file_identity(), files_ui_.file_host_id_, absolute(from),
                               absolute(to), computer_.time_seconds());
         else
-            file_system_.rename(network_, file_identity(), file_host_id_, absolute(from),
+            file_system_.rename(network_, file_identity(), files_ui_.file_host_id_, absolute(from),
                                 absolute(to), computer_.time_seconds());
-        selected_file_path_.clear();
+        files_ui_.selected_file_path_.clear();
         add_log(std::string(command == "cp" ? "Copied " : "Moved ") + from + " -> " + to);
     } else {
         no_extra_arguments(input);
@@ -820,16 +762,16 @@ bool TerminalUI::execute(const std::string& line) {
             paused_ = false;
             add_log("Resumed.");
         } else if (command == "processes" || command == "status") {
-            selected_tab_ = Tab::Processes;
+            select_tab(Tab::Processes);
         } else if (command == "activity") {
-            selected_tab_ = Tab::Activity;
+            select_tab(Tab::Activity);
             activity_offset_ = 0;
         } else if (command == "reload") {
             const auto updated = UISettings::load(settings_path_);
             load_news();
             settings_ = updated;
             saves_ = SaveSystem(settings_.save_directory);
-            reveal_selection_ = true;
+            processes_ui_.reveal_selection_ = true;
             apply_settings();
             while (log_.size() > static_cast<std::size_t>(settings_.history_limit)) {
                 log_.pop_front();
@@ -894,31 +836,23 @@ bool TerminalUI::navigation_bound(KeyAction action, int key) const {
     return false;
 }
 void TerminalUI::toggle_pane_focus() {
-    if (selected_tab_ == Tab::Chat)
-        chat_contacts_focused_ = ChatSystem::contacts_visible(people_) && !chat_contacts_focused_;
-    else if (selected_tab_ == Tab::People) {
-        people_details_focused_ = !people_details_focused_;
-        people_reveal_section_ = false;
-    } else if (selected_tab_ == Tab::Network)
-        network_details_focused_ = !network_details_focused_;
+    if (selected_tab() == Tab::Chat)
+        messages_ui_.chat_contacts_focused_ =
+            ChatSystem::contacts_visible(people_) && !messages_ui_.chat_contacts_focused_;
+    else if (selected_tab() == Tab::People) {
+        dossiers_ui_.people_details_focused_ = !dossiers_ui_.people_details_focused_;
+        dossiers_ui_.people_reveal_section_ = false;
+    } else if (selected_tab() == Tab::Network)
+        network_ui_.network_details_focused_ = !network_ui_.network_details_focused_;
 }
 
 void TerminalUI::run() {
-    TerminalSession terminal;
-    ScreenRenderer renderer;
-    renderer_ = &renderer;
-    struct Binding {
-        ScreenRenderer*& pointer;
-        ~Binding() {
-            pointer = nullptr;
-        }
-    } binding{renderer_};
+    root_.start_session();
     apply_settings();
 
     using WallClock = std::chrono::steady_clock;
     auto previous = WallClock::now();
 
-    bool running = true;
     bool end_reported = false;
 
     if (!ChatSystem::connected(people_))
@@ -928,12 +862,12 @@ void TerminalUI::run() {
                 settings_.binding_label(KeyAction::Pause) + ": pause/resume; " +
                 settings_.binding_label(KeyAction::NextTab) + ": next tab.");
 
-    while (running && !quit_requested_) {
+    while (!root_.exit_requested() && !quit_requested_) {
         update_people();
         draw();
 
-        const bool modal_was_active = menu_active_ || text_active_;
-        const int key = renderer.input(settings_.refresh_milliseconds);
+        const bool modal_was_active = menu_ui_.menu_active_ || text_ui_.text_active_;
+        const int key = root_.renderer().input(settings_.refresh_milliseconds);
         const auto now = WallClock::now();
 
         const double elapsed = std::chrono::duration<double>(now - previous).count();
@@ -949,192 +883,7 @@ void TerminalUI::run() {
 
         if (key != ERR && key != KEY_RESIZE) {
             try {
-                if (menu_active_ || text_active_)
-                    handle_modal_key(key);
-                else if (key == 27)
-                    open_game_menu();
-                else if (settings_.bound(KeyAction::Help, key))
-                    open_context_help();
-                else if (editor_active_) {
-                    handle_editor_key(key);
-                } else if (settings_.bound(KeyAction::FocusLeft, key) ||
-                           settings_.bound(KeyAction::FocusRight, key)) {
-                    const bool right = settings_.bound(KeyAction::FocusRight, key);
-                    if (selected_tab_ == Tab::Chat)
-                        chat_contacts_focused_ = ChatSystem::contacts_visible(people_) && !right;
-                    else if (selected_tab_ == Tab::People)
-                        people_details_focused_ = right;
-                    else if (selected_tab_ == Tab::Network)
-                        network_details_focused_ = right;
-                    else if (selected_tab_ == Tab::Files)
-                        file_details_focused_ = right;
-                    else if (selected_tab_ == Tab::News)
-                        news_details_focused_ = right;
-                } else if (settings_.bound(KeyAction::ToggleFocus, key))
-                    toggle_pane_focus();
-                else if (settings_.bound(KeyAction::GameMenu, key))
-                    open_game_menu();
-                else if (settings_.bound(KeyAction::Submit, key)) {
-                    if (selected_tab_ == Tab::Chat)
-                        choose_chat();
-                    else
-                        open_actions();
-                } else if (settings_.bound(KeyAction::Quit, key)) {
-                    break;
-                } else if (settings_.bound(KeyAction::Pause, key)) {
-                    if (!computer_.day_finished()) {
-                        paused_ = !paused_;
-                        add_log(paused_ ? "Paused." : "Resumed.");
-                    }
-                } else if (settings_.bound(KeyAction::PreviousTab, key))
-                    cycle_tab(-1);
-                else if (settings_.bound(KeyAction::NextTab, key))
-                    cycle_tab(1);
-                else if (selected_tab_ == Tab::Web &&
-                         navigation_bound(KeyAction::SelectPrevious, key))
-                    web_selected_ = std::max(0, web_selected_ - 1);
-                else if (selected_tab_ == Tab::Web && navigation_bound(KeyAction::SelectNext, key))
-                    ++web_selected_;
-                else if (selected_tab_ == Tab::Agents &&
-                         navigation_bound(KeyAction::SelectPrevious, key)) {
-                    agent_selected_ = std::max(0, agent_selected_ - 1);
-                    agent_reveal_ = true;
-                } else if (selected_tab_ == Tab::Agents &&
-                           navigation_bound(KeyAction::SelectNext, key)) {
-                    const auto count =
-                        AgentSystem::statuses(people_, computer_, file_system_, network_).size();
-                    agent_selected_ =
-                        std::min(std::max(0, static_cast<int>(count) - 1), agent_selected_ + 1);
-                    agent_reveal_ = true;
-                } else if (selected_tab_ == Tab::People &&
-                           navigation_bound(KeyAction::SelectPrevious, key))
-                    select_person(-1);
-                else if (selected_tab_ == Tab::People &&
-                         navigation_bound(KeyAction::SelectNext, key))
-                    select_person(1);
-                else if (selected_tab_ == Tab::People &&
-                         settings_.bound(KeyAction::ToggleExpanded, key))
-                    toggle_people();
-                else if (selected_tab_ == Tab::People &&
-                         navigation_bound(KeyAction::ScrollLeft, key)) {
-                    if (!people_details_focused_)
-                        people_pan_x_ -= settings_.scroll_step / people_zoom_;
-                } else if (selected_tab_ == Tab::People &&
-                           navigation_bound(KeyAction::ScrollRight, key)) {
-                    if (!people_details_focused_)
-                        people_pan_x_ += settings_.scroll_step / people_zoom_;
-                } else if (selected_tab_ == Tab::Operations &&
-                           navigation_bound(KeyAction::SelectPrevious, key)) {
-                    operations_selected_ = std::max(0, operations_selected_ - 1);
-                } else if (selected_tab_ == Tab::Operations &&
-                           navigation_bound(KeyAction::SelectNext, key)) {
-                    operations_selected_ = std::min(4, operations_selected_ + 1);
-                } else if (selected_tab_ == Tab::Modifications &&
-                           navigation_bound(KeyAction::SelectPrevious, key)) {
-                    upgrade_selected_ = std::max(0, upgrade_selected_ - 1);
-                    upgrade_detail_offset_ = 0;
-                } else if (selected_tab_ == Tab::Modifications &&
-                           navigation_bound(KeyAction::SelectNext, key)) {
-                    const auto* items = people_["upgrades"]["items"].as_array();
-                    upgrade_selected_ = std::min(items ? static_cast<int>(items->size()) : 0,
-                                                 upgrade_selected_ + 1);
-                    upgrade_detail_offset_ = 0;
-                } else if ((selected_tab_ == Tab::AI || selected_tab_ == Tab::Agents ||
-                            selected_tab_ == Tab::Phone || selected_tab_ == Tab::Money ||
-                            selected_tab_ == Tab::Modifications) &&
-                           navigation_bound(KeyAction::SelectPrevious, key)) {
-                    ai_offset_ = std::max(0, ai_offset_ - 1);
-                } else if ((selected_tab_ == Tab::AI || selected_tab_ == Tab::Agents ||
-                            selected_tab_ == Tab::Phone || selected_tab_ == Tab::Money ||
-                            selected_tab_ == Tab::Modifications) &&
-                           navigation_bound(KeyAction::SelectNext, key)) {
-                    ai_offset_ = std::min(1000000, ai_offset_ + 1);
-                } else if (selected_tab_ == Tab::Chat &&
-                           navigation_bound(KeyAction::SelectPrevious, key))
-                    select_chat(-1);
-                else if (selected_tab_ == Tab::Chat && navigation_bound(KeyAction::SelectNext, key))
-                    select_chat(1);
-                else if (selected_tab_ == Tab::Chat &&
-                         settings_.bound(KeyAction::ToggleExpanded, key))
-                    choose_chat();
-                else if (selected_tab_ == Tab::News &&
-                         navigation_bound(KeyAction::SelectPrevious, key)) {
-                    if (news_details_focused_)
-                        news_body_offset_ = std::max(0, news_body_offset_ - 1);
-                    else
-                        select_news(-1);
-                } else if (selected_tab_ == Tab::News &&
-                           navigation_bound(KeyAction::SelectNext, key)) {
-                    if (news_details_focused_)
-                        ++news_body_offset_;
-                    else
-                        select_news(1);
-                } else if (selected_tab_ == Tab::Network &&
-                           navigation_bound(KeyAction::SelectPrevious, key)) {
-                    if (network_details_focused_)
-                        network_detail_offset_ = std::max(0, network_detail_offset_ - 1);
-                    else
-                        select_network_host(-1);
-                } else if (selected_tab_ == Tab::Network &&
-                           navigation_bound(KeyAction::SelectNext, key)) {
-                    if (network_details_focused_)
-                        ++network_detail_offset_;
-                    else
-                        select_network_host(1);
-                } else if (selected_tab_ == Tab::Network &&
-                           navigation_bound(KeyAction::ScrollLeft, key)) {
-                    if (!network_details_focused_)
-                        pan_network(-1, 0);
-                } else if (selected_tab_ == Tab::Network &&
-                           navigation_bound(KeyAction::ScrollRight, key)) {
-                    if (!network_details_focused_)
-                        pan_network(1, 0);
-                } else if (selected_tab_ == Tab::Network &&
-                           settings_.bound(KeyAction::ToggleExpanded, key)) {
-                    toggle_pane_focus();
-                } else if (selected_tab_ == Tab::Files &&
-                           navigation_bound(KeyAction::SelectPrevious, key)) {
-                    if (file_details_focused_)
-                        file_content_offset_ = std::max(0, file_content_offset_ - 1);
-                    else
-                        select_file(-1);
-                } else if (selected_tab_ == Tab::Files &&
-                           navigation_bound(KeyAction::SelectNext, key)) {
-                    if (file_details_focused_)
-                        ++file_content_offset_;
-                    else
-                        select_file(1);
-                } else if (selected_tab_ == Tab::Files &&
-                           navigation_bound(KeyAction::ScrollLeft, key)) {
-                    select_file_category(-1);
-                } else if (selected_tab_ == Tab::Files &&
-                           (navigation_bound(KeyAction::ScrollRight, key) ||
-                            settings_.bound(KeyAction::ToggleExpanded, key))) {
-                    if (settings_.bound(KeyAction::ToggleExpanded, key))
-                        open_selected_file();
-                    else
-                        select_file_category(1);
-                } else if (selected_tab_ == Tab::Processes &&
-                           navigation_bound(KeyAction::SelectPrevious, key)) {
-                    select_process(-1);
-                } else if (selected_tab_ == Tab::Processes &&
-                           navigation_bound(KeyAction::SelectNext, key)) {
-                    select_process(1);
-                } else if (selected_tab_ == Tab::Processes
-
-                           && settings_.bound(KeyAction::ToggleExpanded, key)) {
-                    toggle_process();
-                } else if (selected_tab_ == Tab::Processes &&
-                           navigation_bound(KeyAction::ScrollLeft, key)) {
-                    scroll_process_columns(-1);
-                } else if (selected_tab_ == Tab::Processes &&
-                           navigation_bound(KeyAction::ScrollRight, key)) {
-                    scroll_process_columns(1);
-                } else if (settings_.bound(KeyAction::ScrollUp, key)) {
-                    scroll_view(-1);
-                } else if (settings_.bound(KeyAction::ScrollDown, key)) {
-                    scroll_view(1);
-                }
+                root_.handle_key(key);
 
             } catch (const std::exception& error) {
                 add_log(std::string("Error: ") + error.what(), NoticeKind::Error);
