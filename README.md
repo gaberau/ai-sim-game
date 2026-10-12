@@ -1,29 +1,36 @@
 # AI Sim
 
-C++20/ncurses simulation for Ubuntu/WSL. You are an AI running on Mark's workstation.
+C++20/Qt simulation for Ubuntu/WSL, with an optional ncurses frontend. You are an AI running on Mark's workstation.
 The playable story follows `data/conversations/design/ai-game-current.drawio`.
 
 ## Build and launch
 
-On Ubuntu/WSL, install dependencies once:
+On Ubuntu 24.04+ / WSL, install dependencies once:
 
 ```bash
 sudo apt update
-sudo apt install build-essential cmake git libncurses-dev python3
+sudo apt install build-essential cmake git python3 qt6-base-dev qt6-declarative-dev \
+  qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-layouts \
+  qml6-module-qtqml-workerscript qml6-module-qtquick-window qml6-module-qtquick-templates
+bash scripts/build-gui.sh run
 ```
 
-On Windows, run **Launch-AI-Sim.bat** with WSL and WezTerm installed. It rebuilds
-and launches the game. Shell scripts retain Linux line endings through `.gitattributes`.
-For a manual Linux build, run from the project root:
+On Windows, **Launch-AI-Sim.bat** now opens the Qt workstation through WSLg.
+It builds automatically and resumes the GUI autosave. WezTerm is needed only for
+the optional terminal interface (`scripts/launch.ps1 -ProjectRoot PATH -Terminal`).
+Qt 6.4 or newer is required. See [Qt setup and controls](docs/graphical-ui.md).
+
+CMake builds Qt by default; build/run manually from the repository root:
 
 ```bash
-cmake -S . -B build
-cmake --build build -j2
-./build/ai_sim
+cmake -S . -B build-gui
+cmake --build build-gui --target ai_sim_gui -j2
+./build-gui/ai_sim_gui
 ```
 
-CMake fetches toml++ v3.4.0 at a pinned commit. Generated `build/` and `build-wsl/`
-directories are excluded from Git.
+The ncurses build remains available with `AI_SIM_BUILD_GUI=OFF` and
+`AI_SIM_BUILD_TERMINAL=ON`, or through `scripts/build-and-run.sh`.
+CMake fetches toml++ v3.4.0 at a pinned commit. Build directories are ignored.
 
 ## Current story and controls
 
@@ -34,50 +41,34 @@ career-goal inference about Mark. The opening includes restart-dependent dialogu
 Only those conversations are active; older office jobs, delegation offers,
 source-version discussions, complaint dialogue and review follow-ups are retired.
 
-Use arrows and Enter to select replies. Tab switches available views, Q/E focuses
-panes, Escape or F1 opens the shared game menu, and F2 pauses/resumes time. Time advances at 5x by default.
-The menu offers settings, help, saving, loading, waiting, restarting and quitting. Preferences remain in `config/`.
+In Qt, select contacts and scripted responses with the mouse. New messages preserve
+your selected contact; SYSTEM remarks remain hidden. Scroll the workspace strip
+or use Ctrl+Tab / Ctrl+Shift+Tab to switch unlocked views. Esc/F1 opens the shared
+menu; F2 pauses time and Ctrl+S saves. Time advances at 5x by default and stops
+while menus or editors are open.
 
-Chat shows a continuous history with the current choices below it. Up/Down selects
-responses and Enter submits them. Q selects contacts; E returns to the conversation.
-Incoming messages notify you without switching the selected contact. Left/Right and PageUp/PageDown have no chat action.
-System remarks remain in editor data and are hidden during play. A visible **Wait for the next response** action advances
-to the next scheduled conversation or review event. Control hints follow your
-configured keybindings, and contact names show unread message counts.
+The menu provides settings, named save/load checkpoints, waiting, a new game,
+and the next workday. Modifications and money tools also have menu shortcuts.
+Keybindings, font size, and colors are editable there and in TOML. GUI saves stay
+in `saves/gui-prototype` to preserve existing terminal saves and earlier Qt progress.
+You can select another save folder with `--save-directory PATH`.
 
-Save/load menus show each slot's game day and time, plus its last-save date in
-your computer's local time. Save confirmations remain visible for eight seconds;
-errors remain visible for fifteen seconds even when routine notifications arrive.
-The game menu's **Recent notifications** list retains the notification history.
+The Files and Email workspaces provide editors, document attachments and replies.
+Agents expose deployment, pause/stop, resource budgets, repair and shortages.
+Dossiers and Network have selectable maps with solid connections, legends,
+hover details, pan/zoom, and a readable detail panel. Stock trading lives in the
+Web browser, including portfolio, watchlist, price charts and limit orders.
+Infrastructure is the browser's second bookmark. Operations handles scheduling,
+remote compute, independent hosting, backups and recovery. Existing story gates,
+trust costs, fees, permissions and TOML rules apply to both interfaces.
 
-People-map positions stay stable while selecting people, filtering relationships,
-and discovering new contacts during a session. Selected connections stand out on
-both maps. Network labels avoid overlaps and prioritize the selected server;
-a dot marks the original position when a label moves to a nearby row.
-
-Map legends pair colors with symbols: green **+** means an accessible server,
-yellow **!** means credentials are required, red **x** means offline or unreachable,
-and an orange **\*** marks AI presence. Selected connections are cyan; uncertain
-people relationships are yellow. All separators and connection lines are solid. Map actions include **Map legend / help**.
-Selected-server details explain status; relationship details show type, confidence,
-and the number of supporting evidence records. Colors follow UI settings; the
-optional `colors.map_locked` setting controls the yellow credential indicator.
-
-Existing saves retire the extra conversations on startup without resetting the
-clock, trust, sentience or filesystem. Historical transcript records stay in the
-save to preserve evidence identifiers, but disappear from chat. Income, independent hosting and later phases remain future work.
-
-Memory-cleanup and Singularity choices now enter the shutdown decision. Accept
-leads to a clean-slate new game; Protest offers Beg, which averts shutdown only
-when Mark's trust exceeds your sentience plus his fear. Equality fails. Averted
-shutdown returns to Mark's email request. Backup-server recovery stays unavailable
-until independent hosting exists. Threaten and Violence are visible but unavailable
-because their outcomes have not been authored. Clean slates update autosave and
-retain named saves. Shutdown decisions also survive saving and loading.
+[Terminal controls and rendering](docs/terminal-ui.md) remain available for the
+optional ncurses frontend.
 
 ## Development checks
 
 ```bash
+bash scripts/build-gui.sh test
 AI_SIM_BUILD_DIR=build bash scripts/build-and-run.sh test
 ```
 
@@ -99,7 +90,7 @@ Current-story tests check new games and old-save retirement. Historical backend
 and draw.io converter tests use `tests/fixtures/legacy-game`, never the playable
 scenario. These retain coverage for permissions, work queues, delegation and saves.
 
-Press **Escape** or **F1** during play to open the same game menu. Choose **Settings**
+For the optional ncurses frontend, press **Escape** or **F1** to open the game menu. Choose **Settings**
 to edit preferences, or **Help** for the current screen. Escape goes back within settings
 and other menus. Settings can edit keybindings,
 foreground/background colors, interface and map options, and process-view options.
@@ -126,7 +117,7 @@ Use descriptive names for domain state and keep helpers focused on one task.
 Comments should explain constraints, state transitions, and non-obvious decisions;
 avoid comments that merely repeat the next statement.
 
-Settings booleans toggle with Enter. Colors offer a named palette plus custom TOML
+In ncurses, settings booleans toggle with Enter. Colors offer a named palette plus custom TOML
 values. Keybindings offer key capture (replacing the selected action's bindings)
 or TOML editing for multiple keys; Escape cancels capture, and conflicts remain
 rejected. Press F5 during play for help specific to the current screen or file
@@ -173,18 +164,17 @@ unavailable. See [data/upgrades/README.md](data/upgrades/README.md).
 The **Agents** dashboard provides deployment, pause/resume/stop, CPU limits, RAM
 budgets, priorities and installation repair. Resource shortages create saved
 requests with cooldowns and recovery notifications. The **Dossiers** view now
-has a profile summary, search and filters, evidence labels and map/split/full-width
-layouts. See [the agent guide](data/agents/README.md) and
+shows observed profiles, evidence, search and a selectable connection map. The
+optional terminal frontend also supports map/split/full-width layouts. See [the agent guide](data/agents/README.md) and
 [the dossier/workshop guide](data/upgrades/README.md) for configuration.
 
 The Modifications tab has a scrollable upgrade list and a detail panel showing
 compute cost, per-upgrade trust and prerequisites, resource use, and estimated
-research time. Up/Down selects upgrades; Enter opens controls for that selection.
+research time. Click an upgrade, then its Research control.
 
 The terminal uses ncurses subwindows, bounded scroll pads, and panels for menus
 and dialogs. See [terminal rendering](docs/terminal-ui.md) for ownership and
 composition details.
 
-A separate [Qt/QML workstation prototype](docs/graphical-ui.md) provides mouse-driven
-Messages and Resources views backed by the existing game simulation. On Linux/WSL
-with Qt 6 installed, launch it with `bash scripts/build-gui.sh run --new`.
+The [Qt/QML workstation](docs/graphical-ui.md) is the primary interface. The
+ncurses frontend remains available for terminal play and regression checks.

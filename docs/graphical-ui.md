@@ -1,67 +1,93 @@
-# Qt workstation prototype
+# Qt workstation
 
-This is a separate Qt 6 / QML frontend, built against the existing C++ game core.
-Messages, scripted responses, contact selection, CPU/RAM usage, process listings,
-Mark trust, cash, pause, and save/resume are live game state. System remarks stay
-out of chat, scripted choices send immediately, and incoming messages preserve
-the selected contact. The timer advances at the scenario's playback speed and
-stops while the menu is open. Responses are checked against the current story
-node, so an old button cannot send a stale choice.
+Qt/QML is the primary frontend. It uses the same C++ simulation, TOML definitions,
+permission checks, scripted choices, upgrades and snapshot format as ncurses.
+The terminal frontend remains optional.
 
-Only Messages and Resources are migrated. Files, agents, modifications, browser,
-recovery management, and editable settings remain in the terminal frontend.
-Their Qt tabs explicitly indicate that they are not implemented. Authored actions
-that require those views are disabled with an explanation. This is a prototype to
-evaluate the desktop layout, not a replacement for all current gameplay yet.
+## Install and run
 
-## Linux / WSL
-
-Install Qt development tools and runtime QML modules:
+On Ubuntu 24.04+ / WSL (Qt 6.4 or newer):
 
 ```bash
 sudo apt update
 sudo apt install build-essential cmake git qt6-base-dev qt6-declarative-dev \
   qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-layouts \
   qml6-module-qtqml-workerscript qml6-module-qtquick-window qml6-module-qtquick-templates
-bash scripts/build-gui.sh run --new
+bash scripts/build-gui.sh run
 ```
 
-WSL needs WSLg (normally available on Windows 11) or an X server to display the
-window. It launches directly as a desktop window; WezTerm is not required. Native
-Windows builds can use Qt Creator with a Qt 6 kit and these CMake options:
+Use `run --new` to start fresh, or `run --save-directory PATH` for a different
+save root. Launch-AI-Sim.bat opens Qt through WSLg on Windows. WSL without WSLg
+needs an X server. Native Windows can build in Qt Creator with a Qt 6 kit;
+CMake defaults to `AI_SIM_BUILD_GUI=ON`, `AI_SIM_BUILD_TERMINAL=OFF`.
+Run from the repository root so game definitions can be found.
 
-```text
-AI_SIM_BUILD_GUI=ON
-AI_SIM_BUILD_TERMINAL=OFF
-```
+If CMake cannot find Qt, install the development packages in the environment
+where you build (inside WSL for the WSL launcher). For an SDK outside the system
+prefix, set `CMAKE_PREFIX_PATH` to its kit directory, for example
+`$HOME/Qt/6.8.3/gcc_64`. Windows installers and native Windows packaging have
+not been validated here.
 
-Run from the repository root so the TOML definitions can be found. Native
-Windows packaging and an installer have not been implemented in this prototype.
-If Qt is installed outside the system prefix, pass its installation directory
-through `CMAKE_PREFIX_PATH`.
+## Workspaces
 
-## Saves and controls
+| Workspace | Available tools |
+| --- | --- |
+| Messages | Contacts, readable timeline, immediate scripted responses, unread counts |
+| Resources / Processes | Live CPU/RAM, trust/cash, process details and permitted stops |
+| Email | Draft editor, requested documents, attachments, send, star/archive |
+| Files | Folder/host navigation, read/edit/create, copy/move/delete, permissions and categories |
+| Modifications | Grouped research, prerequisite/trust costs, remaining work/ETA and active run costs |
+| Agents | Deployment, pause/stop, repair, CPU/RAM/priority budgets and bottlenecks |
+| Dossiers / Network | Public knowledge, evidence, selectable solid-link maps, legends, hover details, pan/zoom |
+| Money tools | Client jobs and repeating products, costs/payouts, slots and due times |
+| Operations | Scheduling, resource manager, rentals, hosting, backup and checkpoint recovery |
+| Web | In-game bookmarks/URLs, stock prices/charts, portfolio, watchlist, trades/limit orders and cancellation; infrastructure directory/discovery |
+| News / Activity | Released stories and current-session simulation notices |
+| Responsibilities / Phone | Existing authored authority/actions and authenticated phone metadata |
 
-The default save directory is `saves/gui-prototype`; the terminal's autosave is
-not overwritten. Start fresh with `--new`, or select a save directory with
-`--save-directory PATH`. The prototype uses the same snapshot format, but keep
-experiments separate until the remaining tools are migrated. Closing the window
-saves to its own autosave slot. A save error is shown in the status strip.
+Locks follow the core story rules. Planned upgrades and phone telemetry remain
+unavailable where the game has no authored runtime behavior. Infrastructure
+discovery reveals public gateways and never grants operational credentials.
+The browser displays fictional game websites; it does not fetch real websites.
 
-Click contacts and response buttons. Esc or F1 toggles the workstation menu,
-F2 pauses/resumes time, and Ctrl+S saves. These prototype shortcuts are currently
-fixed; editable bindings and themes remain a migration task. The timeline follows
-new messages until you scroll upward, then offers a Latest messages button.
+## Controls, settings and saves
 
-## Validation
+Esc/F1 opens the shared menu, F2 pauses/resumes, Ctrl+S saves, Ctrl+Tab and
+Ctrl+Shift+Tab cycle unlocked workspaces. Menus and action forms suspend automatic
+time without changing the player's pause setting. Responses send without approval
+prompts. Destructive file actions, checkpoint recovery and a new game explain
+what will be replaced. Failed forms keep your typed text and show the error.
+Incoming Jessica messages do not switch you away from Mark.
+
+Settings in the menu edit font size, background/text/secondary/selection colors,
+and keybindings. Defaults live in `config/gui.toml`; overrides are written
+atomically to `settings.toml` inside the selected GUI save root. Esc stays reserved
+for menu/back. Duplicate or invalid bindings, invalid colors and out-of-range
+font sizes are rejected.
+
+The default save root remains `saves/gui-prototype` for continuity with earlier
+Qt saves and separation from terminal autosaves. Closing the window saves the
+autosave and keeps the window open on a failed save. Named checkpoints can be
+saved/loaded in the menu. A new game replaces autosave, retaining named slots.
+Recovery uses the real owned-server checkpoint and workspace transfer rules.
+
+## Development
 
 ```bash
 bash scripts/build-gui.sh test
 ```
 
-The adapter test exercises real opening branches, company-chat connection,
-resource data, stale-choice rejection, contact focus, menu pause/resume, and shared save/resume.
-The offscreen software-rendering smoke check loads the actual QML window and
-fails on QML warnings, a missing rendered frame, or broken menu, response-button,
-and resource-tab bindings. It uses a temporary save folder. The normal ncurses build and its tests remain available through
-`scripts/build-and-run.sh`.
+The adapter tests cover opening branches, stale replies, focus, real research
+and trust deduction, files/email, resource budgets, trading/orders, infrastructure,
+rental/hosting, backup recovery, settings and named checkpoints. Offscreen software
+smokes render the opening and earned late-game workspaces, maps and stock chart,
+and submit an agent form and open settings. QML warnings fail the check.
+
+`GameSession.cpp` owns story/timing/persistence. `WorkspaceModels.cpp` presents
+public data, `WorkspaceActions.cpp` defines forms and rechecks actions at execution,
+and `GuiSettings.cpp` validates and persists Qt preferences. QML handles layout
+and interactions; gameplay remains in `ai_sim_core`. List summaries and graph
+data emit changes only when their contents change, preserving scroll positions.
+
+Run optional terminal regression checks with `bash scripts/build-and-run.sh test`.
+Both frontend checks are included in GitHub Actions.

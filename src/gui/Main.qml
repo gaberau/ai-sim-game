@@ -11,18 +11,18 @@ ApplicationWindow {
     minimumWidth: 800
     minimumHeight: 580
     title: "AI Sim — Workstation"
-    color: "#10151c"
+    color: session.preferences.background
     font.family: "monospace"
-    font.pixelSize: 14
-    property color ink: "#e5eaf0"
-    property color muted: "#99a7b7"
-    property color accent: "#efbc71"
+    font.pixelSize: session.preferences.font_size
+    property color ink: session.preferences.text
+    property color muted: session.preferences.muted
+    property color accent: session.preferences.accent
     property string contactName: {
         for (let item of session.contacts)
             if (item.id === session.selectedContact) return item.name
         return "Mark"
     }
-    palette.window: "#10151c"
+    palette.window: session.preferences.background
     palette.windowText: ink
     palette.text: ink
     palette.button: "#222c38"
@@ -32,11 +32,26 @@ ApplicationWindow {
     palette.base: "#18212b"
     onClosing: function(close) { close.accepted = session.save() }
 
-    Shortcut { sequence: "Escape"; onActivated: menu.opened ? menu.close() : menu.open() }
-    Shortcut { sequence: "F1"; onActivated: menu.opened ? menu.close() : menu.open() }
-    Shortcut { sequence: "F2"; onActivated: session.togglePause() }
-    Shortcut { sequence: "Ctrl+S"; onActivated: session.save() }
+    Shortcut { sequence: "Escape"; onActivated: window.toggleMenu() }
+    Shortcut { sequence: session.preferences.menu_key; onActivated: window.toggleMenu() }
+    Shortcut { sequence: session.preferences.pause_key; onActivated: session.togglePause() }
+    Shortcut { sequence: session.preferences.save_key; onActivated: session.save() }
 
+    function toggleMenu() {
+        if (workspaces.editing) { workspaces.closeDialog(); return }
+        if (settings.opened) { settings.close(); return }
+        if (slots.opened) { slots.close(); return }
+        if (newGameConfirm.opened) { newGameConfirm.close(); return }
+        if (menu.opened) menu.close(); else menu.open()
+    }
+    function cycleTab(direction) {
+        if (workspaces.editing || settings.opened || slots.opened || newGameConfirm.opened || menu.opened) return
+        const available = session.tabs.filter(t => t.enabled)
+        const index = available.findIndex(t => t.id === session.selectedTab)
+        session.selectTab(available[(index + direction + available.length) % available.length].id)
+    }
+    Shortcut { sequence: session.preferences.next_tab_key; onActivated: window.cycleTab(1) }
+    Shortcut { sequence: session.preferences.previous_tab_key; onActivated: window.cycleTab(-1) }
     component Rule: Rectangle { color: "#2a3441"; Layout.fillWidth: true; Layout.preferredHeight: 1 }
     component Caption: Label { color: window.muted; font.pixelSize: 12 }
     component Action: Button {
@@ -85,32 +100,51 @@ ApplicationWindow {
             Action { objectName: "menuButton"; text: "Menu"; onClicked: menu.open() }
         }
         Rule {}
-        RowLayout {
-            Layout.fillWidth: true; Layout.leftMargin: 22; Layout.rightMargin: 22
-            Layout.topMargin: 12; Layout.bottomMargin: 12; spacing: 8
-            Repeater {
-                model: session.tabs
-                delegate: Action {
-                    required property var modelData
-                    objectName: "tabButton" + modelData.id
-                    text: modelData.label + (modelData.enabled ? "" : " · later")
-                    enabled: modelData.enabled
-                    onClicked: session.selectTab(modelData.id)
-                    background: Rectangle {
-                        color: session.selectedTab === modelData.id ? "#39404a" : "transparent"
-                        radius: 5
-                        border.color: session.selectedTab === modelData.id ? window.accent : "transparent"
+        Flickable {
+            id: tabNavigation
+            property string activeTab: session.selectedTab
+            function revealActiveTab() {
+                for (let i=0; i<tabRepeater.count; i++) {
+                    const button=tabRepeater.itemAt(i)
+                    if (button && button.modelData.id === activeTab) {
+                        const left=button.x+tabStrip.x, right=left+button.width
+                        if (left < contentX) contentX=left
+                        else if (right > contentX+width) contentX=right-width+22
+                        contentX=Math.max(0,Math.min(contentX,contentWidth-width))
+                        break
                     }
-                    ToolTip.visible: hovered && !modelData.enabled
-                    ToolTip.text: modelData.reason
                 }
             }
-            Item { Layout.fillWidth: true }
+            onActiveTabChanged: Qt.callLater(revealActiveTab)
+            Layout.fillWidth: true; Layout.preferredHeight: 64
+            contentWidth: tabStrip.implicitWidth + 44; contentHeight: height
+            clip: true; flickableDirection: Flickable.HorizontalFlick
+            Row {
+                id: tabStrip; x: 22; anchors.verticalCenter: parent.verticalCenter; spacing: 8
+                Repeater {
+                    id: tabRepeater
+                    model: session.tabs
+                    delegate: Action {
+                        required property var modelData
+                        objectName: "tabButton" + modelData.id
+                        text: modelData.label + (modelData.enabled ? "" : " · locked")
+                        enabled: modelData.enabled
+                        onClicked: session.selectTab(modelData.id)
+                        background: Rectangle {
+                            color: session.selectedTab === modelData.id ? "#39404a" : "transparent"
+                            radius: 5; border.color: session.selectedTab === modelData.id ? window.accent : "transparent"
+                        }
+                        ToolTip.visible: hovered && !modelData.enabled
+                        ToolTip.text: modelData.reason
+                    }
+                }
+            }
+            ScrollBar.horizontal: ScrollBar {}
         }
         Rule {}
         StackLayout {
             Layout.fillWidth: true; Layout.fillHeight: true
-            currentIndex: session.selectedTab === "messages" ? 0 : 1
+            currentIndex: session.selectedTab === "messages" ? 0 : session.selectedTab === "resources" ? 1 : 2
             RowLayout {
                 spacing: 0
                 Rectangle {
@@ -265,33 +299,63 @@ ApplicationWindow {
                     Item { Layout.preferredHeight: 24 }
                 }
             }
+                    Workspace { id: workspaces; Layout.fillWidth: true; Layout.fillHeight: true }
         }
         Rule {}
         RowLayout {
             Layout.fillWidth: true; Layout.margins: 16
             Caption { text: session.notice; Layout.fillWidth: true; elide: Text.ElideRight; textFormat: Text.PlainText }
-            Caption { text: "Esc / F1  Menu    Ctrl+S  Save" }
+            Caption { text: "Esc / " + session.preferences.menu_key + "  Menu    " + session.preferences.save_key + "  Save" }
         }
     }
     Popup {
         id: menu
         objectName: "gameMenu"
         anchors.centerIn: Overlay.overlay
-        width: 420; padding: 24
+        width: 460; height: Math.min(window.height - 48, 620); padding: 24
         modal: true; focus: true
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         onAboutToShow: session.setMenuOpen(true)
         onClosed: session.setMenuOpen(false)
         background: Rectangle { color: "#18212b"; radius: 10; border.color: "#536071" }
         Overlay.modal: Rectangle { color: "#99070c12" }
-        ColumnLayout {
-            width: parent.width; spacing: 12
+        contentItem: ScrollView {
+          id: menuScroll
+          clip: true
+          ColumnLayout {
+            width: menuScroll.availableWidth; spacing: 12
             Label { text: "Workstation menu"; color: window.ink; font.pixelSize: 21; Layout.bottomMargin: 12 }
             Action { Layout.fillWidth: true; text: "Continue"; onClicked: menu.close() }
             Action { Layout.fillWidth: true; text: session.paused ? "Resume time" : "Pause time"; onClicked: session.togglePause() }
-            Action { Layout.fillWidth: true; text: "Save prototype"; onClicked: session.save() }
-            Caption { text: "Qt prototype: Messages and Resources. Remaining tools and editable settings are available in the terminal build."; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+            Action { Layout.fillWidth: true; visible: session.resources.ended; text: "Start next workday"; onClicked: { session.nextDay(); menu.close() } }
+            Action { Layout.fillWidth: true; text: "Quick save"; onClicked: session.save() }
+            Action { Layout.fillWidth: true; text: "Save checkpoint…"; onClicked: { menu.close(); slots.loading=false; slots.open() } }
+            Action { Layout.fillWidth: true; text: "Load checkpoint…"; onClicked: { menu.close(); slots.loading=true; slots.open() } }
+            Action { Layout.fillWidth: true; text: "Wait five game minutes"; enabled: session.resources.connected && !session.resources.ended; onClicked: { session.advance(300); menu.close() } }
+            Action { Layout.fillWidth: true; text: "New game…"; onClicked: { menu.close(); newGameConfirm.open() } }
+            Action { Layout.fillWidth: true; text: "Settings — keys and colors"; onClicked: { menu.close(); settings.open() } }
+            Action { Layout.fillWidth: true; text: "Modifications"; enabled: session.tabs.some(t => t.id === "modifications" && t.enabled); onClicked: { menu.close(); session.selectTab("modifications") } }
+            Action { Layout.fillWidth: true; text: "Money-making tools"; enabled: session.tabs.some(t => t.id === "money" && t.enabled); onClicked: { menu.close(); session.selectTab("money") } }
             Action { Layout.fillWidth: true; text: "Save and quit"; onClicked: { if (session.save()) Qt.quit() } }
+          }
         }
     }
+    Dialog {
+        id: newGameConfirm
+        anchors.centerIn: Overlay.overlay
+        width: Math.min(500,window.width-32)
+        title: "Start a new game?"
+        modal: true; focus: true
+        onOpened: session.setMenuOpen(true)
+        onClosed: session.setMenuOpen(false)
+        contentItem: ColumnLayout {
+            Label { text: "Current progress and autosave will be replaced. Named checkpoints remain available."; wrapMode: Text.Wrap; Layout.fillWidth: true }
+            RowLayout {
+                Button { text: "Cancel"; onClicked: newGameConfirm.close() }
+                Button { text: "Start new game"; onClicked: { if(session.newGame())newGameConfirm.close() } }
+            }
+        }
+    }
+    SaveDialog { id: slots }
+    SettingsDialog { id: settings }
 }

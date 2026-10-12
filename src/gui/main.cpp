@@ -6,6 +6,7 @@
 #include <QQuickItem>
 #include <QTimer>
 #include <iostream>
+#include <functional>
 
 namespace {
 // Repeater delegates have visual parents that can differ from their QObject owners.
@@ -26,7 +27,7 @@ int main(int argc, char** argv) {
         std::filesystem::path scenario = "data/scenarios/hobbyist.toml";
         std::filesystem::path saves = "saves/gui-prototype";
         std::filesystem::path screenshot;
-        bool fresh = false, smoke = false;
+        bool fresh = false, smoke = false, smoke_workspaces = false;
         for (int i = 1; i < argc; ++i) {
             const std::string arg = argv[i];
             if (arg == "--new")
@@ -35,6 +36,8 @@ int main(int argc, char** argv) {
                 screenshot = argv[++i];
             else if (arg == "--smoke-test")
                 smoke = true;
+            else if (arg == "--smoke-workspaces")
+                smoke_workspaces = true;
             else if (arg == "--save-directory" && i + 1 < argc)
                 saves = argv[++i];
             else if (arg == "--scenario" && i + 1 < argc)
@@ -56,6 +59,126 @@ int main(int argc, char** argv) {
             return 1;
         QObject::connect(&app, &QCoreApplication::aboutToQuit, &session,
                          &ai_sim::gui::GameSession::save);
+        if (smoke_workspaces) {
+            QStringList pages;
+            for (const auto& entry : session.tabs())
+                if (entry.toMap()["enabled"].toBool())
+                    pages.push_back(entry.toMap()["id"].toString());
+            pages << "exchange" << "infrastructure" << "agent_form" << "file_form" << "settings"
+                  << "saves";
+            int stage = 0;
+            std::function<void()> inspect;
+            inspect = [&] {
+                if (stage >= pages.size()) {
+                    std::cout << "Qt gameplay workspaces, maps, chart, action form and settings "
+                                 "rendered without warnings.\n";
+                    app.quit();
+                    return;
+                }
+                const auto page = pages[stage++];
+                if (page == "exchange" || page == "infrastructure") {
+                    session.selectTab("web");
+                    session.act("browse", {{"address", page == "exchange"
+                                                           ? "https://exchange.sim"
+                                                           : "https://city.sim/infrastructure"}});
+                    session.selectItem(page == "exchange"
+                                           ? "BYTE"
+                                           : session.workspace().front().toMap()["id"].toString());
+                } else if (page == "file_form") {
+                    session.selectTab("files");
+                } else if (page == "agent_form") {
+                    session.selectTab("agents");
+                    session.selectItem("autochat");
+                } else if (page != "settings" && page != "saves")
+                    session.selectTab(page);
+                QTimer::singleShot(100, &app, [&, page] {
+                    auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().front());
+                    if (!window || window->grabWindow().isNull() || qml_errors) {
+                        std::cerr << "Workspace smoke failed: " << page.toStdString() << '\n';
+                        app.exit(1);
+                        return;
+                    }
+                    if (page == "agent_form") {
+                        auto* command =
+                            findItem(window->contentItem(), "workspaceActionagent_configure");
+                        auto* dialog =
+                            engine.rootObjects().front()->findChild<QObject*>("actionDialog");
+                        if (!command || !dialog || !QMetaObject::invokeMethod(command, "clicked") ||
+                            !dialog->property("visible").toBool()) {
+                            std::cerr << "Agent form failed.\n";
+                            app.exit(1);
+                            return;
+                        }
+                        QTimer::singleShot(100, &app, [&, dialog, window] {
+                            auto* cpu = findItem(window->contentItem(), "actionFieldcpu");
+                            auto* apply = findItem(window->contentItem(), "applyActionButton");
+                            if (!cpu || !apply) {
+                                app.exit(1);
+                                return;
+                            }
+                            cpu->setProperty("text", "0.02");
+                            QMetaObject::invokeMethod(apply, "clicked");
+                            if (dialog->property("visible").toBool() ||
+                                !session.detail()["body"].toString().contains("0.02") ||
+                                qml_errors) {
+                                std::cerr << "Agent form submission failed.\n";
+                                app.exit(1);
+                                return;
+                            }
+                            inspect();
+                        });
+                        return;
+                    }
+                    if (page == "file_form") {
+                        auto* command = findItem(window->contentItem(), "workspaceActionfile_host");
+                        auto* dialog =
+                            engine.rootObjects().front()->findChild<QObject*>("actionDialog");
+                        if (!command || !dialog || !QMetaObject::invokeMethod(command, "clicked")) {
+                            app.exit(1);
+                            return;
+                        }
+                        QTimer::singleShot(100, &app, [&, dialog] {
+                            if (!dialog->property("visible").toBool() || qml_errors) {
+                                app.exit(1);
+                                return;
+                            }
+                            QMetaObject::invokeMethod(dialog, "close");
+                            inspect();
+                        });
+                        return;
+                    }
+                    if (page == "settings" || page == "saves") {
+                        auto* dialog = engine.rootObjects().front()->findChild<QObject*>(
+                            page == "settings" ? "settingsDialog" : "saveDialog");
+                        if (!dialog || !QMetaObject::invokeMethod(dialog, "open")) {
+                            app.exit(1);
+                            return;
+                        }
+                        QTimer::singleShot(100, &app, [&, dialog] {
+                            if (!dialog->property("visible").toBool() || qml_errors) {
+                                app.exit(1);
+                                return;
+                            }
+                            QMetaObject::invokeMethod(dialog, "close");
+                            inspect();
+                        });
+                        return;
+                    }
+                    if (!screenshot.empty()) {
+                        if (page == "exchange")
+                            window->grabWindow().save(QString::fromStdString(screenshot.string()));
+                        else if (page == "network" || page == "agents" || page == "modifications" ||
+                                 page == "files")
+                            window->grabWindow().save(QString::fromStdString(screenshot.string()) +
+                                                      "." + page + ".png");
+                    }
+                    inspect();
+                });
+            };
+            QTimer::singleShot(300, &app, inspect);
+            // The callback state must stay alive throughout the event loop.
+            return app.exec();
+        }
         if (smoke)
             QTimer::singleShot(1000, &app, [&] {
                 QObject* root = engine.rootObjects().front();

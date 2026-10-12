@@ -18,7 +18,7 @@ case "${1:-build}" in
             fi
         done
         # Separate from older build/ folders to avoid stale absolute CMake paths.
-        cmake -S . -B "$build_directory" -DCMAKE_BUILD_TYPE="${AI_SIM_BUILD_TYPE:-Release}" -DBUILD_TESTING=ON
+        cmake -S . -B "$build_directory" -DCMAKE_BUILD_TYPE="${AI_SIM_BUILD_TYPE:-Release}" -DBUILD_TESTING=ON -DAI_SIM_BUILD_TERMINAL=ON -DAI_SIM_BUILD_GUI=OFF
         cmake --build "$build_directory" --parallel "${AI_SIM_BUILD_JOBS:-2}"
         if [[ "${1:-build}" == test ]]; then
             ctest --test-dir "$build_directory" --output-on-failure

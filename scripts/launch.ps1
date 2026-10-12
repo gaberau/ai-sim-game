@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$ProjectRoot,
-    [switch]$RunOnly
+    [switch]$RunOnly,
+    [switch]$Terminal
 )
 $ErrorActionPreference = 'Stop'
 
@@ -46,6 +47,12 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'Could not translate the project folder into a WSL path.' }
         $linuxRoot = ($converted -join "`n").Trim()
     }
+    if (-not $Terminal) {
+        Write-Host "Starting Qt workstation in $linuxRoot ..."
+        & wsl.exe @distributionArguments --cd $linuxRoot --exec bash scripts/build-gui.sh run
+        if ($LASTEXITCODE -ne 0) { throw "The Qt build or game exited with code $LASTEXITCODE. See the output above." }
+        return
+    }
     if ($RunOnly) {
         $host.UI.RawUI.WindowTitle = 'AI Sim'
         Write-Host "Starting AI Sim in $linuxRoot ..."
@@ -65,7 +72,7 @@ try {
     # Launch a Windows shell that stays alive even when WSL itself fails to start.
     # A successful terminal launch alone does not prove that the child game started.
     $childArguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-NoExit',
-        '-File', $PSCommandPath, '-ProjectRoot', $root, '-RunOnly')
+        '-File', $PSCommandPath, '-ProjectRoot', $root, '-RunOnly', '-Terminal')
     $powershell = Join-Path $PSHOME 'powershell.exe'
     # Use the local Windows domain even if WezTerm defaults to a WSL/SSH domain.
     # The wrapper then selects the correct WSL distribution and project directory.
