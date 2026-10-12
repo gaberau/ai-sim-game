@@ -125,7 +125,6 @@ class GameSession : public QObject {
     QVariantMap preferences_;
     std::filesystem::path preferences_path_, saves_path_;
     toml::table news_;
-    QStringList activity_;
     QVariantList contacts_, messages_, choices_, workspace_, full_rows_, save_slots_, tabs_;
     QVariantMap detail_, graph_;
     QTimer timer_;

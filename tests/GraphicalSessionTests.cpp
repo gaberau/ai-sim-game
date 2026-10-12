@@ -63,7 +63,11 @@ int main(int argc, char** argv) {
         check(session.resources()["cpuFraction"].toDouble() >= 0, "Resource allocations missing");
         session.selectTab("resources");
         session.selectTab("network");
-        check(session.selectedTab() == "resources", "Locked tab accepted");
+        check(session.selectedTab() == "messages", "Locked tab accepted");
+        session.selectTab("activity");
+        check(session.selectedTab() == "messages", "Removed Activity tab accepted");
+        for (const auto& tab : session.tabs())
+            check(tab.toMap()["id"] != "activity", "Activity tab still listed");
         session.selectTab("modifications");
         session.selectItem("capacity");
         check(session.act("authorize"), "Capacity authorization through Qt failed");
@@ -132,6 +136,8 @@ int main(int argc, char** argv) {
                 late.detail();
                 late.graph();
             }
+        late.selectTab("resources");
+        check(late.selectedTab() == "resources", "Task Manager did not unlock Resources");
         late.selectTab("files");
         check(late.act("file_host", {{"host", "engineer_pc"}}), "Host selection failed");
         check(late.act("file_create",

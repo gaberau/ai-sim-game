@@ -188,10 +188,6 @@ void GameSession::selectTab(const QString& id) {
     refresh();
 }
 void GameSession::publish(const std::vector<std::string>& messages) {
-    for (const auto& message : messages)
-        activity_.push_back(text(message));
-    while (activity_.size() > 200)
-        activity_.removeFirst();
     if (!messages.empty())
         notice_ = text(messages.back());
 }
@@ -345,7 +341,6 @@ bool GameSession::loadSlot(const QString& slot) {
         file_host_ = text(world_.network.hosts()[world_.network.local_host_index()].id);
         directory_ = "/";
         address_ = "about:home";
-        activity_.clear();
         resetWorkspace();
         elapsed_.restart();
         notice_ = "Loaded " + slot + ".";

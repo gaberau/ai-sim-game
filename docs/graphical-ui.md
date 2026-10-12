@@ -33,7 +33,7 @@ not been validated here.
 | Workspace | Available tools |
 | --- | --- |
 | Messages | Contacts, readable timeline, immediate scripted responses, unread counts |
-| Resources / Processes | Live CPU/RAM, trust/cash, process details and permitted stops |
+| Resources / Processes | Unlock with process access (Task Manager); live CPU/RAM, trust/cash, process details and permitted stops |
 | Email | Draft editor, requested documents, attachments, send, star/archive |
 | Files | Folder/host navigation, read/edit/create, copy/move/delete, permissions and categories |
 | Modifications | Grouped research, prerequisite/trust costs, remaining work/ETA and active run costs |
@@ -42,7 +42,7 @@ not been validated here.
 | Money tools | Client jobs and repeating products, costs/payouts, slots and due times |
 | Operations | Scheduling, resource manager, rentals, hosting, backup and checkpoint recovery |
 | Web | In-game bookmarks/URLs, stock prices/charts, portfolio, watchlist, trades/limit orders and cancellation; infrastructure directory/discovery |
-| News / Activity | Released stories and current-session simulation notices |
+| News | Released stories; simulation notices appear in the status strip |
 | Responsibilities / Phone | Existing authored authority/actions and authenticated phone metadata |
 
 Locks follow the core story rules. Planned upgrades and phone telemetry remain

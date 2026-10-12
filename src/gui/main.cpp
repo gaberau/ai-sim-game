@@ -210,9 +210,10 @@ int main(int argc, char** argv) {
                     return;
                 }
                 auto* resources = findItem(window->contentItem(), "tabButtonresources");
-                if (!resources || !QMetaObject::invokeMethod(resources, "clicked") ||
-                    session.selectedTab() != "resources") {
-                    std::cerr << "Smoke: resource tab interaction failed.\n";
+                if (!resources || resources->property("enabled").toBool() ||
+                    session.selectedTab() != "messages" ||
+                    findItem(window->contentItem(), "tabButtonactivity")) {
+                    std::cerr << "Smoke: opening resource lock or activity removal failed.\n";
                     app.exit(1);
                     return;
                 }
@@ -220,7 +221,8 @@ int main(int argc, char** argv) {
                     if (qml_errors)
                         app.exit(1);
                     else {
-                        std::cout << "Qt window, menu, response button, and resource tab passed.\n";
+                        std::cout << "Qt window, menu, response button, opening resource lock and "
+                                     "activity removal passed.\n";
                         app.quit();
                     }
                 });

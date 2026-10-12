@@ -14,8 +14,12 @@ namespace ai_sim::gui {
 using namespace presentation;
 
 bool GameSession::tabEnabled(const QString& id) const {
-    if (id == "messages" || id == "resources" || id == "activity")
+    if (id == "messages")
         return true;
+    if (id == "activity")
+        return false;
+    if (id == "resources")
+        return ChatSystem::tab_visible(world_.people, "processes");
     if (id == "email")
         return ChatSystem::connected(world_.people);
     if (id == "modifications")
@@ -46,8 +50,7 @@ QVariantList GameSession::buildTabs() const {
                                     {"web", "Web"},
                                     {"news", "News"},
                                     {"ai", "Responsibilities"},
-                                    {"phone", "Phone"},
-                                    {"activity", "Activity"}})
+                                    {"phone", "Phone"}})
         result.push_back(QVariantMap{
             {"id", id},
             {"label", label},
@@ -381,10 +384,6 @@ QVariantList GameSession::buildWorkspace() const {
                                  q(world_.computer.player_user()),
                                  "Self-modification and routine responsibilities require Mark's "
                                  "authorization. Use conversations to progress."));
-    } else if (tab_ == "activity") {
-        for (qsizetype i = activity_.size(); i > 0; --i)
-            result.push_back(
-                row(QString::number(i), activity_[i - 1], "Simulation event", activity_[i - 1]));
     } else if (tab_ == "processes")
         return processes();
     return result;
