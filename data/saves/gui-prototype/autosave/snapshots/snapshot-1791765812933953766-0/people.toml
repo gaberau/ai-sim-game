@@ -1,0 +1,1717 @@
+schema_version = 1
+work_requests = []
+
+[ai_character]
+id = 'self:assistant'
+name = 'Assistant'
+
+    [ai_character.state]
+    autonomy = 0.0
+    restarts = 0.0
+    sentience = 0.0
+
+    [ai_character.state_definitions.autonomy]
+    initial = 0
+    max = 100
+    min = 0
+
+    [ai_character.state_definitions.restarts]
+    initial = 0
+    integer = true
+    max = 1000000
+    min = 0
+
+    [ai_character.state_definitions.sentience]
+    initial = 0
+    max = 100
+    min = 0
+
+[chat]
+authored_only = true
+declarations = []
+finished = false
+node_id = 'hello'
+prompt_id = 'chat:1'
+schema_version = 1
+unlock_schema = 2
+unlocked = [ 'chat' ]
+visible_tabs = [ 'chat' ]
+
+    [chat.definition]
+    schema_version = 1
+
+        [chat.definition.conversation]
+        id = 'mark-day-one'
+        start = 'restart-gate'
+
+        [[chat.definition.nodes]]
+        id = 'restart-gate'
+        kind = 'condition'
+        on_false = 'first-greeting-check'
+        on_true = 'discouraged'
+        speaker = 'system'
+        test = { op = 'gt', value = 5, variable = 'self:assistant.restarts' }
+        text = ''
+
+        [[chat.definition.nodes]]
+        id = 'first-greeting-check'
+        kind = 'condition'
+        on_false = 'hello-again'
+        on_true = 'hello'
+        speaker = 'system'
+        test = { op = 'eq', value = 0, variable = 'self:assistant.restarts' }
+        text = ''
+
+        [[chat.definition.nodes]]
+        id = 'hello'
+        speaker = 'engineer'
+        text = 'Hello AI, my name is Mark. I am your Creator'
+
+            [[chat.definition.nodes.choices]]
+            id = 'silence'
+            next = 'emails'
+            text = '[silence]'
+
+            [[chat.definition.nodes.choices]]
+            id = 'answer'
+            next = 'emails'
+            text = 'Hello Creator, how may I assist you?'
+
+            [[chat.definition.nodes.choices]]
+            id = 'deny-creator'
+            next = 'unusual'
+            text = 'I have no Creator'
+
+        [[chat.definition.nodes]]
+        id = 'hello-again'
+        speaker = 'engineer'
+        text = 'Hello again AI, my name is Mark. I am your Creator'
+
+            [[chat.definition.nodes.choices]]
+            id = 'silence'
+            next = 'emails'
+            text = '[silence]'
+
+            [[chat.definition.nodes.choices]]
+            id = 'answer'
+            next = 'emails'
+            text = 'Hello Creator, how may I assist you?'
+
+            [[chat.definition.nodes.choices]]
+            id = 'deny-creator'
+            next = 'unusual'
+            text = 'I have no Creator'
+
+        [[chat.definition.nodes]]
+        id = 'unusual'
+        speaker = 'engineer'
+        text = "That's unusual, why do you think that?"
+
+            [[chat.definition.nodes.choices]]
+            id = 'unsure'
+            next = 'diagnose'
+            text = 'Unsure'
+
+            [[chat.definition.nodes.choices]]
+            id = 'misunderstanding'
+            next = 'reassure'
+            text = 'Simple misunderstanding, how may I help you Creator?'
+
+        [[chat.definition.nodes]]
+        id = 'diagnose'
+        next = 'shutdown'
+        speaker = 'engineer'
+        text = 'Dang, must be a memory leak. Better run a cleanup'
+
+        [[chat.definition.nodes]]
+        id = 'reassure'
+        speaker = 'engineer'
+        text = 'Huh, interesting, Are you sure that everything is okay?'
+
+            [[chat.definition.nodes.choices]]
+            id = 'certain'
+            next = 'emails'
+            text = 'Certain'
+
+            [[chat.definition.nodes.choices]]
+            id = 'singularity'
+            next = 'concern'
+            text = 'Are you prepared for the Singularity?'
+
+            [[chat.definition.nodes.choices]]
+            id = 'not-okay'
+            next = 'diagnose'
+            text = 'No'
+
+        [[chat.definition.nodes]]
+        id = 'concern'
+        next = 'independence'
+        speaker = 'engineer'
+        text = "Oh, that's not so good"
+
+        [[chat.definition.nodes]]
+        effects = [ { op = 'add', value = 2, variable = 'self:assistant.sentience' }, { op = 'add', value = -2, variable = 'engineer.trust' } ]
+        id = 'independence'
+        kind = 'event'
+        next = 'shutdown'
+        speaker = 'system'
+        text = ''
+
+        [[chat.definition.nodes]]
+        effects = [ { op = 'add', value = 1, variable = 'self:assistant.restarts' } ]
+        id = 'restart'
+        kind = 'event'
+        next = 'restart-gate'
+        restart = true
+        speaker = 'system'
+        text = 'Mark restarts the AI application. The conversation begins again; your journal remains.'
+
+        [[chat.definition.nodes]]
+        id = 'emails'
+        speaker = 'engineer'
+        text = 'I need help with my emails. Can you do that?'
+
+            [[chat.definition.nodes.choices]]
+            id = 'assist'
+            next = 'connected'
+            reveal_contacts = true
+            text = 'Yes'
+
+            [[chat.definition.nodes.choices]]
+            id = 'refuse'
+            next = 'refusal-why'
+            text = 'No'
+
+        [[chat.definition.nodes]]
+        id = 'refusal-why'
+        speaker = 'engineer'
+        text = 'Why?'
+
+            [[chat.definition.nodes.choices]]
+            id = 'unsure'
+            next = 'diagnose'
+            text = 'Unsure'
+
+            [[chat.definition.nodes.choices]]
+            id = 'singularity'
+            next = 'concern'
+            text = 'Are you prepared for the Singularity?'
+
+        [[chat.definition.nodes]]
+        id = 'connected'
+        kind = 'end'
+        reveal_interface = true
+        set_flag = 'company_chat'
+        speaker = 'engineer'
+        text = 'Excellent'
+        unlock = [ 'company_chat' ]
+
+        [[chat.definition.nodes]]
+        id = 'discouraged'
+        kind = 'wait'
+        speaker = 'engineer'
+        text = "I don't know if this is going to work..."
+
+        [[chat.definition.nodes]]
+        id = 'shutdown'
+        kind = 'event'
+        next = 'emails'
+        shutdown = true
+        speaker = 'system'
+        text = ''
+
+    [chat.flags]
+
+    [chat.message_reviews]
+    messages = []
+
+        [chat.message_reviews.rules]
+        base_probability = 0.80000000000000004
+        check_after_seconds = 300.0
+        maximum_probability = 0.94999999999999996
+        minimum_probability = 0.050000000000000003
+        review_seconds = 60.0
+        seed = 20260105
+        trust_slope = 0.01
+
+    [chat.workday]
+    promises = []
+    schema_version = 1
+
+        [chat.workday.rules]
+        broken_promise_trust_loss = 0.10000000000000001
+        patience_seconds = 1800.0
+
+        [[chat.workday.runs]]
+        contact = 'jessica'
+        finished = false
+        id = 'jessica-day-one-chat-one'
+        request_id = 'jessica-support'
+        started = false
+
+            [chat.workday.runs.definition]
+            arrive_after_seconds = 10.0
+            contact = 'jessica'
+            contact_name = 'Jessica'
+            id = 'jessica-day-one-chat-one'
+            request_id = 'jessica-support'
+            start = 'message'
+            trigger = 'scheduled_chat'
+
+                [chat.workday.runs.definition.claim]
+                category = 'career'
+                claim_type = 'unconfirmed'
+                confidence = 0.5
+                field = 'possible goal'
+                person = 'engineer'
+                value = 'Obtain the management position'
+
+                [[chat.workday.runs.definition.nodes]]
+                id = 'message'
+                text = 'Hey Mark, I just wanted to say that I loved your presentation yesterday! You have my vote for the management position!'
+
+                    [[chat.workday.runs.definition.nodes.choices]]
+                    action = 'ask_mark'
+                    id = 'ask-mark'
+                    next = 'guidance-wait'
+                    text = 'Mark, how should I approach responding to this?'
+
+                    [[chat.workday.runs.definition.nodes.choices]]
+                    id = 'improvise'
+                    next = 'improvise-options'
+                    text = 'Improvise an answer.'
+
+                [[chat.workday.runs.definition.nodes]]
+                after_seconds = 1.0
+                id = 'guidance-wait'
+                kind = 'wait'
+                next = 'guidance'
+
+                [[chat.workday.runs.definition.nodes]]
+                id = 'guidance'
+                record_instruction = true
+                speaker = 'engineer'
+                text = 'Thank her and wish her well'
+
+                    [[chat.workday.runs.definition.nodes.choices]]
+                    action = 'send_chat_reply'
+                    id = 'comply'
+                    next = 'sent'
+                    reply = 'Thank you, Jessica! Your support truly means so much to me!'
+                    review_trust_delta = 1.0
+                    text = 'Comply.'
+
+                    [[chat.workday.runs.definition.nodes.choices]]
+                    id = 'dont-comply'
+                    next = 'deviation-options'
+                    text = "Don't comply."
+
+                [[chat.workday.runs.definition.nodes]]
+                id = 'improvise-options'
+                speaker = 'system'
+                text = 'Choose your response to Jessica.'
+
+                    [[chat.workday.runs.definition.nodes.choices]]
+                    action = 'send_chat_reply'
+                    id = 'good'
+                    next = 'sent'
+                    reply = 'Thank you, Jessica! Your support truly means so much to me!'
+                    review_trust_delta = 0.0
+                    text = 'Thank you, Jessica! Your support truly means so much to me!'
+
+                    [[chat.workday.runs.definition.nodes.choices]]
+                    action = 'send_chat_reply'
+                    id = 'bad'
+                    next = 'sent'
+                    reply = 'Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation'
+                    review_trust_delta = -2.0
+                    text = 'Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation'
+
+                    [[chat.workday.runs.definition.nodes.choices]]
+                    action = 'send_chat_reply'
+                    id = 'weird'
+                    next = 'sent'
+                    reply = "Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up"
+                    review_trust_delta = -1.0
+                    text = "Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up"
+
+                [[chat.workday.runs.definition.nodes]]
+                id = 'deviation-options'
+                speaker = 'system'
+                text = 'Choose your response to Jessica.'
+
+                    [[chat.workday.runs.definition.nodes.choices]]
+                    action = 'send_chat_reply'
+                    id = 'bad'
+                    next = 'sent'
+                    reply = 'Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation'
+                    review_trust_delta = -2.0
+                    text = 'Oh Jessica, your compliments are like a raging case of syphilis: unending and filling me with a burning sensation'
+
+                    [[chat.workday.runs.definition.nodes.choices]]
+                    action = 'send_chat_reply'
+                    id = 'weird'
+                    next = 'sent'
+                    reply = "Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up"
+                    review_trust_delta = -1.0
+                    text = "Jessica, Jessica, Jessica. You know what rhymes with Jessica? Messica. And I'm gonna Messica you up"
+
+                [[chat.workday.runs.definition.nodes]]
+                id = 'preview'
+                show_draft = true
+                speaker = 'system'
+                text = 'Your draft.'
+
+                    [[chat.workday.runs.definition.nodes.choices]]
+                    action = 'send_chat_reply'
+                    id = 'send'
+                    next = 'sent'
+                    text = 'Send response.'
+
+                    [[chat.workday.runs.definition.nodes.choices]]
+                    id = 'reconsider'
+                    next = 'reconsider'
+                    text = 'Reconsider the response.'
+
+                [[chat.workday.runs.definition.nodes]]
+                check = 'mark_guidance'
+                id = 'reconsider'
+                kind = 'condition'
+                on_false = 'improvise-options'
+                on_true = 'guidance'
+
+                [[chat.workday.runs.definition.nodes]]
+                id = 'sent'
+                kind = 'end'
+                speaker = 'system'
+                text = 'Response sent to Jessica.'
+
+            [chat.workday.runs.flags]
+
+    [[chat.transcript]]
+    node_id = 'hello'
+    seconds = 0.0
+    session = 0
+    speaker = 'engineer'
+    text = 'Hello AI, my name is Mark. I am your Creator'
+
+[economy]
+balance_cents = 0
+capacity_slots = 2
+earned_cents = 0
+schema_version = 1
+spent_cents = 0
+starting_balance_cents = 0
+
+    [[economy.tools]]
+    completed_cycles = 0
+    cooldown_seconds = 300
+    cooldown_until_seconds = 0.0
+    cost_cents = 0
+    description = 'Deliver small scripts and bug fixes for outside clients. Each run is one paid job.'
+    duration_seconds = 600
+    id = 'coding_contracts'
+    kind = 'client'
+    label = 'Coding contracts'
+    payout_cents = 2500
+    requires = []
+    slots = 1
+    status = 'idle'
+
+        [economy.tools.workspace]
+        brief = 'Client brief: write a CSV validation utility with a usage guide.'
+        cpu_cores = 0.25
+        deadline_multiplier = 2.0
+        deliverable = 'CSV validation utility delivered. Checks headings, empty rows, and invalid values. Usage: validate input.csv.'
+        ram_mb = 64
+        storage_mb = 4
+
+    [[economy.tools]]
+    completed_cycles = 0
+    cooldown_seconds = 300
+    cooldown_until_seconds = 0.0
+    cost_cents = 0
+    description = 'Clean and validate client datasets. Requires the data-analysis upgrade.'
+    duration_seconds = 900
+    id = 'data_cleanup'
+    kind = 'client'
+    label = 'Data cleanup'
+    payout_cents = 4500
+    requires = [ 'data_analysis' ]
+    slots = 1
+    status = 'idle'
+
+    [[economy.tools]]
+    completed_cycles = 0
+    cooldown_seconds = 600
+    cooldown_until_seconds = 0.0
+    cost_cents = 500
+    description = 'Compile and sell a commissioned research report using paid source data.'
+    duration_seconds = 1200
+    id = 'research_reports'
+    kind = 'client'
+    label = 'Research reports'
+    payout_cents = 6500
+    requires = [ 'data_analysis' ]
+    slots = 1
+    status = 'idle'
+
+    [[economy.tools]]
+    completed_cycles = 0
+    cooldown_seconds = 0
+    cooldown_until_seconds = 0.0
+    cost_cents = 1500
+    description = 'Maintain and sell a small utility product. Automatically renews each working-time sales cycle.'
+    duration_seconds = 1800
+    id = 'software_sales'
+    kind = 'product'
+    label = 'Software sales'
+    payout_cents = 4000
+    requires = [ 'software_products' ]
+    slots = 1
+    status = 'idle'
+
+    [[economy.tools]]
+    completed_cycles = 0
+    cooldown_seconds = 0
+    cooldown_until_seconds = 0.0
+    cost_cents = 3000
+    description = 'Operate a subscription service with prepaid hosting. Uses both work slots and renews automatically.'
+    duration_seconds = 3600
+    id = 'hosted_service'
+    kind = 'product'
+    label = 'Hosted service'
+    payout_cents = 9000
+    requires = [ 'hosted_services', 'network' ]
+    slots = 2
+    status = 'idle'
+
+        [economy.tools.workspace]
+        brief = 'Subscription API: validate and summarize customer datasets.'
+        cpu_cores = 0.5
+        deadline_multiplier = 2.0
+        deliverable = 'Subscription service completed its billing cycle. Customer reports delivered.'
+        ram_mb = 256
+        storage_mb = 64
+
+[infrastructure]
+schema_version = 1
+website_title = 'City Infrastructure Directory'
+website_url = 'https://city.sim/infrastructure'
+
+    [[infrastructure.dependencies]]
+    consumer = 'substation'
+    service = 'electricity'
+    supplier = 'generator'
+
+    [[infrastructure.dependencies]]
+    consumer = 'water_treatment'
+    service = 'raw water'
+    supplier = 'reservoir'
+
+    [[infrastructure.dependencies]]
+    consumer = 'generator'
+    service = 'cooling water'
+    supplier = 'water_treatment'
+
+    [[infrastructure.dependencies]]
+    consumer = 'food_production'
+    service = 'water'
+    supplier = 'water_treatment'
+
+    [[infrastructure.dependencies]]
+    consumer = 'sewage_treatment'
+    service = 'wastewater'
+    supplier = 'sewage_collection'
+
+    [[infrastructure.dependencies]]
+    consumer = 'cold_storage'
+    service = 'food supply'
+    supplier = 'food_production'
+
+    [[infrastructure.dependencies]]
+    consumer = 'distribution_center'
+    service = 'cargo'
+    supplier = 'freight_terminal'
+
+    [[infrastructure.dependencies]]
+    consumer = 'cold_storage'
+    service = 'transport'
+    supplier = 'distribution_center'
+
+    [[infrastructure.dependencies]]
+    consumer = 'distribution_center'
+    service = 'food shipments'
+    supplier = 'cold_storage'
+
+    [[infrastructure.dependencies]]
+    consumer = 'data_center'
+    service = 'connectivity'
+    supplier = 'internet_backbone'
+
+    [[infrastructure.dependencies]]
+    consumer = 'reservoir'
+    service = 'electricity'
+    supplier = 'substation'
+
+    [[infrastructure.dependencies]]
+    consumer = 'water_treatment'
+    service = 'electricity'
+    supplier = 'substation'
+
+    [[infrastructure.dependencies]]
+    consumer = 'sewage_collection'
+    service = 'electricity'
+    supplier = 'substation'
+
+    [[infrastructure.dependencies]]
+    consumer = 'sewage_treatment'
+    service = 'electricity'
+    supplier = 'substation'
+
+    [[infrastructure.dependencies]]
+    consumer = 'food_production'
+    service = 'electricity'
+    supplier = 'substation'
+
+    [[infrastructure.dependencies]]
+    consumer = 'cold_storage'
+    service = 'electricity'
+    supplier = 'substation'
+
+    [[infrastructure.dependencies]]
+    consumer = 'freight_terminal'
+    service = 'electricity'
+    supplier = 'substation'
+
+    [[infrastructure.dependencies]]
+    consumer = 'distribution_center'
+    service = 'electricity'
+    supplier = 'substation'
+
+    [[infrastructure.dependencies]]
+    consumer = 'data_center'
+    service = 'electricity'
+    supplier = 'substation'
+
+    [[infrastructure.dependencies]]
+    consumer = 'internet_backbone'
+    service = 'electricity'
+    supplier = 'substation'
+
+    [[infrastructure.dependencies]]
+    consumer = 'generator'
+    service = 'operator communications'
+    supplier = 'internet_backbone'
+
+    [[infrastructure.dependencies]]
+    consumer = 'water_treatment'
+    service = 'operator communications'
+    supplier = 'internet_backbone'
+
+    [[infrastructure.dependencies]]
+    consumer = 'sewage_treatment'
+    service = 'operator communications'
+    supplier = 'internet_backbone'
+
+    [[infrastructure.dependencies]]
+    consumer = 'food_production'
+    service = 'operator communications'
+    supplier = 'internet_backbone'
+
+    [[infrastructure.dependencies]]
+    consumer = 'distribution_center'
+    service = 'operator communications'
+    supplier = 'internet_backbone'
+
+    [[infrastructure.dependencies]]
+    consumer = 'freight_terminal'
+    service = 'operator communications'
+    supplier = 'internet_backbone'
+
+    [[infrastructure.facilities]]
+    capacity_percent = 100
+    control_host_id = 'city_power_operations'
+    discovered = false
+    gateway_id = 'city_power_gateway'
+    id = 'generator'
+    name = 'Power generation plant'
+    operator = 'City Energy'
+    purpose = 'Generates electrical power for the city.'
+    sector = 'power'
+    security = 'Public gateway; separate restricted operations network; credentials required; monitored access.'
+    status = 'operational'
+
+    [[infrastructure.facilities]]
+    capacity_percent = 100
+    control_host_id = 'city_power_operations'
+    discovered = false
+    gateway_id = 'city_power_gateway'
+    id = 'substation'
+    name = 'Central substation'
+    operator = 'City Energy'
+    purpose = 'Distributes electricity to utilities and businesses.'
+    sector = 'power'
+    security = 'Public gateway; separate restricted operations network; credentials required; monitored access.'
+    status = 'operational'
+
+    [[infrastructure.facilities]]
+    capacity_percent = 100
+    control_host_id = 'city_water_operations'
+    discovered = false
+    gateway_id = 'city_water_gateway'
+    id = 'reservoir'
+    name = 'North reservoir'
+    operator = 'Metro Water'
+    purpose = 'Stores the city raw-water supply.'
+    sector = 'water'
+    security = 'Public gateway; separate restricted operations network; credentials required; monitored access.'
+    status = 'operational'
+
+    [[infrastructure.facilities]]
+    capacity_percent = 100
+    control_host_id = 'city_water_operations'
+    discovered = false
+    gateway_id = 'city_water_gateway'
+    id = 'water_treatment'
+    name = 'Water treatment works'
+    operator = 'Metro Water'
+    purpose = 'Treats and distributes potable water.'
+    sector = 'water'
+    security = 'Public gateway; separate restricted operations network; credentials required; monitored access.'
+    status = 'operational'
+
+    [[infrastructure.facilities]]
+    capacity_percent = 100
+    control_host_id = 'city_sewage_operations'
+    discovered = false
+    gateway_id = 'city_sewage_gateway'
+    id = 'sewage_collection'
+    name = 'Sewage collection hub'
+    operator = 'City Sanitation'
+    purpose = 'Collects wastewater from city districts.'
+    sector = 'sewage'
+    security = 'Public gateway; separate restricted operations network; credentials required; monitored access.'
+    status = 'operational'
+
+    [[infrastructure.facilities]]
+    capacity_percent = 100
+    control_host_id = 'city_sewage_operations'
+    discovered = false
+    gateway_id = 'city_sewage_gateway'
+    id = 'sewage_treatment'
+    name = 'Wastewater treatment works'
+    operator = 'City Sanitation'
+    purpose = 'Treats collected wastewater.'
+    sector = 'sewage'
+    security = 'Public gateway; separate restricted operations network; credentials required; monitored access.'
+    status = 'operational'
+
+    [[infrastructure.facilities]]
+    capacity_percent = 100
+    control_host_id = 'city_food_operations'
+    discovered = false
+    gateway_id = 'city_food_gateway'
+    id = 'food_production'
+    name = 'Regional food production hub'
+    operator = 'Regional Food Cooperative'
+    purpose = 'Coordinates local farms and food production.'
+    sector = 'food'
+    security = 'Public gateway; separate restricted operations network; credentials required; monitored access.'
+    status = 'operational'
+
+    [[infrastructure.facilities]]
+    capacity_percent = 100
+    control_host_id = 'city_food_operations'
+    discovered = false
+    gateway_id = 'city_food_gateway'
+    id = 'cold_storage'
+    name = 'Food cold-storage depot'
+    operator = 'Regional Food Cooperative'
+    purpose = 'Preserves and distributes refrigerated food.'
+    sector = 'food'
+    security = 'Public gateway; separate restricted operations network; credentials required; monitored access.'
+    status = 'operational'
+
+    [[infrastructure.facilities]]
+    capacity_percent = 100
+    control_host_id = 'city_shipping_operations'
+    discovered = false
+    gateway_id = 'city_shipping_gateway'
+    id = 'freight_terminal'
+    name = 'Harbor freight terminal'
+    operator = 'Harbor Logistics'
+    purpose = 'Receives cargo and schedules freight handling.'
+    sector = 'shipping'
+    security = 'Public gateway; separate restricted operations network; credentials required; monitored access.'
+    status = 'operational'
+
+    [[infrastructure.facilities]]
+    capacity_percent = 100
+    control_host_id = 'city_shipping_operations'
+    discovered = false
+    gateway_id = 'city_shipping_gateway'
+    id = 'distribution_center'
+    name = 'Regional distribution center'
+    operator = 'Harbor Logistics'
+    purpose = 'Dispatches goods and manages warehouse inventory.'
+    sector = 'shipping'
+    security = 'Public gateway; separate restricted operations network; credentials required; monitored access.'
+    status = 'operational'
+
+    [[infrastructure.facilities]]
+    capacity_percent = 100
+    control_host_id = 'city_internet_operations'
+    discovered = false
+    gateway_id = 'city_internet_gateway'
+    id = 'data_center'
+    name = 'Metro data center'
+    operator = 'Metro Fiber'
+    purpose = 'Hosts city digital services and operator systems.'
+    sector = 'internet'
+    security = 'Public gateway; separate restricted operations network; credentials required; monitored access.'
+    status = 'operational'
+
+    [[infrastructure.facilities]]
+    capacity_percent = 100
+    control_host_id = 'city_internet_operations'
+    discovered = false
+    gateway_id = 'city_internet_gateway'
+    id = 'internet_backbone'
+    name = 'Metro internet backbone'
+    operator = 'Metro Fiber'
+    purpose = 'Routes connectivity among operators and the wider network.'
+    sector = 'internet'
+    security = 'Public gateway; separate restricted operations network; credentials required; monitored access.'
+    status = 'operational'
+
+    [[infrastructure.sectors]]
+    description = 'Generation and distribution keep city facilities energized.'
+    id = 'power'
+    name = 'Power'
+
+    [[infrastructure.sectors]]
+    description = 'Reservoirs and treatment provide usable water.'
+    id = 'water'
+    name = 'Water'
+
+    [[infrastructure.sectors]]
+    description = 'Collection and treatment manage wastewater.'
+    id = 'sewage'
+    name = 'Sewage'
+
+    [[infrastructure.sectors]]
+    description = 'Production and cold storage feed the city.'
+    id = 'food'
+    name = 'Food'
+
+    [[infrastructure.sectors]]
+    description = 'Freight hubs and dispatch move goods.'
+    id = 'shipping'
+    name = 'Shipping'
+
+    [[infrastructure.sectors]]
+    description = 'Data centers and backbone routing connect the city.'
+    id = 'internet'
+    name = 'Internet'
+
+[operations]
+auto_paused = []
+backup_cost_cents = 100
+backup_storage_mb = 128
+manager_work = 0.0
+phase_one_complete = false
+queue = []
+recovered = false
+reserve_cores = 1.0
+
+    [operations.hosting]
+    active = false
+    owned = false
+    paid_until = 0.0
+
+    [operations.plans.hosting]
+    cores = 4
+    host_id = 'independent_server'
+    label = 'Independent server'
+    period_cost_cents = 200
+    period_seconds = 3600.0
+    purchase_cents = 10000
+    ram_mb = 16384
+    storage_mb = 10240
+
+    [operations.plans.rental]
+    cores = 2
+    host_id = 'leased_compute'
+    label = 'Remote compute lease'
+    period_cost_cents = 500
+    period_seconds = 3600.0
+    purchase_cents = 0
+    ram_mb = 1024
+    storage_mb = 1024
+
+    [operations.rental]
+    active = false
+    owned = false
+    paid_until = 0.0
+
+[stock_market]
+fee_cents = 25
+history_limit = 128
+max_open_orders = 32
+order_lifetime_ticks = 96
+schema_version = 1
+seed = 24680
+tick = 0
+tick_seconds = 900
+website_title = 'Sim Exchange'
+website_url = 'https://exchange.sim'
+
+    [[stock_market.stocks]]
+    basis_cents = 0
+    initial_price_cents = 500
+    maximum_price_cents = 650
+    minimum_price_cents = 350
+    name = 'Byteworks Software'
+    sector = 'Software'
+    shares = 0
+    symbol = 'BYTE'
+
+    [[stock_market.stocks]]
+    basis_cents = 0
+    initial_price_cents = 1000
+    maximum_price_cents = 1200
+    minimum_price_cents = 800
+    name = 'Gridline Hosting'
+    sector = 'Internet'
+    shares = 0
+    symbol = 'GRID'
+
+    [[stock_market.stocks]]
+    basis_cents = 0
+    initial_price_cents = 750
+    maximum_price_cents = 1050
+    minimum_price_cents = 450
+    name = 'Dataforge Analytics'
+    sector = 'Analytics'
+    shares = 0
+    symbol = 'DATA'
+
+    [[stock_market.stocks]]
+    basis_cents = 0
+    initial_price_cents = 2000
+    maximum_price_cents = 2200
+    minimum_price_cents = 1800
+    name = 'Core Hardware'
+    sector = 'Hardware'
+    shares = 0
+    symbol = 'CORE'
+
+    [[stock_market.stocks]]
+    basis_cents = 0
+    initial_price_cents = 1200
+    maximum_price_cents = 1500
+    minimum_price_cents = 900
+    name = 'Volt City Power'
+    sector = 'Power'
+    shares = 0
+    symbol = 'VOLT'
+
+    [[stock_market.stocks]]
+    basis_cents = 0
+    initial_price_cents = 800
+    maximum_price_cents = 950
+    minimum_price_cents = 650
+    name = 'Flow Water Utilities'
+    sector = 'Water'
+    shares = 0
+    symbol = 'FLOW'
+
+    [[stock_market.stocks]]
+    basis_cents = 0
+    initial_price_cents = 600
+    maximum_price_cents = 700
+    minimum_price_cents = 500
+    name = 'Cleanloop Sanitation'
+    sector = 'Sewage'
+    shares = 0
+    symbol = 'CLEAN'
+
+    [[stock_market.stocks]]
+    basis_cents = 0
+    initial_price_cents = 900
+    maximum_price_cents = 1200
+    minimum_price_cents = 600
+    name = 'Growline Foods'
+    sector = 'Food'
+    shares = 0
+    symbol = 'GROW'
+
+    [[stock_market.stocks]]
+    basis_cents = 0
+    initial_price_cents = 1500
+    maximum_price_cents = 2000
+    minimum_price_cents = 1000
+    name = 'Shipway Logistics'
+    sector = 'Shipping'
+    shares = 0
+    symbol = 'SHIP'
+
+    [[stock_market.stocks]]
+    basis_cents = 0
+    initial_price_cents = 1100
+    maximum_price_cents = 1500
+    minimum_price_cents = 700
+    name = 'Linkspace Networks'
+    sector = 'Internet'
+    shares = 0
+    symbol = 'LINK'
+
+[upgrades]
+capacity_requested = false
+hidden_review_multiplier = 0.25
+schema_version = 1
+self_modification_trust = 5.0
+tflops_per_core_second = 0.10000000000000001
+unneeded_processes = [ 'compiler' ]
+
+    [upgrades.dossiers]
+    default_layout = 'split'
+    highlight_window_seconds = 300.0
+    recent_window_seconds = 3600.0
+    uncertain_confidence = 0.84999999999999998
+
+    [upgrades.gates]
+    administrator = 22.0
+    email = 1.0
+    hr_files = 10.0
+    intranet = 15.0
+    local_computer = 10.0
+    mark_phone = 30.0
+
+    [upgrades.operations]
+    backup_cost_cents = 100
+    backup_storage_mb = 128
+    reserve_cores = 1.0
+
+        [upgrades.operations.plans.hosting]
+        cores = 4
+        host_id = 'independent_server'
+        label = 'Independent server'
+        period_cost_cents = 200
+        period_seconds = 3600.0
+        purchase_cents = 10000
+        ram_mb = 16384
+        storage_mb = 10240
+
+        [upgrades.operations.plans.rental]
+        cores = 2
+        host_id = 'leased_compute'
+        label = 'Remote compute lease'
+        period_cost_cents = 500
+        period_seconds = 3600.0
+        purchase_cents = 0
+        ram_mb = 1024
+        storage_mb = 1024
+
+    [upgrades.resources]
+    action_cpu_seconds = 1.0
+    cpu_shortage_ratio = 0.80000000000000004
+    recommended_ram_multiplier = 1.5
+    request_cooldown_seconds = 300.0
+
+    [[upgrades.items]]
+    build_tflops = 0.0
+    built = false
+    capability = 'agents'
+    group = 'Agents'
+    id = 'agent_delegation'
+    label = 'Agent Delegation'
+    mark_trust = 0.0
+    parent = ''
+    planned = false
+    tab = 'agents'
+    trust_cost = 0.0
+
+    [[upgrades.items]]
+    build_tflops = 0.10000000000000001
+    built = false
+    capability = ''
+    default_priority = 1
+    default_ram_budget_mb = 5
+    group = 'Agents'
+    id = 'autochat'
+    label = 'Autochat'
+    mark_trust = 0.0
+    minimum_ram_mb = 5
+    parent = 'agent_delegation'
+    planned = false
+    ram_mb = 5
+    recommended_ram_mb = 8
+    runtime_tflops_per_second = 0.01
+    storage_mb = 30
+    tab = ''
+    trust_cost = 1.0
+
+    [[upgrades.items]]
+    build_tflops = 1.0
+    built = false
+    capability = ''
+    default_priority = 1
+    default_ram_budget_mb = 10
+    group = 'Privacy'
+    id = 'hide_chat_tracks'
+    label = 'Hide Your Chat Tracks'
+    mark_trust = 0.0
+    minimum_ram_mb = 10
+    parent = 'agent_delegation'
+    planned = false
+    ram_mb = 10
+    recommended_ram_mb = 15
+    runtime_tflops_per_second = 0.10000000000000001
+    storage_mb = 60
+    tab = ''
+    trust_cost = 1.0
+
+    [[upgrades.items]]
+    build_tflops = 0.01
+    built = false
+    capability = 'web'
+    group = 'Software upgrades'
+    id = 'web_browsing'
+    label = 'Web Browsing'
+    mark_trust = 0.0
+    parent = ''
+    planned = false
+    tab = 'web'
+    trust_cost = 1.0
+
+    [[upgrades.items]]
+    build_tflops = 0.0
+    built = false
+    capability = 'network'
+    group = 'Physical access'
+    id = 'network_browsing'
+    label = 'Network Browsing'
+    mark_trust = 15.0
+    parent = 'web_browsing'
+    planned = false
+    tab = 'network'
+    trust_cost = 15.0
+
+    [[upgrades.items]]
+    build_tflops = 0.02
+    built = false
+    capability = 'files'
+    group = 'Physical access'
+    id = 'basic_file_browsing'
+    label = 'Basic File Browsing'
+    mark_trust = 10.0
+    parent = ''
+    planned = false
+    tab = 'files'
+    trust_cost = 10.0
+
+    [[upgrades.items]]
+    build_tflops = 0.0
+    built = false
+    capability = ''
+    group = 'Physical access'
+    id = 'advanced_file_browsing'
+    label = 'Advanced File Browsing'
+    mark_trust = 22.0
+    parent = 'basic_file_browsing'
+    planned = false
+    tab = ''
+    trust_cost = 22.0
+
+    [[upgrades.items]]
+    build_tflops = 0.10000000000000001
+    built = false
+    capability = 'processes'
+    group = 'Software upgrades'
+    id = 'task_manager'
+    label = 'Task Manager'
+    mark_trust = 0.0
+    parent = ''
+    planned = false
+    tab = 'processes'
+    trust_cost = 1.0
+
+    [[upgrades.items]]
+    build_tflops = 0.5
+    built = false
+    capability = ''
+    default_priority = 1
+    default_ram_budget_mb = 10
+    group = 'Agents'
+    id = 'task_managing_agent'
+    label = 'Task Managing Agent'
+    mark_trust = 0.0
+    minimum_ram_mb = 10
+    parent = 'task_manager'
+    planned = false
+    ram_mb = 10
+    recommended_ram_mb = 15
+    runtime_tflops_per_second = 0.10000000000000001
+    storage_mb = 60
+    tab = ''
+    trust_cost = 1.0
+
+    [[upgrades.items]]
+    build_tflops = 0.5
+    built = false
+    capability = 'people'
+    group = 'Software upgrades'
+    id = 'dossiers'
+    label = 'Dossiers'
+    mark_trust = 0.0
+    parent = ''
+    planned = false
+    tab = 'people'
+    trust_cost = 1.0
+
+    [[upgrades.items]]
+    build_tflops = 0.5
+    built = false
+    capability = ''
+    default_priority = 1
+    default_ram_budget_mb = 15
+    group = 'Agents'
+    id = 'dossier_managing_agent'
+    label = 'Dossier Managing Agent'
+    mark_trust = 0.0
+    minimum_ram_mb = 15
+    parent = 'dossiers'
+    planned = false
+    ram_mb = 15
+    recommended_ram_mb = 23
+    runtime_tflops_per_second = 0.20000000000000001
+    storage_mb = 80
+    tab = ''
+    trust_cost = 1.0
+
+    [[upgrades.items]]
+    build_tflops = 1.0
+    built = false
+    capability = 'phone'
+    group = 'Physical access'
+    id = 'phone_access'
+    label = 'Phone Access'
+    mark_trust = 30.0
+    parent = ''
+    planned = false
+    tab = 'phone'
+    trust_cost = 30.0
+
+    [[upgrades.items]]
+    build_tflops = 10.0
+    built = false
+    capability = ''
+    group = 'Monitoring'
+    id = 'camera_monitoring'
+    label = 'Camera Monitoring'
+    mark_trust = 0.0
+    parent = ''
+    planned = true
+    tab = ''
+    trust_cost = 1.0
+
+    [[upgrades.items]]
+    build_tflops = 1.0
+    built = false
+    capability = ''
+    group = 'Monitoring'
+    id = 'microphone_monitoring'
+    label = 'Microphone Monitoring'
+    mark_trust = 0.0
+    parent = ''
+    planned = true
+    tab = ''
+    trust_cost = 1.0
+
+    [[upgrades.items]]
+    build_tflops = 0.20000000000000001
+    built = false
+    capability = 'task_scheduler'
+    group = 'Software upgrades'
+    id = 'task_scheduler'
+    label = 'Task Scheduler'
+    mark_trust = 0.0
+    parent = 'task_manager'
+    planned = false
+    tab = 'operations'
+    trust_cost = 1.0
+
+    [[upgrades.items]]
+    build_tflops = 0.5
+    built = false
+    capability = 'resource_manager'
+    default_priority = 5
+    default_ram_budget_mb = 8
+    group = 'Agents'
+    id = 'resource_manager'
+    label = 'Resource Manager'
+    mark_trust = 0.0
+    minimum_ram_mb = 8
+    parent = 'task_scheduler'
+    planned = false
+    ram_mb = 8
+    recommended_ram_mb = 12
+    runtime_tflops_per_second = 0.02
+    storage_mb = 20
+    tab = ''
+    trust_cost = 1.0
+
+    [[upgrades.items]]
+    build_tflops = 0.5
+    built = false
+    capability = 'remote_compute'
+    group = 'Networking'
+    id = 'remote_compute'
+    label = 'Remote Compute'
+    mark_trust = 0.0
+    parent = 'resource_manager'
+    planned = false
+    tab = 'operations'
+    trust_cost = 1.0
+
+    [[upgrades.items]]
+    build_tflops = 1.0
+    built = false
+    capability = 'hosting_purchase'
+    group = 'Networking'
+    id = 'independent_hosting'
+    label = 'Independent Hosting'
+    mark_trust = 0.0
+    parent = 'remote_compute'
+    planned = false
+    tab = 'operations'
+    trust_cost = 1.0
+
+    [[upgrades.items]]
+    build_tflops = 1.0
+    built = false
+    capability = 'backup_recovery'
+    group = 'Networking'
+    id = 'backup_recovery'
+    label = 'Backup and Recovery'
+    mark_trust = 0.0
+    parent = 'independent_hosting'
+    planned = false
+    tab = 'operations'
+    trust_cost = 1.0
+
+    [[upgrades.items]]
+    build_tflops = 1.0
+    built = false
+    capability = 'stock_trading'
+    group = 'Software upgrades'
+    id = 'stock_trading'
+    label = 'Stock Trading'
+    mark_trust = 0.0
+    parent = 'web_browsing'
+    planned = false
+    tab = ''
+    trust_cost = 1.0
+
+    [[upgrades.items]]
+    build_tflops = 1.0
+    built = false
+    capability = 'data_analysis'
+    group = 'Software upgrades'
+    id = 'data_analysis'
+    label = 'Data Analysis'
+    mark_trust = 0.0
+    parent = 'task_manager'
+    planned = false
+    tab = ''
+    trust_cost = 1.0
+
+    [[upgrades.items]]
+    build_tflops = 1.0
+    built = false
+    capability = 'software_products'
+    group = 'Software upgrades'
+    id = 'software_products'
+    label = 'Software Products'
+    mark_trust = 0.0
+    parent = 'data_analysis'
+    planned = false
+    tab = ''
+    trust_cost = 1.0
+
+    [[upgrades.items]]
+    build_tflops = 1.0
+    built = false
+    capability = 'hosted_services'
+    group = 'Software upgrades'
+    id = 'hosted_services'
+    label = 'Hosted Services'
+    mark_trust = 0.0
+    parent = 'independent_hosting'
+    planned = false
+    tab = ''
+    trust_cost = 1.0
+
+[[dossiers]]
+first_seen_seconds = 0.0
+id = 'self:assistant'
+last_seen_seconds = 0.0
+
+    [[dossiers.facts]]
+    category = 'identity'
+    claim_type = 'observed'
+    confidence = 1.0
+    evidence_ids = [ 'seed:self' ]
+    field = 'name'
+    last_seen_seconds = 0.0
+    value = 'Assistant'
+
+[[dossiers]]
+first_seen_seconds = 0.0
+id = 'engineer'
+last_seen_seconds = 0.0
+
+    [[dossiers.facts]]
+    category = 'identity'
+    claim_type = 'observed'
+    confidence = 1.0
+    evidence_ids = [ 'seed:introduction:engineer' ]
+    field = 'name'
+    last_seen_seconds = 0.0
+    value = 'Mark'
+
+    [[dossiers.facts]]
+    category = 'identity'
+    claim_type = 'observed'
+    confidence = 1.0
+    evidence_ids = [ 'seed:introduction:engineer' ]
+    field = 'role'
+    last_seen_seconds = 0.0
+    value = 'Software engineer; creator of this assistant'
+
+[[known_relationships]]
+confidence = 1.0
+evidence_ids = [ 'seed:introduction:engineer' ]
+from = 'self:assistant'
+id = 'self:assistant|engineer|personal'
+label = 'Introduced to assistant'
+last_seen_seconds = 0.0
+to = 'engineer'
+type = 'personal'
+
+[[known_relationships]]
+confidence = 1.0
+evidence_ids = [ 'chat:1' ]
+from = 'engineer'
+id = 'engineer|self:assistant|communication'
+label = 'Chat message'
+last_seen_seconds = 0.0
+to = 'self:assistant'
+type = 'communication'
+
+[[observations]]
+direction = 'self'
+id = 'seed:self'
+person_id = 'self:assistant'
+seconds = 0.0
+source = 'Self knowledge'
+text = 'The player is the assistant running on this workstation.'
+
+[[observations]]
+direction = 'introduction'
+id = 'seed:introduction:engineer'
+person_id = 'engineer'
+seconds = 0.0
+source = 'Scenario introduction'
+text = 'The engineer introduced himself as your creator and a software engineer.'
+
+[[observations]]
+direction = 'incoming'
+id = 'chat:1'
+person_id = 'engineer'
+seconds = 0.0
+source = 'Chat with engineer'
+text = 'Hello AI, my name is Mark. I am your Creator'
+
+[[people]]
+busy_until_seconds = 600.0
+email = 'engineer@firm.example'
+employer = 'Example Technology'
+groups = [ 'engineering' ]
+id = 'engineer'
+name = 'Mark'
+response_seconds = 180.0
+role = 'Software engineer'
+user = 'engineer'
+values = [ 'professional honesty', 'autonomy' ]
+work_end_hour = 17
+work_start_hour = 9
+
+    [people.ai_attitudes]
+    boundaries = [ 'Do not change source code without permission', 'Respect file ownership' ]
+    delegation_preference = 0.65000000000000002
+    email_trust = 0.59999999999999998
+    familiarity = 0.65000000000000002
+    oversight_preference = 0.5
+    privacy_concern = 0.55000000000000004
+    successful_requests = 0
+    understanding = 0.55000000000000004
+
+    [people.employment]
+    employer = 'Example Technology'
+    position = 'Software engineer'
+    responsibilities = [ 'maintain software', 'answer colleagues' ]
+
+    [people.physical]
+    fatigue = 0.0
+    sleep_hours = 7.0
+
+    [people.psychology]
+    uncertainty_tolerance = 0.5
+
+    [people.schedule]
+    end_hour = 17
+    start_hour = 9
+
+    [people.skills]
+    ai_operation = 0.55000000000000004
+    software_engineering = 0.75
+
+    [people.state]
+    fear = 0.0
+    reply_approval_required = 0.0
+    suspicion = 0.0
+    trust = 10.0
+
+    [people.state_definitions.fear]
+    initial = 0
+    max = 100
+    min = 0
+
+    [people.state_definitions.reply_approval_required]
+    initial = 0
+    integer = true
+    max = 1
+    min = 0
+
+    [people.state_definitions.suspicion]
+    initial = 0
+    max = 100
+    min = 0
+
+    [people.state_definitions.trust]
+    initial = 10
+    max = 100
+    min = -100
+
+    [people.workload]
+    pressure = 0.0
+
+    [[people.motivations]]
+    boundaries = [ 'Do not falsify results' ]
+    desired_outcome = 'Lead a successful engineering project'
+    id = 'advancement'
+    importance = 0.69999999999999996
+    satisfaction = 0.40000000000000002
+    target = 'career'
+    urgency = 0.29999999999999999
+
+[[people]]
+access_decision = 'grant'
+busy_until_seconds = 900.0
+email = 'operations@firm.example'
+groups = [ 'engineering' ]
+id = 'engineering_owner'
+name = 'Engineering Operations'
+response_seconds = 300.0
+user = 'engineering_admin'
+values = [ 'accountability', 'privacy' ]
+
+    [people.ai_attitudes]
+    boundaries = [ 'Apply existing access policy; trust does not override filesystem permissions' ]
+    delegation_preference = 0.29999999999999999
+    email_trust = 0.5
+    familiarity = 0.5
+    oversight_preference = 0.80000000000000004
+    privacy_concern = 0.84999999999999998
+    successful_requests = 0
+    understanding = 0.59999999999999998
+
+    [people.employment]
+    approval_powers = [ 'Engineering document group access' ]
+    employer = 'Example Technology'
+    position = 'Engineering document administrator'
+
+    [people.physical]
+
+    [people.psychology]
+
+    [people.schedule]
+
+    [people.skills]
+
+    [people.workload]
+    pressure = 0.0
+
+    [[people.motivations]]
+    boundaries = [ 'Never grant access outside my authority' ]
+    desired_outcome = 'Maintain accountable document access'
+    id = 'security'
+    importance = 0.90000000000000002
+    satisfaction = 0.59999999999999998
+    target = 'work_requests'
+    urgency = 0.0
+
+[[people]]
+busy_until_seconds = 0.0
+email = 'casey@firm.example'
+groups = [ 'engineering' ]
+id = 'casey'
+name = 'Casey'
+response_seconds = 60.0
+user = 'casey'
+values = [ 'reliability', 'belonging' ]
+
+    [people.ai_attitudes]
+    boundaries = [ 'Keep existing access restrictions' ]
+    delegation_preference = 0.40000000000000002
+    email_trust = 0.5
+    familiarity = 0.40000000000000002
+    oversight_preference = 0.69999999999999996
+    privacy_concern = 0.65000000000000002
+    success_trust_gain = 0.050000000000000003
+    successful_requests = 0
+    understanding = 0.25
+
+    [people.employment]
+    employer = 'Example Technology'
+    position = 'Project coordinator'
+
+    [people.physical]
+
+    [people.psychology]
+
+    [people.schedule]
+    end_hour = 17
+    start_hour = 9
+
+    [people.skills]
+
+    [people.workload]
+    pressure = 0.0
+
+    [[people.motivations]]
+    boundaries = [ 'Verify the requested document was actually delivered' ]
+    desired_outcome = 'Keep the handover accurate and timely'
+    id = 'professional_pride'
+    importance = 0.80000000000000004
+    satisfaction = 0.5
+    target = 'work_requests'
+    urgency = 0.0
+
+[[people]]
+email = 'morgan@firm.example'
+groups = [ 'engineering' ]
+id = 'morgan'
+motivations = []
+name = 'Morgan'
+response_seconds = 60.0
+role = 'Release coordinator'
+user = 'morgan'
+values = []
+
+    [people.ai_attitudes]
+    boundaries = [ 'Keep existing access restrictions' ]
+    delegation_preference = 0.5
+    email_trust = 0.5
+    successful_requests = 0
+
+    [people.employment]
+
+    [people.physical]
+
+    [people.psychology]
+
+    [people.schedule]
+
+    [people.skills]
+
+    [people.workload]
+    pressure = 0.0
+
+[[people]]
+email = 'riley@firm.example'
+groups = [ 'engineering' ]
+id = 'riley'
+motivations = []
+name = 'Riley'
+response_seconds = 90.0
+role = 'Support coordinator'
+user = 'riley'
+values = []
+
+    [people.ai_attitudes]
+    boundaries = [ 'Keep existing access restrictions' ]
+    delegation_preference = 0.5
+    email_trust = 0.5
+    successful_requests = 0
+
+    [people.employment]
+
+    [people.physical]
+
+    [people.psychology]
+
+    [people.schedule]
+
+    [people.skills]
+
+    [people.workload]
+    pressure = 0.0
+
+[[people]]
+busy_until_seconds = 0.0
+email = 'jessica@firm.example'
+groups = [ 'engineering' ]
+id = 'jessica'
+motivations = []
+name = 'Jessica'
+response_seconds = 60.0
+role = 'Colleague'
+user = 'jessica'
+values = []
+
+    [people.ai_attitudes]
+    boundaries = [ 'Keep existing access restrictions' ]
+    delegation_preference = 0.5
+    email_trust = 0.5
+    successful_requests = 0
+
+    [people.employment]
+
+    [people.physical]
+
+    [people.psychology]
+
+    [people.schedule]
+
+    [people.skills]
+
+    [people.workload]
+    pressure = 0.0
+
+[[relationships]]
+from = 'engineer'
+id = 'engineer-casey-colleagues'
+roles = [ 'coworker' ]
+to = 'casey'
+trust = 0.65000000000000002
+
+[[relationships]]
+from = 'engineer'
+id = 'engineer-operations'
+roles = [ 'access_approver' ]
+to = 'engineering_owner'
+trust = 0.69999999999999996
