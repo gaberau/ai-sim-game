@@ -1,3 +1,4 @@
+// Module: Expand relative TOML sources and scenario manifests with cycle/conflict validation.
 #include "ai_sim/DefinitionLoader.h"
 #include <stdexcept>
 #include <unordered_set>
@@ -49,6 +50,7 @@ toml::table read(const std::filesystem::path& path, std::unordered_set<std::stri
                   false);
         }
     }
+    // Track ancestors only: the same leaf may appear in separate branches without a cycle.
     stack.erase(canonical);
     return result;
 }

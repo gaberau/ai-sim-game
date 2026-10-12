@@ -1,3 +1,4 @@
+// Module: Decode only scheduling fields from request TOML while retaining authored request data.
 #pragma once
 
 #include "ai_sim/ProcessFields.h"
@@ -14,6 +15,7 @@ struct WorkRequestState {
     bool deadline_assessed = false;
     bool deadline_notified = false;
 
+    // Decode scheduling flags from a request without modifying its authored fields.
     static WorkRequestState read(const toml::table& request) {
         return {request["status"].value_or(std::string{}) == "resolved",
                 request["deadline_seconds"].value<double>(),
@@ -22,6 +24,7 @@ struct WorkRequestState {
                 request["deadline_notified"].value_or(false)};
     }
 
+    // Return the next deadline/assessment time; limit supplies the fallback assessment timestamp.
     std::optional<double> next_deadline_event(double limit) const {
         if (!deadline)
             return std::nullopt;

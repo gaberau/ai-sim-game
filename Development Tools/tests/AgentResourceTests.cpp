@@ -1,3 +1,4 @@
+// Verify: agent resource management. Fixtures isolate these behaviors from live player saves.
 #include "ai_sim/AgentSystem.h"
 #include "ai_sim/UpgradeSystem.h"
 #include "ai_sim/ChatSystem.h"

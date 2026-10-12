@@ -1,3 +1,4 @@
+// Module: Money-tool lifecycle, integer-cent balances, prepaid costs and recurring payments.
 #include "ai_sim/EconomySystem.h"
 #include "ai_sim/ChatSystem.h"
 #include "ai_sim/DefinitionLoader.h"

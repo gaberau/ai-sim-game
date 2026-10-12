@@ -1,3 +1,4 @@
+// Module: Stable color-role indices shared by configured palettes and terminal views.
 #pragma once
 namespace ai_sim::ui {
 // Indices match UISettings::colors and the configured ncurses pairs.

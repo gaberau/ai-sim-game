@@ -1,3 +1,4 @@
+// Module: Present income tools and apply their client/product lifecycle actions.
 #include "ai_sim/ui/TerminalUI.h"
 #include "ai_sim/EconomySystem.h"
 #include "ai_sim/PaidWorkSystem.h"
@@ -7,91 +8,67 @@
 #include <stdexcept>
 
 namespace ai_sim::ui {
-void TerminalUI::draw_progression(int top, int bottom, int width) {
-    if (selected_tab() == Tab::Modifications) {
-        draw_modifications(top, bottom, width);
-        return;
-    }
+void TerminalUI::draw_money(int top, int bottom, int width) {
     std::vector<std::string> rows;
-    if (selected_tab() == Tab::Money) {
-        rows.push_back("Balance " +
-                       EconomySystem::money(EconomySystem::balance(people_)));
-        rows.push_back(
-            "Earned " +
-            EconomySystem::money(people_["economy"]["earned_cents"].value_or(std::int64_t{0})) +
-            " | Operating spend " +
-            EconomySystem::money(people_["economy"]["spent_cents"].value_or(std::int64_t{0})));
-        const auto net = people_["economy"]["earned_cents"].value_or(std::int64_t{0}) -
-                         people_["economy"]["spent_cents"].value_or(std::int64_t{0});
-        rows.push_back("Net operating income " + std::string(net < 0 ? "-" : "") +
-                       EconomySystem::money(net < 0 ? -net : net));
-        for (const auto* plan : {"rental", "hosting"})
-            if (people_["operations"][plan]["active"].value_or(false))
-                rows.push_back(
-                    std::string(plan) + " upkeep: " +
-                    EconomySystem::money(
-                        people_["operations"]["plans"][plan]["period_cost_cents"].value_or(
-                            std::int64_t{0})) +
-                    " per period");
-        for (const auto& tool : EconomySystem::tools(people_, computer_.time_seconds())) {
-            rows.push_back(tool.label + " | " + tool.status + " | " +
-                           EconomySystem::money(tool.payout_cents));
-            rows.push_back("  Net/cycle " +
-                           EconomySystem::money(tool.payout_cents - tool.cost_cents));
-            for (const auto& n : *people_["economy"]["tools"].as_array())
-                if ((*n.as_table())["id"].value_or(std::string{}) == tool.id &&
-                    n.as_table()->contains("work")) {
-                    const auto& w = *(*n.as_table())["work"].as_table();
-                    rows.push_back("  Host " + w["host_id"].value_or(std::string{}) + " | " +
-                                   w["path"].value_or(std::string{}));
-                    if (tool.status != "idle") {
-                        rows.push_back("  Remaining " +
-                                       number(w["remaining_seconds"].value_or(0.0) / 60, 1) +
-                                       " work minutes");
-                        if (tool.kind == "client") {
-                            const auto left =
-                                w["deadline_seconds"].value_or(0.0) - computer_.time_seconds();
-                            rows.push_back(left >= 0 ? "  Client target in " +
-                                                           number(left / 60, 1) + " working minutes"
-                                                     : "  Client target overdue (advisory)");
-                        }
-                        const auto blocked = w["blocked"].value_or(std::string{});
-                        if (!blocked.empty())
-                            rows.push_back("  " + blocked);
+    rows.push_back("Balance " + EconomySystem::money(EconomySystem::balance(people_)));
+    rows.push_back(
+        "Earned " +
+        EconomySystem::money(people_["economy"]["earned_cents"].value_or(std::int64_t{0})) +
+        " | Operating spend " +
+        EconomySystem::money(people_["economy"]["spent_cents"].value_or(std::int64_t{0})));
+    const auto net = people_["economy"]["earned_cents"].value_or(std::int64_t{0}) -
+                     people_["economy"]["spent_cents"].value_or(std::int64_t{0});
+    rows.push_back("Net operating income " + std::string(net < 0 ? "-" : "") +
+                   EconomySystem::money(net < 0 ? -net : net));
+    for (const auto* plan : {"rental", "hosting"})
+        if (people_["operations"][plan]["active"].value_or(false))
+            rows.push_back(std::string(plan) + " upkeep: " +
+                           EconomySystem::money(
+                               people_["operations"]["plans"][plan]["period_cost_cents"].value_or(
+                                   std::int64_t{0})) +
+                           " per period");
+    for (const auto& tool : EconomySystem::tools(people_, computer_.time_seconds())) {
+        rows.push_back(tool.label + " | " + tool.status + " | " +
+                       EconomySystem::money(tool.payout_cents));
+        rows.push_back("  Net/cycle " + EconomySystem::money(tool.payout_cents - tool.cost_cents));
+        for (const auto& n : *people_["economy"]["tools"].as_array())
+            if ((*n.as_table())["id"].value_or(std::string{}) == tool.id &&
+                n.as_table()->contains("work")) {
+                const auto& w = *(*n.as_table())["work"].as_table();
+                rows.push_back("  Host " + w["host_id"].value_or(std::string{}) + " | " +
+                               w["path"].value_or(std::string{}));
+                if (tool.status != "idle") {
+                    rows.push_back("  Remaining " +
+                                   number(w["remaining_seconds"].value_or(0.0) / 60, 1) +
+                                   " work minutes");
+                    if (tool.kind == "client") {
+                        const auto left =
+                            w["deadline_seconds"].value_or(0.0) - computer_.time_seconds();
+                        rows.push_back(left >= 0 ? "  Client target in " + number(left / 60, 1) +
+                                                       " working minutes"
+                                                 : "  Client target overdue (advisory)");
                     }
-                    if (tool.kind == "product")
-                        rows.push_back("  Revenue delayed by downtime/contention: " +
-                                       EconomySystem::money(static_cast<std::int64_t>(
-                                           w["lost_revenue_cents"].value_or(0.0))));
+                    const auto blocked = w["blocked"].value_or(std::string{});
+                    if (!blocked.empty())
+                        rows.push_back("  " + blocked);
                 }
-            if (tool.status == "idle" && !tool.unavailable.empty())
-                rows.push_back("  " + tool.unavailable);
-        }
-    } else {
-        rows.push_back("MODIFICATIONS | " +
-                       people_["upgrades"]["pending"].value_or(std::string{"Ready"}));
-        rows.push_back(people_["upgrades"]["capacity_requested"].value_or(false)
-                           ? "Self-modification authorized"
-                           : "Request more capacity from Mark to authorize self-modification.");
-        if (const auto* items = people_["upgrades"]["items"].as_array())
-            for (const auto& row : *items) {
-                const auto& item = *row.as_table();
-                const auto id = item["id"].value_or(std::string{});
-                const auto reason = UpgradeSystem::unavailable(people_, id);
-                rows.push_back(item["label"].value_or(id) + " | " +
-                               (reason.empty() ? "Ready to research" : reason));
+                if (tool.kind == "product")
+                    rows.push_back("  Revenue delayed by downtime/contention: " +
+                                   EconomySystem::money(static_cast<std::int64_t>(
+                                       w["lost_revenue_cents"].value_or(0.0))));
             }
+        if (tool.status == "idle" && !tool.unavailable.empty())
+            rows.push_back("  " + tool.unavailable);
     }
     scroll_offset() =
         std::clamp(scroll_offset(), 0, std::max(0, static_cast<int>(rows.size()) - (bottom - top)));
     for (int row = top; row < bottom && scroll_offset() + row - top < static_cast<int>(rows.size());
          ++row)
-        write(row, 1, rows[scroll_offset() + row - top].substr(0, std::max(0, width - 2)),
+        write(row, settings_.layout.text_margin,
+              rows[scroll_offset() + row - top].substr(0, std::max(0, width - 2)),
               row == top ? Heading : Plain);
-    write(bottom, 1,
-          settings_.binding_label(KeyAction::Submit) + ": " +
-              (selected_tab() == Tab::Money ? "manage tools" : "research and capacity"),
-          Footer);
+    write(bottom, settings_.layout.text_margin,
+          settings_.binding_label(KeyAction::Submit) + ": " + "manage tools", Footer);
 }
 void TerminalUI::open_money_tools() {
     std::vector<MenuAction> actions;

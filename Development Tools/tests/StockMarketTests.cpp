@@ -1,3 +1,4 @@
+// Verify: stock market and portfolio. Fixtures isolate these behaviors from live player saves.
 #include "ai_sim/StockMarketSystem.h"
 #include "ai_sim/EconomySystem.h"
 #include "ai_sim/ChatSystem.h"

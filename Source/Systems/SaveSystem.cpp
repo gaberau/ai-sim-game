@@ -1,3 +1,4 @@
+// Module: Validate, write and restore complete world snapshots behind named save-slot manifests.
 #include "ai_sim/DefinitionLoader.h"
 #include "ai_sim/EconomySystem.h"
 #include "ai_sim/PaidWorkSystem.h"

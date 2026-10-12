@@ -1,3 +1,4 @@
+// Module: Validate process columns, filters, sorting and alignment from TOML.
 #include "ai_sim/ui/ProcessViewConfig.h"
 
 #include "ai_sim/ProcessFields.h"

@@ -1,3 +1,6 @@
+// Module: Browse reachable hosts, preview selected files and open writable files directly for
+// editing.
+#include "ai_sim/ui/TextLayout.h"
 #include "ai_sim/ui/TerminalUI.h"
 #include "ai_sim/ui/ScreenRenderer.h"
 
@@ -10,15 +13,11 @@
 namespace ai_sim::ui {
 namespace {
 
-std::string fit(std::string value, int width) {
-    if (width <= 0)
-        return "";
-    if (value.size() > static_cast<std::size_t>(width)) {
-        value = value.substr(0, width - 1) + "~";
-    }
-    return value;
+std::string fit(const std::string& text, int width) {
+    return fit_text(text, width, "~");
 }
-
+// File previews preserve whitespace and hard-wrap long lines; prose wrapping
+// would change indentation and obscure authored file content.
 std::vector<std::string> content_lines(const std::string& content, int width) {
     std::vector<std::string> result;
     std::istringstream input(content);
@@ -223,7 +222,7 @@ void TerminalUI::draw_files(int top, int bottom, int width) {
         std::find_if(network_.hosts().begin(), network_.hosts().end(), [&](const auto& h) {
             return h.id == files_ui_.file_host_id_;
         });
-    write(top, 1,
+    write(top, settings_.layout.text_margin,
           fit("Host: " + (host == network_.hosts().end() ? files_ui_.file_host_id_ : host->name),
               width - 2),
           Heading, true);
@@ -233,15 +232,16 @@ void TerminalUI::draw_files(int top, int bottom, int width) {
     while (std::getline(path, part, '/'))
         if (!part.empty())
             breadcrumbs += " > " + part;
-    write(top + 1, 1, fit(breadcrumbs, width - 2), Resources);
+    write(top + 1, settings_.layout.text_margin, fit(breadcrumbs, width - 2), Resources);
     std::string filters = "Filter: ";
     for (const auto* category : {"all", "work", "personal", "hidden"})
         filters += files_ui_.file_category_ == category ? "[" + std::string(category) + "] "
                                                         : std::string(category) + " ";
     if (!files_ui_.file_query_.empty())
         filters += "| Search: " + files_ui_.file_query_;
-    write(top + 2, 1, fit(filters, width - 2), Footer);
-    const int body = top + 4, divider = ScreenRenderer::list_divider(width), right = divider + 2;
+    write(top + 2, settings_.layout.text_margin, fit(filters, width - 2), Footer);
+    const int body = top + 4, divider = list_divider(width),
+              right = divider + settings_.layout.pane_padding;
     const int content_width = std::max(1, width - right - 2);
     renderer_->split(body, bottom - 1, divider);
     for (int row = body; row < bottom; ++row)
@@ -250,12 +250,12 @@ void TerminalUI::draw_files(int top, int bottom, int width) {
     try {
         entries = file_entries();
     } catch (const std::exception& error) {
-        write(body, 1, fit(error.what(), width - 2), FileBlocked);
+        write(body, settings_.layout.text_margin, fit(error.what(), width - 2), FileBlocked);
         return;
     }
     if (entries.empty()) {
         files_ui_.selected_file_path_.clear();
-        write(body, 1, "No matching files.");
+        write(body, settings_.layout.text_margin, "No matching files.");
         return;
     }
     auto selected = std::find_if(entries.begin(), entries.end(), [&](const auto* entry) {
@@ -291,8 +291,9 @@ void TerminalUI::draw_files(int top, int bottom, int width) {
                                       : entry.service_kind.empty() ? "  "
                                                                    : "* ") +
                                      name;
-        write(body + line, 1, fit(std::string(item == index ? "> " : "  ") + label, divider - 2),
-              color, item == index && !files_ui_.file_details_focused_);
+        write(body + line, settings_.layout.text_margin,
+              fit(std::string(item == index ? "> " : "  ") + label, divider - 3), color,
+              item == index && !files_ui_.file_details_focused_);
     }
     const auto& entry = **selected;
     const auto [color, access] = file_access(entry);
@@ -300,7 +301,7 @@ void TerminalUI::draw_files(int top, int bottom, int width) {
                                : color == FileEdit ? "edit"
                                : color == FileRead ? "read"
                                                    : "check access";
-    write(bottom, 1,
+    write(bottom, settings_.layout.text_margin,
           fit(settings_.binding_label(KeyAction::Submit) + ": " + action + " | " +
                   settings_.binding_label(KeyAction::ToggleExpanded) + ": more | " +
                   settings_.binding_label(KeyAction::Help) + ": help",

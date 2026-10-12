@@ -1,3 +1,4 @@
+// Module: Host-scoped files, Unix-style access checks, workspace storage and managed allocations.
 #include "ai_sim/DefinitionLoader.h"
 #include "ai_sim/FileSystem.h"
 #include "ai_sim/TomlIO.h"

@@ -1,3 +1,4 @@
+// Module: Render and navigate configurable process rows without changing scheduler semantics.
 #include "ai_sim/ui/TerminalUI.h"
 
 #include "ai_sim/ProcessFields.h"

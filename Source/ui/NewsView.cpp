@@ -1,3 +1,5 @@
+// Module: Load published articles, filter editions and render the optional news ticker.
+#include "ai_sim/ui/TextLayout.h"
 #include "ai_sim/ui/TerminalUI.h"
 #include "ai_sim/ui/ScreenRenderer.h"
 
@@ -11,36 +13,7 @@
 namespace ai_sim::ui {
 namespace {
 std::string clipped(const std::string& text, int width) {
-    if (width <= 0)
-        return {};
-    if (text.size() <= static_cast<std::size_t>(width))
-        return text;
-    return width > 3 ? text.substr(0, width - 3) + "..." : text.substr(0, width);
-}
-
-std::vector<std::string> wrapped(const std::string& text, int width) {
-    std::vector<std::string> lines;
-    std::istringstream paragraphs(text);
-    std::string paragraph;
-    while (std::getline(paragraphs, paragraph)) {
-        std::istringstream words(paragraph);
-        std::string word, line;
-        while (words >> word) {
-            if (!line.empty() && line.size() + 1 + word.size() > static_cast<std::size_t>(width)) {
-                lines.push_back(line);
-                line.clear();
-            }
-            while (word.size() > static_cast<std::size_t>(width)) {
-                lines.push_back(word.substr(0, width));
-                word.erase(0, width);
-            }
-            if (!line.empty())
-                line += ' ';
-            line += word;
-        }
-        lines.push_back(line);
-    }
-    return lines;
+    return fit_text(text, width, "...");
 }
 } // namespace
 
@@ -109,18 +82,19 @@ void TerminalUI::select_news(int direction) {
 
 void TerminalUI::draw_news(int top, int bottom, int width) {
     const auto articles = available_news();
-    const int split = width * 2 / 5;
+    const int split = width * settings_.layout.news_width_percent / 100;
     renderer_->split(top, bottom - 1, split);
-    const int detail_width = std::max(1, width - split - 4);
+    const int detail_width = std::max(1, width - split - settings_.layout.pane_padding - 2);
     for (int row = top; row <= bottom; ++row) {
         line_cell(row, split, '|', Border);
     }
-    write(top, 1, "Filter: " + news_ui_.news_filter_, Heading, true);
-    write(top, split + 2, clipped(news_ui_.news_edition_, detail_width),
+    write(top, settings_.layout.text_margin, "Filter: " + news_ui_.news_filter_, Heading, true);
+    write(top, split + settings_.layout.pane_padding, clipped(news_ui_.news_edition_, detail_width),
           news_ui_.news_details_focused_ ? ActiveTab : Heading, true);
     if (articles.empty()) {
-        write(top + 2, 1, "No published stories.");
-        write(top + 2, split + 2, "Choose All stories in Actions, or wait for publication.");
+        write(top + 2, settings_.layout.text_margin, "No published stories.");
+        write(top + 2, split + settings_.layout.pane_padding,
+              "Choose All stories in Actions, or wait for publication.");
         return;
     }
     news_ui_.news_selected_ =
@@ -134,22 +108,22 @@ void TerminalUI::draw_news(int top, int bottom, int width) {
         write(
             row, 1,
             clipped(std::string(selected ? "> " : "  ") + article.category + " | " + article.source,
-                    split - 2),
+                    split - 3),
             Footer, selected);
         write(row + 1, 5, clipped(article.headline, split - 6), selected ? ActiveTab : Plain,
               selected);
     }
     const auto& selected = *articles[news_ui_.news_selected_];
     // Keep the blue metadata header above the story even while scrolling it.
-    write(top + 2, split + 2,
+    write(top + 2, split + settings_.layout.pane_padding,
           clipped(selected.category + " | " + selected.source +
                       (selected.date.empty() ? "" : " | " + selected.date),
                   detail_width),
           Footer);
     const int story_width = std::max(1, detail_width - 4);
-    auto lines = wrapped(selected.headline, story_width);
+    auto lines = wrap_text(selected.headline, story_width);
     lines.push_back("");
-    const auto body = wrapped(selected.body, story_width);
+    const auto body = wrap_text(selected.body, story_width);
     lines.insert(lines.end(), body.begin(), body.end());
     const int visible = std::max(1, bottom - top - 4);
     news_ui_.news_body_offset_ = std::clamp(news_ui_.news_body_offset_, 0,
@@ -157,7 +131,7 @@ void TerminalUI::draw_news(int top, int bottom, int width) {
     for (int i = 0; i < visible && news_ui_.news_body_offset_ + i < static_cast<int>(lines.size());
          ++i)
         write(top + 4 + i, split + 6, clipped(lines[news_ui_.news_body_offset_ + i], story_width));
-    write(bottom, 1,
+    write(bottom, settings_.layout.text_margin,
           clipped("Select: " + settings_.binding_label(KeyAction::SelectPrevious) + "/" +
                       settings_.binding_label(KeyAction::SelectNext) +
                       " | Read: " + settings_.binding_label(KeyAction::ScrollUp) + "/" +

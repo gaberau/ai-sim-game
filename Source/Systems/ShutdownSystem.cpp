@@ -1,3 +1,4 @@
+// Module: Shutdown choices, recovery requests and clean-slate resets of the current scenario.
 #include "ai_sim/ShutdownSystem.h"
 #include "ai_sim/ConversationRules.h"
 #include <algorithm>

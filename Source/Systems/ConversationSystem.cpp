@@ -1,3 +1,4 @@
+// Module: Execute authored conversation nodes, delayed replies, evidence and delivery promises.
 #include "ai_sim/ConversationSystem.h"
 #include "ai_sim/ChatSystem.h"
 #include "ai_sim/ConversationRules.h"

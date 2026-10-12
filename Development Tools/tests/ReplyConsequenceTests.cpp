@@ -1,3 +1,5 @@
+// Verify: reply consequences and authority. Fixtures isolate these behaviors from live player
+// saves.
 #include "ai_sim/ChatSystem.h"
 #include "ai_sim/ConversationSystem.h"
 #include "ai_sim/ConversationRules.h"

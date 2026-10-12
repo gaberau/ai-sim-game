@@ -1,3 +1,5 @@
+// Module: Present contacts, archived conversations, history and selectable scripted responses.
+#include "ai_sim/ui/TextLayout.h"
 #include "ai_sim/MessageReviewSystem.h"
 #include "ai_sim/ConversationRules.h"
 #include "ai_sim/OperationsSystem.h"
@@ -9,43 +11,7 @@
 #include <sstream>
 
 namespace ai_sim::ui {
-namespace {
-std::vector<std::string> wrap(const std::string& text, int width) {
-    std::vector<std::string> lines;
-    std::istringstream paragraphs(text);
-    std::string paragraph;
-    width = std::max(1, width);
-    while (std::getline(paragraphs, paragraph)) {
-        std::istringstream words(paragraph);
-        std::string line, word;
-        while (words >> word) {
-            if (!line.empty() && line.size() + word.size() + 1 > static_cast<std::size_t>(width)) {
-                lines.push_back(line);
-                line.clear();
-            }
-            while (word.size() > static_cast<std::size_t>(width)) {
-                if (!line.empty()) {
-                    lines.push_back(line);
-                    line.clear();
-                }
-                lines.push_back(word.substr(0, width));
-                word.erase(0, width);
-            }
-            if (!line.empty())
-                line += ' ';
-            line += word;
-        }
-        lines.push_back(line);
-    }
-    return lines;
-}
-std::string fit(const std::string& text, int width) {
-    return text.substr(0, std::max(0, width));
-}
-} // namespace
 bool TerminalUI::tab_available(Tab tab) const {
-    if (tab == Tab::Activity)
-        return false;
     if (tab == Tab::Modifications)
         return ChatSystem::interface_visible(people_) && ChatSystem::connected(people_) &&
                people_["upgrades"].is_table() &&
@@ -58,13 +24,10 @@ bool TerminalUI::tab_available(Tab tab) const {
     if (tab == Tab::Web)
         return ChatSystem::interface_visible(people_) && ChatSystem::connected(people_) &&
                ChatSystem::available(people_, people_.contains("upgrades") ? "web" : "network");
-    const char* names[] = {"chat",  "processes", "activity",      "network",   "files",
-                           "news",  "ai",        "people",        "web",       "agents",
-                           "phone", "money",     "modifications", "operations"};
+    const char* names[] = {"chat",  "processes",     "network",   "files",  "news",
+                           "ai",    "people",        "web",       "agents", "phone",
+                           "money", "modifications", "operations"};
     return tab != Tab::Count && ChatSystem::tab_visible(people_, names[static_cast<int>(tab)]);
-}
-void TerminalUI::cycle_tab(int direction) {
-    root_.cycle_workspace(direction);
 }
 std::vector<toml::table> TerminalUI::chat_options() const {
     if (ChatSystem::stopped(people_))
@@ -113,9 +76,6 @@ std::vector<toml::table> TerminalUI::chat_options(const ChatLine& line) const {
         if (matches)
             return options;
     }
-    if (fallback.empty() && next_chat_response_time())
-        return {toml::table{
-            {"id", "ui-wait"}, {"text", "Wait for the next response"}, {"ui_action", "wait"}}};
     return fallback;
 }
 std::optional<double> TerminalUI::next_chat_response_time() const {
@@ -141,16 +101,6 @@ void TerminalUI::respond_chat(const toml::table& choice) {
             messages_ui_.chat_follow_latest_ = true;
             messages_ui_.chat_message_id_.clear();
             messages_ui_.chat_choice_selected_ = messages_ui_.chat_offset_ = 0;
-        } else if (*action == "wait") {
-            if (const auto next = next_chat_response_time()) {
-                const auto before = computer_.time_seconds();
-                advance_time(std::max(0.0, *next - before));
-                notify_email_arrivals(before);
-                update_people();
-                messages_ui_.chat_follow_latest_ = true;
-                messages_ui_.chat_choice_selected_ = messages_ui_.chat_offset_ = 0;
-            } else
-                add_log("No responses are pending.");
         }
         return;
     }
@@ -278,26 +228,6 @@ ChatLine TerminalUI::selected_chat_line(const std::vector<ChatLine>& timeline) c
             return *i;
     return {};
 }
-void TerminalUI::select_chat_message(int direction) {
-    const auto timeline = ChatSystem::timeline(people_, emails_, messages_ui_.chat_contact_id_,
-                                               computer_.time_seconds());
-    std::vector<ChatLine> incoming;
-    for (const auto& line : timeline)
-        if (!line.outgoing)
-            incoming.push_back(line);
-    if (incoming.empty())
-        return;
-    const auto current = selected_chat_line(timeline);
-    auto found = std::find_if(incoming.begin(), incoming.end(), [&](const auto& line) {
-        return line.id == current.id;
-    });
-    const int index = std::clamp(static_cast<int>(found - incoming.begin()) + direction, 0,
-                                 static_cast<int>(incoming.size()) - 1);
-    messages_ui_.chat_message_id_ = incoming[index].id;
-    messages_ui_.chat_follow_latest_ = index == static_cast<int>(incoming.size()) - 1;
-    messages_ui_.chat_choice_selected_ = 0;
-    messages_ui_.chat_offset_ = -1;
-}
 void TerminalUI::select_chat(int direction) {
     const auto options = chat_options();
     if (!messages_ui_.chat_contacts_focused_ && !options.empty()) {
@@ -311,7 +241,7 @@ void TerminalUI::select_chat(int direction) {
         messages_ui_.chat_offset_ = std::max(0, messages_ui_.chat_offset_ + direction);
         return;
     }
-    const auto contacts = ChatSystem::contacts(people_, emails_, computer_.time_seconds());
+    const auto contacts = visible_chat_contacts();
     auto found = std::find_if(contacts.begin(), contacts.end(), [this](const auto& c) {
         return c.id == messages_ui_.chat_contact_id_;
     });
@@ -327,6 +257,41 @@ void TerminalUI::select_chat(int direction) {
     messages_ui_.chat_choice_selected_ = 0;
     messages_ui_.chat_offset_ = 0;
     messages_ui_.chat_follow_latest_ = true;
+}
+// Archive filtering is presentation-only. Core contact discovery and scheduled
+// conversations continue even when their contact is hidden from the active list.
+std::vector<ChatContact> TerminalUI::visible_chat_contacts() const {
+    auto contacts = ChatSystem::contacts(people_, emails_, computer_.time_seconds());
+    if (!ChatSystem::contacts_visible(people_))
+        return contacts;
+    std::erase_if(contacts, [this](const auto& c) {
+        return people_["chat"]["archived_contacts"][c.id].template value_or(false) !=
+               messages_ui_.show_archived_;
+    });
+    return contacts;
+}
+void TerminalUI::archive_current_chat() {
+    if (!ChatSystem::contacts_visible(people_) || messages_ui_.chat_contact_id_.empty())
+        return;
+    auto& chat = *people_["chat"].as_table();
+    if (!chat["archived_contacts"].is_table())
+        chat.insert_or_assign("archived_contacts", toml::table{});
+    chat["archived_contacts"].as_table()->insert_or_assign(messages_ui_.chat_contact_id_,
+                                                           !messages_ui_.show_archived_);
+    add_log(messages_ui_.show_archived_ ? "Chat restored" : "Chat archived", NoticeKind::Success);
+    messages_ui_.chat_contact_id_.clear();
+    messages_ui_.chat_message_id_.clear();
+    messages_ui_.chat_follow_latest_ = true;
+    messages_ui_.chat_choice_selected_ = messages_ui_.chat_offset_ = 0;
+}
+void TerminalUI::toggle_archived_chats() {
+    if (!ChatSystem::contacts_visible(people_))
+        return;
+    messages_ui_.show_archived_ = !messages_ui_.show_archived_;
+    messages_ui_.chat_contact_id_.clear();
+    messages_ui_.chat_message_id_.clear();
+    messages_ui_.chat_follow_latest_ = true;
+    messages_ui_.chat_choice_selected_ = messages_ui_.chat_offset_ = 0;
 }
 void TerminalUI::choose_chat() {
     const auto& options = messages_ui_.displayed_chat_options_;
@@ -369,7 +334,7 @@ void TerminalUI::draw_opening(int height, int width) {
     if (messages_ui_.displayed_chat_line_.speaker != "system") {
         rows.push_back({"Mark", Heading, true});
         rows.push_back({"", Plain, false});
-        for (const auto& line : wrap(messages_ui_.displayed_chat_line_.text, wrap_width))
+        for (const auto& line : wrap_text(messages_ui_.displayed_chat_line_.text, wrap_width))
             rows.push_back({line, Plain, false});
         rows.push_back({"", Plain, false});
     }
@@ -383,13 +348,16 @@ void TerminalUI::draw_opening(int height, int width) {
         auto label = options[i]["text"].value_or(std::string{});
         if (disabled)
             label += " [unavailable]";
-        const auto lines = wrap(label, std::max(1, wrap_width - 3));
+        const auto lines = wrap_text(label, std::max(1, wrap_width - 3));
         for (std::size_t j = 0; j < lines.size(); ++j)
             rows.push_back({std::string(j == 0 ? (active ? "> " : "  ") : "  ") + lines[j],
                             active ? ActiveTab : Plain, active, disabled});
         if (active && disabled)
-            for (const auto& line : wrap(reason, wrap_width - 3))
+            for (const auto& line : wrap_text(reason, wrap_width - 3))
                 rows.push_back({"  " + line, Footer, false});
+        if (i + 1 < static_cast<int>(options.size()))
+            for (int gap = 0; gap < settings_.layout.response_gap; ++gap)
+                rows.push_back({"", Plain, false});
     }
     const int capacity = std::max(1, height - 4);
     int first = std::clamp(messages_ui_.chat_offset_, 0,
@@ -412,20 +380,33 @@ void TerminalUI::draw_opening(int height, int width) {
                                  "Esc/" + settings_.binding_label(KeyAction::GameMenu) +
                                  ": menu | " + settings_.binding_label(KeyAction::Help) + ": help";
     draw_notification(height - 2, width);
-    write(height - 1, 1, fit(controls, width - 2), Footer);
+    write(height - 1, settings_.layout.text_margin, fit_text(controls, width - 2), Footer);
     ChatSystem::mark_read(people_, "engineer");
 }
 void TerminalUI::draw_chat(int top, int bottom, int width) {
     const bool local = !ChatSystem::contacts_visible(people_);
     if (local)
         messages_ui_.chat_contacts_focused_ = false;
-    const int split = local ? 0 : ScreenRenderer::list_divider(width);
-    const int left = local ? 2 : split + 2;
+    const int split = local ? 0 : list_divider(width);
+    const int left =
+        local ? settings_.layout.text_margin + 1 : split + settings_.layout.pane_padding;
     const int text_width = std::max(1, width - left - 2);
-    const auto contacts = ChatSystem::contacts(people_, emails_, computer_.time_seconds());
+    const auto contacts = visible_chat_contacts();
+    if (!local && std::none_of(contacts.begin(), contacts.end(), [this](const auto& c) {
+            return c.id == messages_ui_.chat_contact_id_;
+        })) {
+        messages_ui_.chat_contact_id_ = contacts.empty() ? std::string{} : contacts.front().id;
+        messages_ui_.chat_choice_selected_ = messages_ui_.chat_offset_ = 0;
+        messages_ui_.chat_follow_latest_ = true;
+        messages_ui_.chat_message_id_.clear();
+    }
     if (!local) {
         renderer_->split(top, bottom - 1, split);
-        write(top, 1, messages_ui_.chat_contacts_focused_ ? "[ PEOPLE ]" : "PEOPLE",
+        write(top, settings_.layout.text_margin,
+              messages_ui_.show_archived_
+                  ? settings_.label("chat_archived_heading", "ARCHIVED CHATS")
+              : messages_ui_.chat_contacts_focused_ ? "[ PEOPLE ]"
+                                                    : "PEOPLE",
               messages_ui_.chat_contacts_focused_ ? ActiveTab : Heading, true);
         for (int row = top + 1; row < bottom; ++row)
             line_cell(row, split, '|', Border);
@@ -434,30 +415,53 @@ void TerminalUI::draw_chat(int top, int bottom, int width) {
         });
         const int index =
             selected == contacts.end() ? 0 : static_cast<int>(selected - contacts.begin());
-        const int visible = std::max(1, bottom - top - 1), first = std::max(0, index - visible + 1);
+        const int visible = std::max(1, bottom - top - 4), first = std::max(0, index - visible + 1);
         for (int i = first; i < static_cast<int>(contacts.size()) && i < first + visible; ++i) {
             const auto& c = contacts[i];
-            write(top + 1 + i - first, 1,
-                  fit(std::string(c.id == messages_ui_.chat_contact_id_ ? "> " : "  ") + c.name +
-                          (c.unread ? " (" + std::to_string(c.unread) + ")" : ""),
-                      split - 2),
+            write(top + 1 + i - first, settings_.layout.text_margin,
+                  fit_text(std::string(c.id == messages_ui_.chat_contact_id_ ? "> " : "  ") +
+                               c.name + (c.unread ? " (" + std::to_string(c.unread) + ")" : ""),
+                           split - 3),
                   c.id == messages_ui_.chat_contact_id_ ? ActiveTab : Plain,
                   c.id == messages_ui_.chat_contact_id_);
         }
     }
+    if (!local) {
+        if (contacts.empty())
+            write(top + 2, settings_.layout.text_margin,
+                  messages_ui_.show_archived_
+                      ? settings_.label("chat_empty_archived", "No archived chats")
+                      : settings_.label("chat_empty_active", "No active chats"),
+                  Footer);
+        if (!contacts.empty())
+            write(bottom - 2, settings_.layout.text_margin,
+                  "[" + settings_.binding_label(KeyAction::ArchiveChat) + ": " +
+                      (messages_ui_.show_archived_ ? settings_.label("chat_restore", "Restore")
+                                                   : settings_.label("chat_archive", "Archive")) +
+                      "]",
+                  Footer);
+        write(bottom - 1, settings_.layout.text_margin,
+              "[" + settings_.binding_label(KeyAction::ToggleArchivedChats) + ": " +
+                  (messages_ui_.show_archived_
+                       ? settings_.label("chat_active_list", "Active chats")
+                       : settings_.label("chat_archived_list", "Archived chats")) +
+                  "]",
+              Footer);
+    }
     const auto contact = std::find_if(contacts.begin(), contacts.end(), [this](const auto& c) {
         return c.id == messages_ui_.chat_contact_id_;
     });
-    const std::string name = contact == contacts.end() ? "Engineer" : contact->name;
-    write(top, left, name, messages_ui_.chat_contacts_focused_ ? Heading : ActiveTab,
-          true);
+    const std::string name = contact == contacts.end()
+                                 ? (local ? "Engineer" : "No conversation selected")
+                                 : contact->name;
+    write(top, left, name, messages_ui_.chat_contacts_focused_ ? Heading : ActiveTab, true);
     using Row = ScreenRenderer::TextRow;
     std::vector<Row> rows;
     const auto context = ConversationSystem::context(people_, messages_ui_.chat_contact_id_,
                                                      computer_.time_seconds());
     int context_rows = std::min(3, static_cast<int>(context.size()));
     for (int i = 0; i < context_rows; ++i)
-        write(top + 1 + i, left, fit(context[i], text_width),
+        write(top + 1 + i, left, fit_text(context[i], text_width),
               context[i].starts_with("Delivery commitment: broken")      ? Protected
               : context[i].starts_with("Delivery commitment: fulfilled") ? Stoppable
               : context[i].starts_with("Delivery commitment: open")      ? Player
@@ -484,13 +488,14 @@ void TerminalUI::draw_chat(int top, int bottom, int width) {
                         selected        ? ActiveTab
                         : line.outgoing ? Player
                                         : Heading});
-        for (const auto& text : wrap(line.text, text_width - 2))
+        for (const auto& text : wrap_text(line.text, text_width - 2))
             rows.push_back({"  " + text, Plain});
         rows.push_back({"", Plain});
     }
     if (rows.empty())
         rows.push_back({"No messages yet.", Plain});
-    const auto options = chat_options(selected_line);
+    const auto options =
+        !local && contacts.empty() ? std::vector<toml::table>{} : chat_options(selected_line);
     messages_ui_.displayed_chat_options_ = options;
     struct OptionRow {
         int index;
@@ -498,13 +503,20 @@ void TerminalUI::draw_chat(int top, int bottom, int width) {
     };
     std::vector<OptionRow> option_rows;
     for (int i = 0; i < static_cast<int>(options.size()); ++i) {
-        const auto wrapped = wrap(options[i]["text"].value_or(std::string{}), text_width - 3);
+        if (i > 0)
+            for (int gap = 0; gap < settings_.layout.response_gap; ++gap)
+                option_rows.push_back({-1, ""});
+        const auto wrapped = wrap_text(options[i]["text"].value_or(std::string{}), text_width - 3);
         for (std::size_t j = 0; j < wrapped.size(); ++j)
             option_rows.push_back({i, std::string(j == 0 ? "  " : "   ") + wrapped[j]});
     }
-    const int choice_rows = options.empty() ? 2
-                                            : std::min(static_cast<int>(option_rows.size()) + 2,
-                                                       std::max(3, (bottom - top) / 2));
+    const int choice_rows =
+        options.empty()
+            ? 2
+            : std::min(static_cast<int>(option_rows.size()) + 2 +
+                           settings_.layout.response_heading_gap,
+                       std::max(3 + settings_.layout.response_heading_gap,
+                                (bottom - top) * settings_.layout.response_height_percent / 100));
     const int visible = std::max(1, bottom - top - 1 - choice_rows - context_rows);
     if (messages_ui_.chat_follow_latest_)
         messages_ui_.chat_offset_ = std::max(0, static_cast<int>(rows.size()) - visible);
@@ -517,10 +529,9 @@ void TerminalUI::draw_chat(int top, int bottom, int width) {
     std::string response_controls;
     if (!options.empty()) {
         const int choice_top = bottom - choice_rows;
-        const auto ui_action = options.front()["ui_action"].value_or(std::string{});
-        const std::string status = !messages_ui_.chat_follow_latest_ ? "READING HISTORY"
-                                   : ui_action == "wait"             ? "WAITING FOR A RESPONSE"
-                                                                     : "YOUR RESPONSE";
+        const std::string status = !messages_ui_.chat_follow_latest_
+                                       ? settings_.label("chat_history", "READING HISTORY")
+                                       : settings_.label("chat_response", "YOUR RESPONSE");
         response_controls = messages_ui_.chat_contacts_focused_
                                 ? settings_.binding_label(KeyAction::Submit) + ": open conversation"
                                 : settings_.binding_label(KeyAction::SelectPrevious) + "/" +
@@ -536,10 +547,15 @@ void TerminalUI::draw_chat(int top, int bottom, int width) {
                 selected_row = i;
                 break;
             }
-        const int first = std::min(
-            selected_row, std::max(0, static_cast<int>(option_rows.size()) - (choice_rows - 2)));
-        for (int i = first; i < static_cast<int>(option_rows.size()) && i < first + choice_rows - 2;
+        const int first =
+            std::min(selected_row,
+                     std::max(0, static_cast<int>(option_rows.size()) -
+                                     (choice_rows - 2 - settings_.layout.response_heading_gap)));
+        for (int i = first; i < static_cast<int>(option_rows.size()) &&
+                            i < first + choice_rows - 2 - settings_.layout.response_heading_gap;
              ++i) {
+            if (option_rows[i].index < 0)
+                continue;
             const bool active = option_rows[i].index == messages_ui_.chat_choice_selected_;
             auto text = option_rows[i].text;
             if (active && (i == 0 || option_rows[i - 1].index != option_rows[i].index))
@@ -548,23 +564,24 @@ void TerminalUI::draw_chat(int top, int bottom, int width) {
                 !options[option_rows[i].index]["disabled_reason"].value_or(std::string{}).empty();
             if (disabled)
                 text += " [unavailable]";
-            write(choice_top + 1 + i - first, left, text, active ? ActiveTab : Plain, active,
-                  disabled);
+            write(choice_top + 1 + settings_.layout.response_heading_gap + i - first, left, text,
+                  active ? ActiveTab : Plain, active, disabled);
         }
     } else
-        write(bottom - choice_rows, left, "NO RESPONSE NEEDED", Heading, true);
+        write(bottom - choice_rows, left,
+              next_chat_response_time() ? settings_.label("chat_waiting", "Waiting for reply")
+                                        : settings_.label("chat_no_response", "NO RESPONSE NEEDED"),
+              Heading, true);
     const std::string hint = local ? ""
                                    : settings_.binding_label(KeyAction::FocusLeft) + "/" +
                                          settings_.binding_label(KeyAction::FocusRight) +
                                          ": contacts / conversation";
-    write(bottom, 1,
-          fit(response_controls + (!response_controls.empty() && !hint.empty() ? " | " : "") + hint,
-              width - 2),
+    write(bottom, settings_.layout.text_margin,
+          fit_text(response_controls + (!response_controls.empty() && !hint.empty() ? " | " : "") +
+                       hint,
+                   width - 2),
           Footer);
-    if (messages_ui_.chat_follow_latest_)
+    if (messages_ui_.chat_follow_latest_ && !messages_ui_.chat_contact_id_.empty())
         ChatSystem::mark_read(people_, messages_ui_.chat_contact_id_);
-}
-void TerminalUI::open_chat_actions() {
-    choose_chat();
 }
 } // namespace ai_sim::ui

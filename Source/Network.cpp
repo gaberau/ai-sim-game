@@ -1,3 +1,4 @@
+// Module: Known hosts, links, reachability and player access to the simulated network.
 #include <algorithm>
 #include "ai_sim/DefinitionLoader.h"
 #include "ai_sim/Network.h"

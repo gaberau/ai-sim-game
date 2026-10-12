@@ -1,3 +1,4 @@
+// Verify: responsibility and automation. Fixtures isolate these behaviors from live player saves.
 #include "ai_sim/DelegationSystem.h"
 #include "ai_sim/EmailSystem.h"
 #include "ai_sim/WorkdaySystem.h"

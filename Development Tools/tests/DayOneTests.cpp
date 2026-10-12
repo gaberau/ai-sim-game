@@ -1,3 +1,4 @@
+// Verify: day one restarts and rules. Fixtures isolate these behaviors from live player saves.
 #include "ai_sim/ChatSystem.h"
 #include "ai_sim/ChatResponses.h"
 #include "ai_sim/ConversationRules.h"

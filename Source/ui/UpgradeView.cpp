@@ -1,3 +1,5 @@
+// Module: Group research options and show costs, prerequisites and runtime budgets beside
+// selection.
 #include "ai_sim/ui/TerminalUI.h"
 #include "ai_sim/ui/ScreenRenderer.h"
 #include "ai_sim/UpgradeSystem.h"
@@ -30,7 +32,7 @@ void TerminalUI::draw_modifications(int top, int bottom, int width) {
     const auto order = upgrade_order(people_);
     const int count = static_cast<int>(order.size());
     modifications_ui_.upgrade_selected_ = std::clamp(modifications_ui_.upgrade_selected_, 0, count);
-    const int split = ScreenRenderer::list_divider(width);
+    const int split = list_divider(width);
     renderer_->split(top, bottom - 1, split);
     for (int row = top; row < bottom; ++row)
         line_cell(row, split, '|', Border);
@@ -58,7 +60,7 @@ void TerminalUI::draw_modifications(int top, int bottom, int width) {
     if (first > 0 && rows[first].selection >= 0) {
         const auto index = rows[first].selection;
         if (index > 0)
-            write(top, 1,
+            write(top, settings_.layout.text_margin,
                   (*(*items)[order[index - 1]].as_table())["group"].value_or(
                       std::string{"Other upgrades"}),
                   Heading, true);
@@ -66,18 +68,18 @@ void TerminalUI::draw_modifications(int top, int bottom, int width) {
     for (int i = first; i < static_cast<int>(rows.size()) && i < first + visible; ++i) {
         const bool heading = rows[i].selection < 0;
         const bool selected = rows[i].selection == modifications_ui_.upgrade_selected_;
-        write(top + 1 + i - first, 1,
+        write(top + 1 + i - first, settings_.layout.text_margin,
               (std::string(heading    ? ""
                            : selected ? "> "
                                       : "  ") +
                rows[i].label)
-                  .substr(0, split - 2),
+                  .substr(0, split - 3),
               heading    ? Heading
               : selected ? ActiveTab
                          : Plain,
               heading || selected);
     }
-    const int left = split + 2;
+    const int left = split + settings_.layout.pane_padding;
     std::vector<ScreenRenderer::TextRow> details;
     const int detail_width = width - left - 2;
     const auto detail = [&](const std::string& text, int color = Plain) {
@@ -194,7 +196,7 @@ void TerminalUI::draw_modifications(int top, int bottom, int width) {
                    std::max(0, static_cast<int>(details.size()) - detail_visible));
     renderer_->scroll_text("upgrade-details", details, modifications_ui_.upgrade_detail_offset_,
                            top, left, detail_visible, detail_width);
-    write(bottom, 1,
+    write(bottom, settings_.layout.text_margin,
           settings_.binding_label(KeyAction::SelectPrevious) + "/" +
               settings_.binding_label(KeyAction::SelectNext) + ": upgrade | " +
               settings_.binding_label(KeyAction::ScrollUp) + "/" +

@@ -1,3 +1,4 @@
+// Module: Child-owned presentation state; selections and buffers survive navigation and resize.
 #pragma once
 #include "ai_sim/ChatSystem.h"
 #include "ai_sim/Email.h"
@@ -8,7 +9,10 @@
 
 namespace ai_sim::ui {
 // These state objects live inside RootUI's child pages. They survive navigation/resizing.
+// Contact selection, archive-list focus and response/history viewport state. Archive flags
+// themselves live in the saved world.
 struct MessagesPageState {
+    bool show_archived_ = false;
     std::string chat_contact_id_ = "engineer";
     bool chat_contacts_focused_ = false;
     int chat_offset_ = 0, chat_choice_selected_ = 0;
@@ -17,6 +21,7 @@ struct MessagesPageState {
     ChatLine displayed_chat_line_;
     std::vector<toml::table> displayed_chat_options_;
 };
+// Visible process selection, expansion and configurable list scroll positions.
 struct ProcessesPageState {
     int process_offset_ = 0;
     int process_display_row_count_ = 0;
@@ -25,6 +30,7 @@ struct ProcessesPageState {
     std::unordered_set<std::string> expanded_processes_;
     bool reveal_selection_ = true;
 };
+// Selected host and independent map/detail viewport coordinates.
 struct NetworkPageState {
     std::string selected_network_host_id_;
     double network_pan_x_ = 0.0;
@@ -33,6 +39,7 @@ struct NetworkPageState {
     bool network_details_focused_ = false;
     int network_detail_offset_ = 0;
 };
+// Current host/path/filter and independent tree/preview scrolling.
 struct FilesPageState {
     std::string file_host_id_;
     std::string file_directory_ = "/";
@@ -43,6 +50,7 @@ struct FilesPageState {
     int file_list_offset_ = 0;
     int file_content_offset_ = 0;
 };
+// Loaded articles, publication filtering and news ticker presentation state.
 struct NewsPageState {
     struct NewsArticle {
         std::string id, category, headline, source, date, body;
@@ -57,6 +65,7 @@ struct NewsPageState {
     bool news_ticker_enabled_ = true;
     double news_ticker_seconds_ = 120.0;
 };
+// Player-visible person selection, evidence expansion and saved per-person viewport positions.
 struct DossiersPageState {
     struct DossierPosition {
         int offset = 0, section = 0;
@@ -74,6 +83,7 @@ struct DossiersPageState {
     std::unordered_map<std::string, DossierPosition> dossier_positions_;
     std::unordered_map<std::string, std::size_t> people_map_slots_;
 };
+// Selected agent/control and detail scrolling; resource budgets live in world state.
 struct AgentsPageState {
     int action_selected_ = 0;
     int detail_offset_ = 0;
@@ -81,13 +91,16 @@ struct AgentsPageState {
     int agent_selected_ = 0;
     bool agent_reveal_ = false;
 };
+// Selected research row and cost/detail viewport.
 struct ModificationsPageState {
     int upgrade_detail_offset_ = 0;
     int upgrade_selected_ = 0;
 };
+// Selected scheduling/infrastructure operation.
 struct OperationsPageState {
     int operations_selected_ = 0;
 };
+// Transient file/email working copies; saving writes through validated subsystem APIs.
 struct EditorPageState {
     enum class EmailFolder { Inbox, Starred, Unread, Archived };
     EmailFolder email_folder_ = EmailFolder::Inbox;
@@ -107,6 +120,7 @@ struct EditorPageState {
     int editor_cursor_row_ = 0;
     int editor_cursor_column_ = 2;
 };
+// Action presentation and callbacks; RootUI borrows availability to maintain focus.
 struct MenuPageState {
     struct MenuAction {
         std::string label;
@@ -122,6 +136,7 @@ struct MenuPageState {
     int menu_selected_ = 0;
     int menu_offset_ = 0;
 };
+// Transient text/key capture; callback validation decides whether entry can close.
 struct TextPageState {
     std::function<void(const std::string&)> text_submit_;
     std::function<void()> text_back_;
@@ -129,9 +144,11 @@ struct TextPageState {
     bool key_capture_active_ = false;
     std::string text_title_, text_hint_, text_value_;
 };
+// A separate scroll position for each simple informational workspace.
 struct ScrollPageState {
     int ai_offset_ = 0;
 };
+// Current in-game address and selected authored link.
 struct WebPageState {
     std::string browser_address_ = "about:home";
     int web_selected_ = 0, web_offset_ = 0;

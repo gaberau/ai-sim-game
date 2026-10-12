@@ -11,7 +11,6 @@ editor_max_bytes = 1048576
 refresh_milliseconds = 100
 scroll_step = 5
 history_limit = 200
-activity_bar_width = 8
 notification_success_seconds = 8
 notification_error_seconds = 15
 opening_text_width = 64
@@ -154,3 +153,90 @@ id = 20
 state = 10
 cpu_used = 16
 ram_used = 16
+
+# Geometry in terminal rows/columns. Higher margins may require a larger minimum_rows.
+[layout]
+workspace_top_gap = 1
+workspace_bottom_gap = 1
+text_margin = 2
+pane_padding = 3
+response_gap = 1
+response_heading_gap = 1
+response_height_percent = 50
+list_width_percent = 33
+list_min_width = 26
+list_max_width = 36
+operations_width_percent = 33
+operations_min_width = 24
+operations_max_width = 40
+minimum_columns = 80
+minimum_rows = 24
+dialog_max_width = 92
+dialog_max_height = 22
+news_width_percent = 40
+email_editor_width_percent = 50
+
+# Reordering/hiding pages cannot unlock capabilities. Messages cannot be hidden.
+# IDs omitted from order are appended in registration order.
+[pages]
+order = ["messages", "processes", "network", "files", "news", "ai", "dossiers", "web", "agents", "phone", "money", "modifications", "operations"]
+hidden = []
+
+[pages.labels]
+messages = "Chat"
+processes = "Processes"
+network = "Network"
+files = "Files"
+news = "News"
+ai = "AI"
+dossiers = "Dossiers"
+web = "Web"
+agents = "Agents"
+phone = "Phone"
+money = "Money"
+modifications = "Modifications"
+operations = "Operations"
+
+# Hide individual chrome elements while retaining their keyboard controls.
+[chrome]
+clock = true
+resources = true
+notifications = true
+controls = true
+tabs = true
+
+# Visible labels only: action IDs and game rules remain unchanged.
+# Menu labels also accept menu_ + lowercase words joined by underscores,
+# e.g. menu_save_and_quit = "Save & exit".
+[labels]
+chat_response = "YOUR RESPONSE"
+chat_history = "READING HISTORY"
+chat_waiting = "Waiting for reply"
+chat_no_response = "NO RESPONSE NEEDED"
+chat_archived_heading = "ARCHIVED CHATS"
+chat_empty_archived = "No archived chats"
+chat_empty_active = "No active chats"
+chat_archive = "Archive"
+chat_restore = "Restore"
+chat_active_list = "Active chats"
+chat_archived_list = "Archived chats"
+agent_pause = "Pause"
+agent_resume = "Resume"
+agent_deploy = "Deploy"
+agent_stop = "Stop"
+agent_cpu_limit = "CPU limit"
+agent_ram_budget = "RAM budget"
+agent_priority = "Priority"
+agent_repair_installation = "Repair installation"
+agent_processes = "Processes"
+agent_research_upgrades = "Research upgrades"
+operation_task_scheduler = "Task Scheduler"
+operation_resource_manager = "Resource Manager"
+operation_remote_compute = "Remote Compute"
+operation_hosting_purchase = "Independent Hosting"
+operation_backup_recovery = "Backup and Recovery"
+menu_game_menu = "Game menu"
+menu_save_and_quit = "Save and quit"
+workday_ended = "WORKDAY ENDED"
+paused = "PAUSED"
+menu_state = "MENU"

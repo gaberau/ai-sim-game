@@ -1,3 +1,4 @@
+// Module: Simulated quotes, history, orders, fees and persistent trade accounting.
 #include "ai_sim/StockMarketSystem.h"
 #include "ai_sim/EconomySystem.h"
 #include "ai_sim/ChatSystem.h"

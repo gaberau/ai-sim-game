@@ -23,3 +23,6 @@ quit = ["Ctrl+C", "Ctrl+D"]
 
 editor_save = ["F3"]
 editor_cancel = ["F4"]
+
+archive_chat = ["a"]
+toggle_archived_chats = ["v"]

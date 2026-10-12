@@ -1,3 +1,4 @@
+// Verify: paid work and products. Fixtures isolate these behaviors from live player saves.
 #include "ai_sim/EconomySystem.h"
 #include "ai_sim/UpgradeSystem.h"
 #include "ai_sim/ChatSystem.h"

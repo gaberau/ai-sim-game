@@ -1,3 +1,4 @@
+// Module: Round-trip computer state and process metadata through validated TOML snapshots.
 #include "ai_sim/Computer.h"
 #include "ai_sim/TomlIO.h"
 #include <algorithm>

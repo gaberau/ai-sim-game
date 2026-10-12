@@ -1,3 +1,4 @@
+// Module: Navigate authored in-game websites and dispatch their links to the relevant game tools.
 #include "ai_sim/ui/TerminalUI.h"
 #include "ai_sim/StockMarketSystem.h"
 #include "ai_sim/EconomySystem.h"
@@ -27,7 +28,7 @@ void TerminalUI::open_web_address() {
         web_ui_.browser_address_);
 }
 void TerminalUI::draw_web(int top, int bottom, int width) {
-    write(top, 1, "Address: " + web_ui_.browser_address_, Heading, true);
+    write(top, settings_.layout.text_margin, "Address: " + web_ui_.browser_address_, Heading, true);
     const auto site_title =
         people_["stock_market"]["website_title"].value_or(std::string{"Sim Exchange"});
     struct Row {
@@ -38,7 +39,7 @@ void TerminalUI::draw_web(int top, int bottom, int width) {
     if (web_ui_.browser_address_ == market_url() && people_["stock_market"].is_table()) {
         const auto title =
             people_["stock_market"]["website_title"].value_or(std::string{"Sim Exchange"});
-        write(top + 1, 2,
+        write(top + 1, settings_.layout.text_margin,
               title + " | Cash " + EconomySystem::money(EconomySystem::balance(people_)), Heading);
         const auto quotes = StockMarketSystem::quotes(people_);
         for (const auto& quote : quotes) {
@@ -59,7 +60,7 @@ void TerminalUI::draw_web(int top, int bottom, int width) {
         rows.push_back({"Browser home"});
     } else if (web_ui_.browser_address_ == infrastructure_url() &&
                people_["infrastructure"].is_table()) {
-        write(top + 1, 2,
+        write(top + 1, settings_.layout.text_margin,
               people_["infrastructure"]["website_title"].value_or(
                   std::string{"City Infrastructure Directory"}),
               Heading);
@@ -71,7 +72,7 @@ void TerminalUI::draw_web(int top, int bottom, int width) {
         rows.push_back({"Go to another address"});
         rows.push_back({"Browser home"});
     } else {
-        write(top + 1, 2,
+        write(top + 1, settings_.layout.text_margin,
               web_ui_.browser_address_ == "about:home"
                   ? "BOOKMARKS"
                   : "Website not found. Choose a bookmark or another address.",
@@ -91,13 +92,13 @@ void TerminalUI::draw_web(int top, int bottom, int width) {
          ++row) {
         const auto index = web_ui_.web_offset_ + row;
         const auto& entry = rows[index];
-        write(top + 3 + row, 2,
+        write(top + 3 + row, settings_.layout.text_margin,
               (index == web_ui_.web_selected_ ? "> " : "  ") +
                   entry.text.substr(0, std::max(0, width - 4)),
               index == web_ui_.web_selected_ ? ActiveTab : entry.color,
               index == web_ui_.web_selected_);
     }
-    write(bottom, 1,
+    write(bottom, settings_.layout.text_margin,
           settings_.binding_label(KeyAction::Submit) + ": follow link | " +
               settings_.binding_label(KeyAction::SelectPrevious) + "/" +
               settings_.binding_label(KeyAction::SelectNext) + ": links",

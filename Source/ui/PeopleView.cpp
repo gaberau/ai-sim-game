@@ -1,3 +1,5 @@
+// Module: Render known dossiers and relationship evidence without exposing hidden personal state.
+#include "ai_sim/ui/TextLayout.h"
 #include "ai_sim/ui/TerminalUI.h"
 #include "ai_sim/ui/ScreenRenderer.h"
 #include <algorithm>
@@ -15,12 +17,8 @@ const std::vector<std::string> sections{"identity",     "employment",   "motivat
 std::string text(const toml::table& t, const char* key) {
     return t[key].value_or(std::string{});
 }
-std::string fit(const std::string& s, int width) {
-    if (width < 1)
-        return {};
-    if (s.size() <= static_cast<std::size_t>(width))
-        return s;
-    return s.substr(0, std::max(0, width - 1)) + "~";
+std::string fit(const std::string& text, int width) {
+    return fit_text(text, width, "~");
 }
 } // namespace
 std::vector<std::string> TerminalUI::dossier_people() const {

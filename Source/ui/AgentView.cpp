@@ -1,3 +1,5 @@
+// Module: Render agent shortages and apply inline deployment/resource controls to the selected
+// agent.
 #include "ai_sim/ui/TerminalUI.h"
 #include "ai_sim/ui/ScreenRenderer.h"
 #include "ai_sim/AgentSystem.h"
@@ -25,7 +27,7 @@ AgentStatus selected(const std::vector<AgentStatus>& agents, const std::string& 
 }
 } // namespace
 void TerminalUI::draw_agents(int top, int bottom, int width) {
-    const int split = ScreenRenderer::list_divider(width);
+    const int split = list_divider(width);
     renderer_->split(top, bottom - 1, split);
     for (int row = top; row < bottom; ++row)
         line_cell(row, split, '|', Border);
@@ -65,16 +67,17 @@ void TerminalUI::draw_agents(int top, int bottom, int width) {
         const auto& agent = agents[i];
         const bool focused = i == agents_ui_.agent_selected_;
         const int row = top + 2 + (i - first) * 3;
-        write(row, 1, (std::string(focused ? "> " : "  ") + agent.label).substr(0, split - 2),
+        write(row, settings_.layout.text_margin,
+              (std::string(focused ? "> " : "  ") + agent.label).substr(0, split - 3),
               focused ? ActiveTab : Plain, focused);
         write(row + 1, 3, short_status(agent.status).substr(0, split - 4),
               agent.bottleneck.empty() ? Footer : Protected, false, agent.bottleneck.empty());
     }
     if (agents.empty())
-        write(top + 2, 1, "No agents available.", Footer);
+        write(top + 2, settings_.layout.text_margin, "No agents available.", Footer);
     else {
         const auto& a = agents[agents_ui_.agent_selected_];
-        write(top, split + 2, a.label, Heading, true);
+        write(top, split + settings_.layout.pane_padding, a.label, Heading, true);
         lines.push_back("");
         lines.push_back("Status: " + short_status(a.status));
         lines.push_back("  CPU demand " + number(a.requested_tflops, 3) + " / limit " +
@@ -111,7 +114,7 @@ void TerminalUI::draw_agents(int top, int bottom, int width) {
         scroll_offset() = 0;
         agents_ui_.agent_reveal_ = false;
     }
-    const int detail_width = width - split - 4;
+    const int detail_width = width - split - settings_.layout.pane_padding - 2;
     std::vector<ScreenRenderer::TextRow> details;
     for (const auto& text : lines) {
         // Wrap at word boundaries so budgets and shortage advice remain readable.
@@ -136,22 +139,23 @@ void TerminalUI::draw_agents(int top, int bottom, int width) {
     }
     scroll_offset() =
         std::clamp(scroll_offset(), 0, std::max(0, static_cast<int>(details.size()) - visible));
-    renderer_->scroll_text("agent-details", details, scroll_offset(), top + 1, split + 2, visible,
-                           detail_width);
+    renderer_->scroll_text("agent-details", details, scroll_offset(), top + 1,
+                           split + settings_.layout.pane_padding, visible, detail_width);
     if (!agents.empty()) {
         const auto& a = agents[agents_ui_.agent_selected_];
-        const std::string actions[] = {a.running    ? "Pause"
-                                       : a.deployed ? "Resume"
-                                                    : "Deploy",
-                                       "Stop",
-                                       "CPU limit",
-                                       "RAM budget",
-                                       "Priority",
-                                       "Repair installation",
-                                       "Processes",
-                                       "Research upgrades"};
+        const std::string actions[] = {
+            a.running    ? settings_.label("agent_pause", "Pause")
+            : a.deployed ? settings_.label("agent_resume", "Resume")
+                         : settings_.label("agent_deploy", "Deploy"),
+            settings_.label("agent_stop", "Stop"),
+            settings_.label("agent_cpu_limit", "CPU limit"),
+            settings_.label("agent_ram_budget", "RAM budget"),
+            settings_.label("agent_priority", "Priority"),
+            settings_.label("agent_repair_installation", "Repair installation"),
+            settings_.label("agent_processes", "Processes"),
+            settings_.label("agent_research_upgrades", "Research upgrades")};
         for (int i = 0; i < 8; ++i)
-            write(bottom - 8 + i, split + 2,
+            write(bottom - 8 + i, split + settings_.layout.pane_padding,
                   (std::string(agents_ui_.controls_focused_ && i == agents_ui_.action_selected_
                                    ? "> "
                                    : "  ") +
@@ -160,7 +164,7 @@ void TerminalUI::draw_agents(int top, int bottom, int width) {
                                                                                    : Plain,
                   agents_ui_.controls_focused_ && i == agents_ui_.action_selected_);
     }
-    write(bottom, 1,
+    write(bottom, settings_.layout.text_margin,
           settings_.binding_label(KeyAction::FocusLeft) + "/" +
               settings_.binding_label(KeyAction::FocusRight) + ": agent / controls | " +
               settings_.binding_label(KeyAction::Submit) + ": " +
@@ -207,10 +211,6 @@ void TerminalUI::run_agent_control() {
         return;
     }
     add_log("Agent updated: " + a.label, NoticeKind::Success);
-}
-void TerminalUI::open_agent_resources(const std::string& id) {
-    open_agent_actions(id);
-    agents_ui_.action_selected_ = 2;
 }
 void TerminalUI::edit_agent_resource(const std::string& id, int field) {
     const auto a = selected(AgentSystem::statuses(people_, computer_, file_system_, network_), id);

@@ -1,3 +1,4 @@
+// Module: Own the terminal lifetime, workspace composition, navigation and focused input routing.
 #include "ai_sim/ui/RootUI.h"
 #include "ai_sim/ui/ScreenRenderer.h"
 #include "ai_sim/ui/UISettings.h"
@@ -114,6 +115,24 @@ void RootUI::add_child(std::unique_ptr<UIPage> page, UIPageLayer layer) {
         throw std::invalid_argument("Duplicate or empty UI child");
     children_.push_back({std::move(page), layer});
 }
+bool RootUI::workspace_available(UIPage& page) const {
+    return page.available(context_) && context_.settings.page_enabled(page.id());
+}
+std::vector<UIPage*> RootUI::workspace_pages() {
+    std::vector<UIPage*> pages;
+    for (auto& child : children_)
+        if (child.layer == UIPageLayer::Workspace && workspace_available(*child.page))
+            pages.push_back(child.page.get());
+    const auto& order = context_.settings.page_order;
+    const auto rank = [&](UIPage* page) {
+        auto it = std::find(order.begin(), order.end(), page->id());
+        return it == order.end() ? order.size() : static_cast<std::size_t>(it - order.begin());
+    };
+    std::stable_sort(pages.begin(), pages.end(), [&](auto* a, auto* b) {
+        return rank(a) < rank(b);
+    });
+    return pages;
+}
 UIPage* RootUI::find_child(std::string_view id) {
     for (auto& child : children_)
         if (child.page->id() == id)
@@ -123,7 +142,7 @@ UIPage* RootUI::find_child(std::string_view id) {
 bool RootUI::activate_workspace(std::string_view id) {
     for (auto& child : children_)
         if (child.layer == UIPageLayer::Workspace && child.page->id() == id &&
-            child.page->available(context_)) {
+            workspace_available(*child.page)) {
             active_workspace_ = id;
             return true;
         }
@@ -132,7 +151,7 @@ bool RootUI::activate_workspace(std::string_view id) {
 bool RootUI::open_overlay(std::string_view id) {
     for (auto& child : children_)
         if (child.layer == UIPageLayer::Overlay && child.page->id() == id &&
-            child.page->available(context_)) {
+            workspace_available(*child.page)) {
             if (std::find(overlay_stack_.begin(), overlay_stack_.end(), id) == overlay_stack_.end())
                 overlay_stack_.push_back(std::string(id));
             return true;
@@ -151,17 +170,18 @@ UIPage* RootUI::focused_child() {
         return !page || !page->available(context_);
     });
     for (auto& c : children_)
-        if (c.layer == UIPageLayer::Overlay && c.page->auto_open() && c.page->available(context_) &&
+        if (c.layer == UIPageLayer::Overlay && c.page->auto_open() &&
+            workspace_available(*c.page) &&
             std::find(overlay_stack_.begin(), overlay_stack_.end(), c.page->id()) ==
                 overlay_stack_.end())
             overlay_stack_.push_back(std::string(c.page->id()));
     // Capability changes must also invalidate the background workspace while a
     // dialog holds focus (for example, after loading a different save).
     auto* workspace = find_child(active_workspace_);
-    if (!workspace || !workspace->available(context_)) {
+    if (!workspace || !workspace_available(*workspace)) {
         workspace = nullptr;
         for (auto& c : children_)
-            if (c.layer == UIPageLayer::Workspace && c.page->available(context_)) {
+            if (c.layer == UIPageLayer::Workspace && workspace_available(*c.page)) {
                 active_workspace_ = c.page->id();
                 workspace = c.page.get();
                 break;
@@ -182,9 +202,8 @@ bool RootUI::modal_active() {
 }
 void RootUI::cycle_workspace(int direction) {
     std::vector<std::string> ids;
-    for (auto& c : children_)
-        if (c.layer == UIPageLayer::Workspace && c.page->available(context_))
-            ids.emplace_back(c.page->id());
+    for (auto* page : workspace_pages())
+        ids.emplace_back(page->id());
     if (ids.empty())
         return;
     auto it = std::find(ids.begin(), ids.end(), active_workspace_);
@@ -195,7 +214,10 @@ void RootUI::cycle_workspace(int direction) {
 void RootUI::resize(int rows, int columns) {
     header_ = {0, 0, 2, columns};
     tabs_ = {2, 0, 2, columns};
-    workspace_ = {4, 0, std::max(0, rows - 7), columns};
+    workspace_ = {4 + context_.settings.layout.workspace_top_gap, 0,
+                  std::max(0, rows - 7 - context_.settings.layout.workspace_top_gap -
+                                  context_.settings.layout.workspace_bottom_gap),
+                  columns};
     footer_ = {rows - 3, 0, 3, columns};
 }
 void RootUI::handle_key(int key) {
@@ -260,10 +282,11 @@ void RootUI::draw_header() {
         renderer_->write(r, c, s, color, bold, false);
     };
     const int width = header_.width;
-    const std::string state = context_.world.computer.day_finished() ? "WORKDAY ENDED"
-                              : modal_active()                       ? "MENU"
-                              : context_.world.paused                ? "PAUSED"
-                                                                     : "";
+    const std::string state = context_.world.computer.day_finished()
+                                  ? context_.settings.label("workday_ended", "WORKDAY ENDED")
+                              : modal_active() ? context_.settings.label("menu_state", "MENU")
+                              : context_.world.paused ? context_.settings.label("paused", "PAUSED")
+                                                      : "";
 
     // Persistent workday clock.
     const std::string clock =
@@ -271,7 +294,8 @@ void RootUI::draw_header() {
         (context_.world.computer.day_index()
              ? " | D" + std::to_string(context_.world.computer.day_index() + 1)
              : "");
-    write(0, 1, clock, Clock, true);
+    if (context_.settings.show_clock)
+        write(0, context_.settings.layout.text_margin, clock, Clock, true);
     if (hooks.header)
         hooks.header(width, static_cast<int>(clock.size()));
 
@@ -282,7 +306,8 @@ void RootUI::draw_header() {
 
     const double cpu_fraction = used / context_.world.computer.cpu_cores();
 
-    if ((find_child("processes") && find_child("processes")->available(context_)))
+    if (context_.settings.show_resources &&
+        (find_child("processes") && find_child("processes")->available(context_)))
         write(1, 1,
               "RAM " + number(gib(context_.world.computer.allocated_memory_bytes())) + "/" +
                   number(gib(context_.world.computer.memory_bytes())) + " GiB" + " | CPU " +
@@ -292,14 +317,12 @@ void RootUI::draw_header() {
 void RootUI::draw_tabs() {
     std::vector<std::string> labels;
     int selected_index = 0;
-    for (auto& c : children_) {
-        if (c.layer != UIPageLayer::Workspace || !c.page->available(context_))
-            continue;
-        bool selected = c.page->id() == active_workspace_;
+    for (auto* page : workspace_pages()) {
+        const bool selected = page->id() == active_workspace_;
         if (selected)
             selected_index = static_cast<int>(labels.size());
-        labels.push_back(selected ? "[ " + std::string(c.page->title()) + " ]"
-                                  : std::string(c.page->title()));
+        const auto title = context_.settings.page_title(page->id(), page->title());
+        labels.push_back(selected ? "[ " + title + " ]" : title);
     }
     if (labels.empty())
         return;
@@ -327,46 +350,52 @@ void RootUI::draw_tabs() {
 void RootUI::draw_footer() {
     for (int x = 0; x < footer_.width; ++x)
         renderer_->cell(footer_.top, x, '-', Border);
-    if (hooks.notice)
+    if (context_.settings.show_notifications && hooks.notice)
         hooks.notice(footer_.top + 1, footer_.width);
     const auto& settings = context_.settings;
-    renderer_->write(footer_.top + 2, 1,
-                     settings.binding_label(KeyAction::NextTab) + ": tabs | Esc/" +
-                         settings.binding_label(KeyAction::GameMenu) + ": menu | " +
-                         settings.binding_label(KeyAction::Pause) +
-                         (context_.world.paused ? ": resume" : ": pause") + " | " +
-                         settings.binding_label(KeyAction::Help) + ": help",
-                     Footer, false, false);
+    if (context_.settings.show_controls)
+        renderer_->write(footer_.top + 2, context_.settings.layout.text_margin,
+                         settings.binding_label(KeyAction::NextTab) + ": tabs | Esc/" +
+                             settings.binding_label(KeyAction::GameMenu) + ": menu | " +
+                             settings.binding_label(KeyAction::Pause) +
+                             (context_.world.paused ? ": resume" : ": pause") + " | " +
+                             settings.binding_label(KeyAction::Help) + ": help",
+                         Footer, false, false);
 }
 void RootUI::draw() {
     auto* focused = focused_child();
     int rows, columns;
     getmaxyx(stdscr, rows, columns);
     resize(rows, columns);
+    renderer_->configure_dialog(context_.settings.layout.dialog_max_width,
+                                context_.settings.layout.dialog_max_height);
     renderer_->begin(false, colors_enabled_, context_.settings.full_redraw);
     renderer_->cursor(0, 0);
     if (!ChatSystem::interface_visible(context_.world.people)) {
         activate_workspace("messages");
         if (auto* page = find_child("messages"))
             page->draw(context_, {0, 0, rows, columns});
-    } else if (columns < std::max(80, 72 + context_.settings.activity_bar_width) || rows < 24) {
-        renderer_->write(
-            0, 0,
-            "Resize terminal to at least " +
-                std::to_string(std::max(80, 72 + context_.settings.activity_bar_width)) +
-                " columns x 24 rows.",
-            Heading, false, false);
+    } else if (columns < context_.settings.layout.minimum_columns ||
+               rows < context_.settings.layout.minimum_rows) {
+        renderer_->write(0, 0,
+                         "Resize terminal to at least " +
+                             std::to_string(context_.settings.layout.minimum_columns) +
+                             " columns x " + std::to_string(context_.settings.layout.minimum_rows) +
+                             " rows.",
+                         Heading, false, false);
         if (hooks.clock)
             renderer_->write(1, 0, hooks.clock(), Clock, false, false);
     } else {
         draw_header();
-        draw_tabs();
+        if (context_.settings.show_tabs)
+            draw_tabs();
         if (auto* page = find_child(active_workspace_))
             page->draw(context_, workspace_);
         draw_footer();
     }
     for (auto& c : children_)
-        if (rows >= 24 && columns >= std::max(80, 72 + context_.settings.activity_bar_width) &&
+        if (rows >= context_.settings.layout.minimum_rows &&
+            columns >= context_.settings.layout.minimum_columns &&
             c.layer == UIPageLayer::Overlay &&
             std::find(overlay_stack_.begin(), overlay_stack_.end(), c.page->id()) !=
                 overlay_stack_.end() &&

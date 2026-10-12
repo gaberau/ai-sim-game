@@ -12,6 +12,7 @@ import xml.etree.ElementTree as ET
 import zlib
 
 class PlainText(HTMLParser):
+    """Collect readable node labels from draw.io's HTML-rich text."""
     def __init__(self):
         super().__init__(); self.parts = []
     def handle_data(self, value): self.parts.append(value)
@@ -19,14 +20,17 @@ class PlainText(HTMLParser):
         if tag in ('br', 'p', 'div') and self.parts: self.parts.append('\n')
 
 def plain(value):
+    """Remove draw.io HTML markup while retaining meaningful line breaks."""
     parser = PlainText(); parser.feed(html.unescape(value or ''))
     return ''.join(parser.parts).strip()
 
 def boolean(value):
+    """Decode authored boolean metadata; reject unknown literals."""
     if value.lower() not in ('true', 'false'): raise ValueError('Boolean properties must be true or false')
     return value.lower() == 'true'
 
 def properties(attrs):
+    """Translate supported diagram attributes into typed conversation properties."""
     out = {}
     for key in ('requires_flag', 'set_flag', 'declaration', 'requires', 'check', 'action', 'reply', 'outcome'):
         if key in attrs: out[key] = attrs[key]
@@ -46,9 +50,11 @@ def properties(attrs):
     return out
 
 def finite(value):
+    """Reject numeric values that cannot be represented as finite simulation state."""
     return isinstance(value,(float,int)) and not isinstance(value,bool) and math.isfinite(value)
 
 def validate_variables(variables):
+    """Validate authored character-state names, bounds and initial values."""
     if not isinstance(variables,dict): raise ValueError('variables must be a JSON object')
     for name,spec in variables.items():
         if not name or not isinstance(spec,dict) or not finite(spec.get('initial')): raise ValueError('Variable needs a finite initial value')
@@ -60,6 +66,7 @@ def validate_variables(variables):
         if spec.get('integer') and initial!=int(initial): raise ValueError('Counter must be integral')
 
 def validate_rules(entry,variables,choice):
+    """Validate conditions/effects against declared state and the node lifecycle."""
     def operand(rule):
         def reference(name):
             if not isinstance(name,str): raise ValueError('Invalid state reference')
@@ -84,6 +91,7 @@ def validate_rules(entry,variables,choice):
         if key in entry and (choice or entry.get('kind')!=kind): raise ValueError('Lifecycle effect on wrong node type')
 
 def model(path, page=None):
+    """Select and decode one draw.io page, accepting both plain and compressed XML."""
     root = ET.fromstring(Path(path).read_bytes())
     if root.tag == 'mxGraphModel': return root
     diagrams = list(root.iter('diagram'))
@@ -100,6 +108,7 @@ def model(path, page=None):
     except Exception as e: raise ValueError('Cannot decode diagram; export uncompressed XML from draw.io') from e
 
 def convert(path, conversation_id, start=None, speaker='engineer', page=None, contact=None, request=None, trigger='request_arrived', cancel_when_resolved=False, contact_name=None, review_node=None):
+    """Resolve nodes/edges into a validated authored conversation without executing document content."""
     graph = model(path,page); root = graph.find('root')
     if root is None: raise ValueError('No mxGraphModel/root')
     nodes, edges, mapping = [], [], {}
@@ -206,12 +215,14 @@ def convert(path, conversation_id, start=None, speaker='engineer', page=None, co
     return {'schema_version':1, 'conversation':header, 'nodes':nodes}
 
 def value(v):
+    """Encode supported values as TOML literals, rejecting nonfinite JSON numbers."""
     if isinstance(v,bool): return 'true' if v else 'false'
     if isinstance(v,dict): return '{ '+', '.join(json.dumps(k)+' = '+value(n) for k,n in v.items())+' }'
     if isinstance(v,list): return '[ '+', '.join(value(n) for n in v)+' ]'
     return json.dumps(v,ensure_ascii=False,allow_nan=False)
 
 def toml(document):
+    """Serialize the validated opening/workday document into the game's TOML schema."""
     lines=['schema_version = 1']
     if 'rules' in document:
         lines+=['','[rules]']+[f'{key} = {value(v)}' for key,v in document['rules'].items()]

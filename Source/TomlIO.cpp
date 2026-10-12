@@ -1,3 +1,5 @@
+// Module: Write TOML snapshots durably; filesystem synchronization supports atomic save
+// publication.
 #include "ai_sim/TomlIO.h"
 #include <fstream>
 #include <stdexcept>

@@ -180,3 +180,7 @@ research time. Click an upgrade, then its Research control.
 The terminal uses ncurses subwindows, bounded scroll pads, and panels for menus
 and dialogs. See [terminal rendering](<Development Tools/docs/terminal-ui.md>) for ownership and
 composition details.
+
+Developer guide: [code map and maintenance contracts](Development%20Tools/docs/code-map.md), with [terminal ownership and layout](Development%20Tools/docs/terminal-ui.md).
+
+UI presentation: [TOML layout, spacing, labels, and page organization](Development%20Tools/docs/presentation-toml.md).

@@ -1,3 +1,4 @@
+// Verify: simulation progression. Fixtures isolate these behaviors from live player saves.
 #include "ai_sim/Simulation.h"
 #include "ai_sim/UpgradeSystem.h"
 #include "ai_sim/StockMarketSystem.h"

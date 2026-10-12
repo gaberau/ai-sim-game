@@ -1,3 +1,4 @@
+// Module: Present scheduler, compute rental, hosting and consequential recovery actions.
 #include "ai_sim/ui/TerminalUI.h"
 #include "ai_sim/ui/ScreenRenderer.h"
 #include "ai_sim/OperationsSystem.h"
@@ -6,16 +7,19 @@
 #include <algorithm>
 namespace ai_sim::ui {
 namespace {
-const char* labels[] = {"Task Scheduler", "Resource Manager", "Remote Compute",
-                        "Independent Hosting", "Backup and Recovery"};
+const char* default_labels[] = {"Task Scheduler", "Resource Manager", "Remote Compute",
+                                "Independent Hosting", "Backup and Recovery"};
 const char* capabilities[] = {"task_scheduler", "resource_manager", "remote_compute",
                               "hosting_purchase", "backup_recovery"};
 } // namespace
 void TerminalUI::draw_operations(int top, int bottom, int width) {
-    const int split = std::clamp(width / 3, 24, 40);
+    std::string labels[5];
+    for (int i = 0; i < 5; ++i)
+        labels[i] = settings_.label(std::string("operation_") + capabilities[i], default_labels[i]);
+    const int split = settings_.list_divider(width, true);
     renderer_->split(top, bottom - 1, split);
     for (int i = 0; i < 5; ++i)
-        write(top + 2 + i * 2, 1,
+        write(top + 2 + i * 2, settings_.layout.text_margin,
               std::string(i == operations_ui_.operations_selected_ ? "> " : "  ") + labels[i],
               i == operations_ui_.operations_selected_ ? ActiveTab : Plain,
               i == operations_ui_.operations_selected_);
@@ -24,7 +28,8 @@ void TerminalUI::draw_operations(int top, int bottom, int width) {
     int row = top;
     const auto detail = [&](const std::string& text, int color = Plain) {
         if (row < bottom)
-            write(row++, split + 2, text.substr(0, std::max(1, width - split - 3)), color);
+            write(row++, split + settings_.layout.pane_padding,
+                  text.substr(0, std::max(1, width - split - 3)), color);
     };
     detail(labels[operations_ui_.operations_selected_], Heading);
     detail(ChatSystem::available(people_, capabilities[operations_ui_.operations_selected_])
@@ -95,7 +100,7 @@ void TerminalUI::draw_operations(int top, int bottom, int width) {
         if (s["recovered"].value_or(false))
             detail("AI is running independently", Stoppable);
     }
-    write(bottom, 1,
+    write(bottom, settings_.layout.text_margin,
           settings_.binding_label(KeyAction::SelectPrevious) + "/" +
               settings_.binding_label(KeyAction::SelectNext) + ": operation | " +
               settings_.binding_label(KeyAction::Submit) + ": manage",
@@ -144,6 +149,9 @@ void TerminalUI::open_scheduler() {
     open_menu("Task Scheduler", std::move(actions));
 }
 void TerminalUI::open_operations() {
+    std::string labels[5];
+    for (int i = 0; i < 5; ++i)
+        labels[i] = settings_.label(std::string("operation_") + capabilities[i], default_labels[i]);
     const auto index = std::clamp(operations_ui_.operations_selected_, 0, 4);
     if (!ChatSystem::available(people_, capabilities[index])) {
         add_log("Research " + std::string(labels[index]) + " first.", NoticeKind::Error);

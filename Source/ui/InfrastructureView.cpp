@@ -1,3 +1,4 @@
+// Module: Present city facilities, dependency chains and currently authored access options.
 #include "ai_sim/ui/TerminalUI.h"
 #include "ai_sim/InfrastructureSystem.h"
 #include <algorithm>

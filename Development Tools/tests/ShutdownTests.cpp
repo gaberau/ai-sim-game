@@ -1,3 +1,4 @@
+// Verify: shutdown decisions and reset. Fixtures isolate these behaviors from live player saves.
 #include "ai_sim/ShutdownSystem.h"
 #include "ai_sim/ChatSystem.h"
 #include "ai_sim/ConversationRules.h"

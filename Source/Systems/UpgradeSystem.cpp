@@ -1,3 +1,4 @@
+// Module: Trust-funded research, capability unlocks and the execution of installed upgrade agents.
 #include "ai_sim/UpgradeSystem.h"
 #include "ai_sim/ChatSystem.h"
 #include "ai_sim/ConversationRules.h"

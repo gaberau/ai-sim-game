@@ -1,3 +1,4 @@
+// Module: Present AI responsibility state and authenticated phone information.
 #include "ai_sim/ui/TerminalUI.h"
 #include "ai_sim/EconomySystem.h"
 #include <algorithm>
@@ -5,7 +6,8 @@
 
 namespace ai_sim::ui {
 void TerminalUI::draw_ai(int top, int bottom, int width) {
-    write(top, 1, "Workday " + std::to_string(computer_.day_index() + 1), Heading, true);
+    write(top, settings_.layout.text_margin, "Workday " + std::to_string(computer_.day_index() + 1),
+          Heading, true);
     std::vector<std::string> lines;
     auto add = [&](const std::string& value) {
         if (value.empty()) {
@@ -51,22 +53,11 @@ void TerminalUI::draw_ai(int top, int bottom, int width) {
                 add(std::string(key.str()) + ": authorized");
     }
     if (people_.contains("upgrades")) {
-        add("Self-modification: Actions menu -> Self-modification workshop.");
+        add("Self-modification: use the Modifications page.");
         add("Research: " +
             people_["upgrades"]["pending"].value_or(std::string{"No build in progress"}));
     }
-    if (selected_tab() == Tab::Agents) {
-        add("AGENT CATALOG | Research prerequisites and resource costs");
-        for (const auto& row : *people_["upgrades"]["items"].as_array()) {
-            const auto& item = *row.as_table();
-            if (item.contains("runtime_tflops_per_second"))
-                add(item["label"].value_or(std::string{}) + " | " +
-                    (item["built"].value_or(false) ? "built" : "not built") + " | " +
-                    number(item["runtime_tflops_per_second"].value_or(0.0), 2) + " TFLOP/s | " +
-                    std::to_string(item["ram_mb"].value_or(0)) + " MB RAM | " +
-                    std::to_string(item["storage_mb"].value_or(0)) + " MB storage");
-        }
-    }
+
     add("");
     add("PAID WORK AND PRODUCTS | Balance " +
         EconomySystem::money(EconomySystem::balance(people_)));
@@ -217,10 +208,10 @@ void TerminalUI::draw_ai(int top, int bottom, int width) {
     scroll_offset() =
         std::clamp(scroll_offset(), 0, std::max(0, static_cast<int>(lines.size()) - visible));
     for (int i = 0; i < visible && scroll_offset() + i < static_cast<int>(lines.size()); ++i)
-        write(top + 1 + i, 2, lines[scroll_offset() + i]);
+        write(top + 1 + i, settings_.layout.text_margin, lines[scroll_offset() + i]);
     const std::string hint = settings_.binding_label(KeyAction::Submit) +
                              ": actions | Scroll: " + settings_.binding_label(KeyAction::ScrollUp) +
                              "/" + settings_.binding_label(KeyAction::ScrollDown);
-    write(bottom, 1, hint.substr(0, std::max(1, width - 2)), Footer);
+    write(bottom, settings_.layout.text_margin, hint.substr(0, std::max(1, width - 2)), Footer);
 }
 } // namespace ai_sim::ui

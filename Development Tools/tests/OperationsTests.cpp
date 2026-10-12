@@ -1,3 +1,4 @@
+// Verify: scheduling hosting and recovery. Fixtures isolate these behaviors from live player saves.
 #include "ai_sim/OperationsSystem.h"
 #include "ai_sim/AgentSystem.h"
 #include "ai_sim/ChatSystem.h"

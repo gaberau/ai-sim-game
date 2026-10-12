@@ -1,3 +1,4 @@
+// Module: Edit live interface preferences and describe the focused page through contextual help.
 #include "ai_sim/ui/TerminalUI.h"
 #include "ai_sim/ui/ScreenRenderer.h"
 #include <sstream>
@@ -36,6 +37,31 @@ void TerminalUI::open_settings() {
                   {"Process column widths",
                    [this] {
                        open_settings_section("process_view.widths");
+                   },
+                   {}},
+                  {"Layout and spacing",
+                   [this] {
+                       open_settings_section("layout");
+                   },
+                   {}},
+                  {"Page order and visibility",
+                   [this] {
+                       open_settings_section("pages");
+                   },
+                   {}},
+                  {"Tab labels",
+                   [this] {
+                       open_settings_section("pages.labels");
+                   },
+                   {}},
+                  {"Interface labels",
+                   [this] {
+                       open_settings_section("labels");
+                   },
+                   {}},
+                  {"Header and footer",
+                   [this] {
+                       open_settings_section("chrome");
                    },
                    {}},
                   {"Reload TOML settings",
@@ -86,6 +112,14 @@ void TerminalUI::open_settings_section(const std::string& section, bool editing_
     std::vector<MenuAction> actions;
     for (const auto& [name, node] : values) {
         const std::string key{name.str()};
+        if (node.is_table()) {
+            actions.push_back({key + "...",
+                               [this, section, key] {
+                                   open_settings_section(section + "." + key);
+                               },
+                               {}});
+            continue;
+        }
         std::ostringstream formatted;
         formatted << toml::table{{"value", node}};
         const auto assignment = formatted.str();
@@ -219,16 +253,20 @@ void TerminalUI::open_context_help() {
         control(KeyAction::EditorCancel, "discard edits");
         control(KeyAction::EditorFocus, "switch editor pane");
     } else {
-        const char* names[] = {"Chat",  "Processes", "Activity",      "Network",   "Files",
-                               "News",  "AI",        "Dossiers",      "Web",       "Agents",
-                               "Phone", "Money",     "Modifications", "Operations"};
-        title += " | " + std::string(names[static_cast<int>(selected_tab())]);
+        const char* names[] = {"Chat",  "Processes",     "Network",   "Files",  "News",
+                               "AI",    "Dossiers",      "Web",       "Agents", "Phone",
+                               "Money", "Modifications", "Operations"};
+        title += " | " + settings_.page_title(root_.active_workspace(),
+                                              names[static_cast<int>(selected_tab())]);
         switch (selected_tab()) {
         case Tab::Chat:
-            explain("Choose a response at the bottom. Waiting advances to a pending reply.");
+            explain("Choose a response at the bottom. Pending replies arrive as time advances.");
             control(KeyAction::FocusLeft, "select contacts");
             control(KeyAction::FocusRight, "select conversation");
             control(KeyAction::Submit, "send the selected response or open a contact");
+            control(KeyAction::ArchiveChat,
+                    "archive the selected chat, or restore it from Archived chats");
+            control(KeyAction::ToggleArchivedChats, "switch between active and archived chats");
             break;
         case Tab::Network:
             explain("Select a server to inspect its status and available actions.");
@@ -258,9 +296,6 @@ void TerminalUI::open_context_help() {
             explain("Select a process to inspect it. Protected processes cannot be stopped.");
             control(KeyAction::ToggleExpanded, "expand process details");
             control(KeyAction::Submit, "available process actions");
-            break;
-        case Tab::Activity:
-            explain("Resource activity reflects the current simulation state.");
             break;
         case Tab::News:
             explain("Select a headline, then focus its details to read the article.");

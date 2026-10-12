@@ -29,7 +29,7 @@ Messages, files, upgrades, and agents share the same list-column sizing. Agents
 show selected-agent details instead of a long dashboard of every agent. Upgrade
 and agent details wrap and scroll independently of selection. The persistent
 tab strip hides locked tabs and keeps the selected tab visible when the whole
-strip cannot fit. Activity is hidden; resource details unlock with process access.
+strip cannot fit. The retired Activity page is removed; resource details unlock with process access.
 
 The header shows the clock and a short resource summary; the news ticker appears
 on the news view. The footer separates contextual actions from the short global
@@ -68,3 +68,17 @@ Files preview the selection automatically. Enter opens folders, edits writable
 files, or focuses read-only content; Space opens additional file actions. The
 footer shows the action available for the current selection. Messages retain
 contacts, history and response choices together, with extra room for responses.
+
+Workspace content has a blank row above and below it, with wider text insets
+from screen edges and pane dividers. Response choices have a blank line between
+them and a gap beneath their heading; the selected choice remains visible when
+the response area scrolls. Opening conversation choices use the same spacing.
+
+Messages has Archive/Restore and Active/Archived buttons beneath the contact
+list. A and V are their default shortcuts and are editable in keybindings.
+Archive state is stored with the world save; history and ongoing conversations
+remain intact. Archived chats stay available in the Archived list.
+
+The shared frame, list/dialog geometry, response spacing, page order/visibility,
+and visible labels now come from presentation sections in settings.toml. See
+[presentation configuration](presentation-toml.md) for keys and validation rules.

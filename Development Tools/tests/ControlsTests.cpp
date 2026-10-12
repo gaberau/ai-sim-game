@@ -27,6 +27,9 @@ int main(int argc, char** argv) {
         check(!settings.bound(KeyAction::NavigateUp, 'w') &&
                   !settings.bound(KeyAction::ToggleFocus, 'q'),
               "Stock WASD/toggle survived");
+        check(settings.bound(KeyAction::ArchiveChat, 'a') &&
+                  settings.bound(KeyAction::ToggleArchivedChats, 'v'),
+              "Chat archive bindings missing");
         std::filesystem::create_directories(temp);
         std::filesystem::copy_file(root / "config/settings.toml", temp / "settings.toml");
         auto keys = toml::parse_file((root / "config/keybindings.toml").string());

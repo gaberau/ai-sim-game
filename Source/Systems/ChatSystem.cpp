@@ -1,3 +1,4 @@
+// Module: Opening progression, capabilities, contact discovery and persistent chat transcripts.
 #include "ai_sim/ChatSystem.h"
 #include "ai_sim/ShutdownSystem.h"
 #include "ai_sim/ChatResponses.h"

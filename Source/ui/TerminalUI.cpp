@@ -1,3 +1,4 @@
+// Module: Bridge the live world and gameplay actions to RootUI-owned child pages.
 #include "ai_sim/ui/TerminalUI.h"
 #include "ai_sim/ui/ScreenRenderer.h"
 #include "ai_sim/EconomySystem.h"
@@ -60,9 +61,6 @@ template <class State> class CallbackPage final : public UIPage {
     }
     bool handle_key(UIContext&, int key) override {
         return input(key);
-    }
-    std::string controls(const UIContext&) const override {
-        return {};
     }
     bool centered_overlay() const override {
         return centered_now ? centered_now() : centered;
@@ -194,10 +192,10 @@ TerminalUI::TerminalUI(const std::filesystem::path& settings_path,
       agents_ui_(
           attach_page<AgentsPageState>(Tab::Agents, "agents", "Agents", &TerminalUI::draw_agents)),
       phone_ui_(attach_page<ScrollPageState>(Tab::Phone, "phone", "Phone", &TerminalUI::draw_ai)),
-      money_ui_(attach_page<ScrollPageState>(Tab::Money, "money", "Money",
-                                             &TerminalUI::draw_progression)),
+      money_ui_(
+          attach_page<ScrollPageState>(Tab::Money, "money", "Money", &TerminalUI::draw_money)),
       modifications_ui_(attach_page<ModificationsPageState>(
-          Tab::Modifications, "modifications", "Modifications", &TerminalUI::draw_progression)),
+          Tab::Modifications, "modifications", "Modifications", &TerminalUI::draw_modifications)),
       operations_ui_(attach_page<OperationsPageState>(Tab::Operations, "operations", "Operations",
                                                       &TerminalUI::draw_operations)),
       editor_ui_(attach_overlay("editor", EditorPageState{}, false)),
@@ -380,7 +378,7 @@ void TerminalUI::restore_world(WorldState world) {
     network_ui_.network_pan_x_ = network_ui_.network_pan_y_ = 0.0;
     network_ui_.network_detail_offset_ = 0;
     files_ui_.file_list_offset_ = files_ui_.file_content_offset_ = processes_ui_.process_offset_ =
-        activity_offset_ = 0;
+        0;
     processes_ui_.process_horizontal_offset_ = 0;
     news_ui_.news_selected_ = news_ui_.news_body_offset_ = 0;
     ai_ui_.ai_offset_ = phone_ui_.ai_offset_ = money_ui_.ai_offset_ = 0;
@@ -395,6 +393,7 @@ void TerminalUI::restore_world(WorldState world) {
     web_ui_.browser_address_ = "about:home";
     web_ui_.web_selected_ = web_ui_.web_offset_ = 0;
     select_tab(Tab::Chat);
+    messages_ui_.show_archived_ = false;
     messages_ui_.chat_contact_id_ = "engineer";
     messages_ui_.chat_contacts_focused_ = false;
     messages_ui_.chat_offset_ = messages_ui_.chat_choice_selected_ = 0;
@@ -418,14 +417,6 @@ std::string TerminalUI::number(double value, int precision) {
     output << std::fixed << std::setprecision(precision) << value;
 
     return output.str();
-}
-
-std::string TerminalUI::activity_bar(double fraction) const {
-    const int width = settings_.activity_bar_width;
-
-    const int filled = std::clamp(static_cast<int>(std::round(fraction * width)), 0, width);
-
-    return std::string(filled, '#') + std::string(width - filled, '-');
 }
 
 std::string TerminalUI::clock_text() const {
@@ -455,14 +446,6 @@ void TerminalUI::line_cell(int row, int column, char symbol, int color) const {
     renderer_->cell(row, column, symbol, color);
 }
 
-void TerminalUI::separator(int row) const {
-    int height, width;
-    getmaxyx(stdscr, height, width);
-    if (row >= 0 && row < height)
-        for (int column = 0; column < width; ++column)
-            renderer_->cell(row, column, '-', Border);
-}
-
 void TerminalUI::draw_notification(int row, int width) {
     const bool important =
         !important_notice_.empty() && std::chrono::steady_clock::now() < important_notice_until_;
@@ -487,11 +470,6 @@ void TerminalUI::add_log(const std::string& message, NoticeKind kind) {
                                      ? settings_.notification_error_seconds
                                      : settings_.notification_success_seconds);
     }
-    // Keep an older Activity view anchored while new entries arrive.
-    if (activity_offset_ > 0) {
-        ++activity_offset_;
-    }
-
     log_.push_back("[" + clock_text() + "] " + message);
 
     while (log_.size() > static_cast<std::size_t>(settings_.history_limit)) {
@@ -516,8 +494,6 @@ void TerminalUI::scroll_view(int direction) {
     } else if (selected_tab() == Tab::Processes) {
         processes_ui_.process_offset_ = std::clamp(processes_ui_.process_offset_ + amount, 0,
                                                    processes_ui_.process_display_row_count_);
-    } else if (selected_tab() == Tab::Activity) {
-        activity_offset_ = std::clamp(activity_offset_ - amount, 0, static_cast<int>(log_.size()));
     } else if (selected_tab() == Tab::Network) {
         if (network_ui_.network_details_focused_) {
             network_ui_.network_detail_offset_ =
@@ -771,9 +747,6 @@ bool TerminalUI::execute(const std::string& line) {
             add_log("Resumed.");
         } else if (command == "processes" || command == "status") {
             select_tab(Tab::Processes);
-        } else if (command == "activity") {
-            select_tab(Tab::Activity);
-            activity_offset_ = 0;
         } else if (command == "reload") {
             const auto updated = UISettings::load(settings_path_);
             load_news();
@@ -786,8 +759,7 @@ bool TerminalUI::execute(const std::string& line) {
             }
             add_log("UI settings reloaded.");
         } else if (command == "help") {
-            add_log(
-                "processes | email | activity | network | files [host] | news [all|world|history]");
+            add_log("processes | email | network | files [host] | news [all|world|history]");
             add_log("email read/reply/send [id] | email source/attach/detach <n>");
             add_log(
                 "email clear/import | email request-access/blocked [id] | network zoom <0.5-4>");

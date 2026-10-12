@@ -1,3 +1,4 @@
+// Module: Coordinate subsystems and stop time advancement at relevant scheduled boundaries.
 #include "ai_sim/Simulation.h"
 #include "ai_sim/EconomySystem.h"
 #include "ai_sim/PaidWorkSystem.h"

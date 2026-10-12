@@ -1,3 +1,4 @@
+// Module: Separate simulated personal reality from player-visible dossiers and evidence.
 #include "ai_sim/PeopleSystem.h"
 #include "ai_sim/DefinitionLoader.h"
 #include "ai_sim/EmailSystem.h"

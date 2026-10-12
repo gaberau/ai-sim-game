@@ -1,3 +1,4 @@
+// Verify: jessica and message reviews. Fixtures isolate these behaviors from live player saves.
 #include "ai_sim/ChatSystem.h"
 #include "ai_sim/ConversationSystem.h"
 #include "ai_sim/ConversationRules.h"

@@ -1,3 +1,4 @@
+// Module: Agent deployment, resource budgets, allocation shortages and repairable installations.
 #include "ai_sim/AgentSystem.h"
 #include <algorithm>
 #include <cmath>

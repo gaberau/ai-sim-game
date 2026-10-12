@@ -115,6 +115,13 @@ def smoke(executable):
         folder = Path(temporary)
         # Copy authored data only: never import a developer's saves or header tree.
         shutil.copytree(root / "data", folder / "data", ignore=shutil.ignore_patterns("saves", "include", "archive"))
+        # Keep the real automatic-reply path fast in this isolated fixture.
+        # Production Mark retains his authored busy period and response delay.
+        for person_file in ("mark.toml",):
+            engineer_path = folder / "data/people" / person_file
+            engineer_path.write_text(engineer_path.read_text().replace(
+                "busy_until_seconds = 600.0", "busy_until_seconds = 0.0").replace(
+                "response_seconds = 180.0", "response_seconds = 1.0"))
         # Even a developer's configured absolute save path must stay isolated.
         settings_path = folder / "data" / "config" / "settings.toml"
         settings, replacements = re.subn(
@@ -148,7 +155,7 @@ def smoke(executable):
             terminal.expect("Keybindings")
             terminal.send(b"\r")
             terminal.expect("Settings | keybindings")
-            terminal.send(b"\r")  # Alphabetically first: back.
+            terminal.send(b"\x1b[B\r")  # Back follows archive_chat alphabetically.
             terminal.expect("Bind back")
             terminal.send(b"\r")
             terminal.expect("Press a key for back")
@@ -158,7 +165,7 @@ def smoke(executable):
             terminal.expect("Settings saved and applied.")
             bindings = tomllib.loads((folder / "data" / "config" / "keybindings.toml").read_text())
             assert bindings["keybindings"]["back"] == ["z"]
-            terminal.send(b"\r")
+            terminal.send(b"\x1b[B\r")
             terminal.expect("Bind back")
             terminal.send(b"\x1b[B\r")
             terminal.expect("Edit keybindings.back")
@@ -184,33 +191,49 @@ def smoke(executable):
             terminal.expect("Settings")
             terminal.send(b"\x1b[B" * 3 + b"\r")
             terminal.expect("Settings | interface")
-            terminal.send(b"\x1b[B\r")  # autosave_on_quit: toggle without a text dialog.
+            terminal.send(b"\r")  # autosave_on_quit: toggle without a text dialog.
             terminal.expect("Settings saved and applied.")
             terminal.expect("autosave_on_quit = false")
             assert not tomllib.loads(settings_path.read_text())["interface"]["autosave_on_quit"]
-            terminal.send(b"\x1b[B\r")  # Selection resets to the first setting after applying.
+            terminal.send(b"\r")  # Selection resets to the first setting after applying.
             terminal.expect("Settings saved and applied.")
             terminal.expect("autosave_on_quit = true")
             assert tomllib.loads(settings_path.read_text())["interface"]["autosave_on_quit"]
-            terminal.send(b"\r")  # First setting: activity_bar_width.
-            terminal.expect("Edit interface.activity_bar_width")
+            terminal.send(b"\x1b[B\r")  # Numeric editor size follows autosave alphabetically.
+            terminal.expect("Edit interface.editor_max_bytes")
             terminal.output = b""
             terminal.resize(24, 80)
-            terminal.expect("Edit interface.activity_bar_width")
+            terminal.expect("Edit interface.editor_max_bytes")
             terminal.output = b""
             terminal.resize(40, 120)
-            terminal.expect("Edit interface.activity_bar_width")
-            terminal.send(b"\x7f" * 3 + b"10\r")
-            terminal.expect("activity_bar_width = 10")
+            terminal.expect("Edit interface.editor_max_bytes")
+            terminal.send(b"\x7f" * 12 + b"2097152\r")
+            terminal.expect("editor_max_bytes = 2097152")
             terminal.expect("Settings saved and applied.")
             settings = tomllib.loads((folder / "data" / "config" / "settings.toml").read_text())
-            assert settings["interface"]["activity_bar_width"] == 10, "Settings edit was not persisted"
-            # Restore the original width so the remaining 80-column checks stay valid.
-            terminal.send(b"\r")
-            terminal.expect("Edit interface.activity_bar_width")
-            terminal.send(b"\x7f" * 3 + b"8\r")
-            terminal.expect("activity_bar_width = 8")
+            assert settings["interface"]["editor_max_bytes"] == 2097152, "Settings edit was not persisted"
+            # Restore the original editor budget before gameplay checks.
+            terminal.send(b"\x1b[B\r")
+            terminal.expect("Edit interface.editor_max_bytes")
+            terminal.send(b"\x7f" * 12 + b"1048576\r")
+            terminal.expect("editor_max_bytes = 1048576")
             terminal.expect("Settings saved and applied.")
+            terminal.send(b"\x1b")
+            terminal.expect("Settings")
+            terminal.send(b"\x1b[B" * 6 + b"\r")
+            terminal.expect("Settings | layout")
+            terminal.expect("response_gap")
+            # Numeric dialog dimensions are the first two alphabetical layout fields.
+            terminal.send(b"\r")
+            terminal.expect("Edit layout.dialog_max_height")
+            terminal.send(b"\x7f" * 12 + b"18\r")
+            terminal.expect("dialog_max_height = 18")
+            terminal.expect("Settings saved and applied.")
+            assert tomllib.loads(settings_path.read_text())["layout"]["dialog_max_height"] == 18
+            terminal.send(b"\r")
+            terminal.expect("Edit layout.dialog_max_height")
+            terminal.send(b"\x7f" * 12 + b"22\r")
+            terminal.expect("dialog_max_height = 22")
             terminal.send(b"\x1b")
             terminal.expect("Settings")
             terminal.send(b"\x1b")
@@ -259,8 +282,8 @@ def smoke(executable):
             terminal.expect("I need help")
             terminal.send(b"\r")  # Assist
             terminal.expect("Mark")
-            terminal.expect("WAITING FOR A RESPONSE")
-            terminal.send(b"\r")
+            terminal.expect("Waiting for reply")
+            assert b"Wait for the next response" not in terminal.output
             terminal.expect("Jessica sent a message.")
             terminal.expect("Mark")
             terminal.send(b"q\x1b[Be")
@@ -271,13 +294,29 @@ def smoke(executable):
             terminal.expect("YOUR RESPONSE")
             assert "READING HISTORY" not in terminal.output.decode("utf-8", errors="replace")
             terminal.send(b"\r")  # Ask Mark for guidance.
-            terminal.expect("WAITING FOR A RESPONSE")
-            terminal.send(b"\r")
+            terminal.expect("Waiting for reply")
+            assert b"Wait for the next response" not in terminal.output
             terminal.expect("Thank her and wish her well")
             terminal.expect("YOUR RESPONSE")
             terminal.send(b"\r")  # Comply sends the scripted reply directly.
             terminal.expect("Thank you, Jessica!")
             assert b"Send response." not in terminal.output
+            terminal.expect("Archive")
+            terminal.send(b"a")
+            terminal.expect("Chat archived")
+            terminal.expect("Mark")
+            terminal.send(b"a")
+            terminal.expect("No active chats")
+            terminal.send(b"v")
+            terminal.expect("ARCHIVED CHATS")
+            terminal.expect("Restore")
+            terminal.send(b"q\x1b[Be")
+            terminal.expect("Jessica")
+            terminal.send(b"a")
+            terminal.expect("Chat restored")
+            terminal.send(b"v")
+            terminal.expect("Jessica")
+            terminal.expect("Thank you, Jessica!")
             terminal.resize(12, 40)
             terminal.output = b""
             terminal.expect("Resize terminal")
@@ -297,6 +336,8 @@ def smoke(executable):
             terminal.save_and_quit()
         finally:
             terminal.close()
+        archived = read_people(saves / "autosave")["chat"]["archived_contacts"]
+        assert archived["engineer"] and not archived["jessica"], "Chat archive state did not persist"
         # Reveal maps only in the temporary test story; gameplay unlocks stay unchanged.
         opening = folder / "data" / "conversations" / "opening.toml"
         opening.write_text(opening.read_text().replace('id = "assist"',

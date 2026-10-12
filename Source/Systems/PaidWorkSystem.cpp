@@ -1,3 +1,4 @@
+// Module: Connect money tools to real process work, files, storage and host availability.
 #include "ai_sim/PaidWorkSystem.h"
 #include "ai_sim/EconomySystem.h"
 #include <algorithm>

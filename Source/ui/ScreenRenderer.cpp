@@ -1,3 +1,4 @@
+// Module: Own ncurses windows, pads and panels; stage one composed frame before presentation.
 #include "ai_sim/ui/ScreenRenderer.h"
 
 #include <ncurses.h>
@@ -47,6 +48,8 @@ struct ScreenRenderer::Impl {
     Surface root, overlay, header, body, footer, left, right;
     std::unordered_map<std::string, std::unique_ptr<Surface>> pads;
     int height = 0, width = 0, cursor_row = 0, cursor_column = 0;
+    int dialog_max_width = 92, dialog_max_height = 22;
+    bool layout_dirty = false;
     bool modal = false, colors = false, divided = false;
     WINDOW* active() const {
         return modal ? overlay.window : root.window;
@@ -82,8 +85,8 @@ struct ScreenRenderer::Impl {
         height = h;
         width = w;
         root.own(newwin(h, w, 0, 0), true);
-        const int dialog_height = std::max(1, std::min(h - (h >= 24 ? 8 : 4), 22));
-        const int dialog_width = std::max(1, std::min(w - 4, 92));
+        const int dialog_height = std::max(1, std::min(h - (h >= 24 ? 8 : 4), dialog_max_height));
+        const int dialog_width = std::max(1, std::min(w - 4, dialog_max_width));
         overlay.own(
             newwin(dialog_height, dialog_width, (h - dialog_height) / 2, (w - dialog_width) / 2),
             true);
@@ -108,12 +111,21 @@ ScreenRenderer::DialogLayout ScreenRenderer::dialog_layout() const {
 int ScreenRenderer::list_divider(int width) {
     return std::clamp(width / 3, 26, 36);
 }
+void ScreenRenderer::configure_dialog(int max_width, int max_height) {
+    auto& state = *impl_;
+    if (state.dialog_max_width != max_width || state.dialog_max_height != max_height) {
+        state.dialog_max_width = max_width;
+        state.dialog_max_height = max_height;
+        state.layout_dirty = true;
+    }
+}
 void ScreenRenderer::begin(bool modal, bool colors, bool repaint) {
     auto& s = *impl_;
     int h, w;
     getmaxyx(stdscr, h, w);
-    if (h != s.height || w != s.width)
+    if (h != s.height || w != s.width || s.layout_dirty)
         s.resize(h, w);
+    s.layout_dirty = false;
     s.modal = modal;
     s.colors = colors;
     s.divided = false;

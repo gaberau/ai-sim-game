@@ -1,3 +1,4 @@
+// Module: Authored review policy, review queues and consequences for outgoing messages.
 #include "ai_sim/MessageReviewSystem.h"
 #include "ai_sim/ConversationRules.h"
 #include "ai_sim/DefinitionLoader.h"

@@ -1,3 +1,5 @@
+// Module: Bridge mailbox commands and original-message panes used by email draft editing.
+#include "ai_sim/ui/TextLayout.h"
 #include "ai_sim/ui/TerminalUI.h"
 #include "ai_sim/ui/ScreenRenderer.h"
 #include "ai_sim/DelegationSystem.h"
@@ -10,30 +12,6 @@
 
 namespace ai_sim::ui {
 namespace {
-std::vector<std::string> wrap(const std::string& text, int width) {
-    std::vector<std::string> lines;
-    std::istringstream paragraphs(text);
-    std::string paragraph;
-    while (std::getline(paragraphs, paragraph)) {
-        std::istringstream words(paragraph);
-        std::string word, line;
-        while (words >> word) {
-            if (!line.empty() && line.size() + word.size() + 1 > static_cast<std::size_t>(width)) {
-                lines.push_back(line);
-                line.clear();
-            }
-            while (word.size() > static_cast<std::size_t>(width)) {
-                lines.push_back(word.substr(0, width));
-                word.erase(0, width);
-            }
-            if (!line.empty())
-                line += ' ';
-            line += word;
-        }
-        lines.push_back(line);
-    }
-    return lines;
-}
 void no_extra(std::istringstream& input) {
     std::string extra;
     if (input >> extra)
@@ -54,13 +32,6 @@ std::vector<Email> TerminalUI::filtered_emails() const {
     });
     return messages;
 }
-void TerminalUI::cycle_email_folder(int direction) {
-    editor_ui_.email_folder_ =
-        static_cast<EmailFolder>((static_cast<int>(editor_ui_.email_folder_) + direction + 4) % 4);
-    editor_ui_.selected_email_id_.clear();
-    editor_ui_.email_body_offset_ = 0;
-}
-
 Email TerminalUI::selected_email() {
     const auto messages = filtered_emails();
     if (messages.empty())
@@ -90,23 +61,6 @@ Email TerminalUI::selected_email() {
         editor_ui_.email_body_offset_ = 0;
     }
     return *found;
-}
-
-void TerminalUI::select_email(int direction) {
-    const auto messages = filtered_emails();
-    if (messages.empty())
-        return;
-    const auto found = std::find_if(messages.begin(), messages.end(), [&](const auto& email) {
-        return email.id == editor_ui_.selected_email_id_;
-    });
-    const int index = found == messages.end()
-                          ? 0
-                          : std::clamp(static_cast<int>(found - messages.begin()) + direction, 0,
-                                       static_cast<int>(messages.size()) - 1);
-    editor_ui_.selected_email_id_ = messages[index].id;
-    editor_ui_.email_body_offset_ = 0;
-    if (editor_ui_.email_folder_ != EmailFolder::Unread && !messages[index].archived)
-        EmailSystem::mark_read(emails_, editor_ui_.selected_email_id_, computer_.time_seconds());
 }
 
 void TerminalUI::edit_email(const std::string& id) {
@@ -333,7 +287,7 @@ void TerminalUI::draw_original_email(int top, int bottom, int column, int width)
         EmailSystem::message(emails_, editor_ui_.email_editor_id_, computer_.time_seconds());
     std::vector<std::string> lines;
     auto add = [&](const std::string& text) {
-        auto rows = wrap(text, std::max(1, width));
+        auto rows = wrap_text(text, std::max(1, width));
         lines.insert(lines.end(), rows.begin(), rows.end());
     };
     add("From: " + email.sender);

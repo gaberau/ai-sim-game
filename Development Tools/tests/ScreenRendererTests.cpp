@@ -68,6 +68,12 @@ int main() {
             check(cell(4, 5) == '5' && cell(height - 1, 1) == 'R',
                   "Resize lost viewport or footer");
         }
+        renderer.configure_dialog(60, 16);
+        renderer.begin(false, false, false);
+        renderer.begin(true, false, false);
+        check(renderer.dialog_layout().width == 60 && renderer.dialog_layout().height == 16,
+              "Configured dialog bounds ignored");
+        renderer.configure_dialog(92, 22);
         resizeterm(24, 80);
         renderer.begin(false, false, false);
         renderer.write(2, 3, "TABS", 0, false, false);

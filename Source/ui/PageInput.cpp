@@ -1,3 +1,4 @@
+// Module: Dispatch page-specific keys after RootUI consumes global navigation and modal input.
 #include "ai_sim/ui/TerminalUI.h"
 #include "ai_sim/AgentSystem.h"
 
@@ -5,6 +6,14 @@ namespace ai_sim::ui {
 // Existing gameplay actions are shared by the child-page adapters. RootUI handles
 // global keys first, so this dispatcher only receives keys for the active workspace.
 bool TerminalUI::handle_page_key(int key) {
+    if (selected_tab() == Tab::Chat && settings_.bound(KeyAction::ArchiveChat, key)) {
+        archive_current_chat();
+        return true;
+    }
+    if (selected_tab() == Tab::Chat && settings_.bound(KeyAction::ToggleArchivedChats, key)) {
+        toggle_archived_chats();
+        return true;
+    }
     if (settings_.bound(KeyAction::FocusLeft, key) || settings_.bound(KeyAction::FocusRight, key)) {
         const bool right = settings_.bound(KeyAction::FocusRight, key);
         if (selected_tab() == Tab::Chat)

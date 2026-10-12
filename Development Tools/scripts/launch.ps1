@@ -1,9 +1,12 @@
+# Launch the ncurses build from Windows via WSL and an independently owned WezTerm window.
+# RunOnly skips compilation; all paths are resolved from ProjectRoot, including paths with spaces.
 param(
     [Parameter(Mandatory = $true)][string]$ProjectRoot,
     [switch]$RunOnly
 )
 $ErrorActionPreference = 'Stop'
 
+# Prefer an explicit executable override, then search standard installation locations.
 function Find-WezTerm {
     if ($env:AI_SIM_WEZTERM) {
         if (-not (Test-Path -LiteralPath $env:AI_SIM_WEZTERM -PathType Leaf)) {

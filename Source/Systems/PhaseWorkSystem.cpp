@@ -1,3 +1,4 @@
+// Module: Phase-specific work and follow-ups scheduled against the simulated workday.
 #include "ai_sim/PhaseWorkSystem.h"
 #include "ai_sim/WorkRequestState.h"
 #include "ai_sim/ChatSystem.h"

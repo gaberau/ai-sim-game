@@ -40,9 +40,6 @@ struct Page final : UIPage {
         ++keys;
         return true;
     }
-    std::string controls(const UIContext&) const override {
-        return {};
-    }
 };
 } // namespace
 int main() {
@@ -89,7 +86,7 @@ int main() {
         root.draw();
         check(file->draws == 1 && hidden->draws == 0 && modal->draws == 0,
               "Root drew hidden or unopened page");
-        check(file->region.top == 4 && file->region.height == 23, "Workspace geometry incorrect");
+        check(file->region.top == 5 && file->region.height == 21, "Workspace geometry incorrect");
         check(root.open_overlay("dialog") && root.modal_active(), "Modal failed to acquire focus");
         root.handle_key('t');
         check(root.active_workspace() == "files", "Modal leaked global navigation");
@@ -101,7 +98,7 @@ int main() {
         check(!root.has_overlay(), "Overlay did not close");
         resizeterm(40, 120);
         root.draw();
-        check(file->region.height == 33 && file->region.width == 120 && file->selection == 7,
+        check(file->region.height == 31 && file->region.width == 120 && file->selection == 7,
               "Resize reset child state or geometry");
         auto actions = std::make_unique<Page>("menu");
         auto* inline_menu = actions.get();
@@ -114,7 +111,7 @@ int main() {
         root.handle_key('x');
         check(inline_menu->keys == 1, "Inline controls did not receive input");
         root.draw();
-        check(inline_menu->region.top == 4, "Inline controls were centered as a dialog");
+        check(inline_menu->region.top == 5, "Inline controls were centered as a dialog");
         root.handle_key('t');
         check(!root.has_overlay() && root.active_workspace() == "messages",
               "Tab did not dismiss inline controls");
@@ -133,6 +130,21 @@ int main() {
             duplicate = true;
         }
         check(duplicate, "Duplicate child accepted");
+        file->visible = true;
+        settings.page_order = {"files", "messages"};
+        root.activate_workspace("messages");
+        root.cycle_workspace(-1);
+        check(root.active_workspace() == "files", "Configured order did not govern navigation");
+        settings.hidden_pages = {"files"};
+        check(!root.activate_workspace("files"), "Hidden page remained activatable");
+        root.activate_workspace("messages");
+        settings.page_labels["messages"] = "Inbox";
+        settings.layout.workspace_top_gap = 2;
+        settings.layout.workspace_bottom_gap = 2;
+        root.draw();
+        check(chat->region.top == 6 && chat->region.height == 29,
+              "Configured margins did not change workspace");
+        check((mvwinch(curscr, 2, 5) & A_CHARTEXT) == 'I', "Configured tab title not rendered");
         root.handle_key('q');
         check(root.exit_requested(), "Root failed to route quit");
     } catch (const std::exception& e) {

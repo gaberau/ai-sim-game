@@ -1,3 +1,4 @@
+// Module: Resolve message-specific response actions against saved requests and conversations.
 #include "ai_sim/ChatResponses.h"
 #include "ai_sim/DefinitionLoader.h"
 #include "ai_sim/EmailSystem.h"

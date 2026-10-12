@@ -1,3 +1,4 @@
+// Verify: workday simulation. Fixtures isolate these behaviors from live player saves.
 #include "ai_sim/DefinitionLoader.h"
 #include "ai_sim/WorkdaySystem.h"
 #include "ai_sim/EmailSystem.h"

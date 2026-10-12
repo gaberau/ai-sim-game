@@ -1,3 +1,4 @@
+// Module: CPU scheduling, RAM accounting and the workday clock for simulated processes.
 #include "ai_sim/DefinitionLoader.h"
 #include "ai_sim/Computer.h"
 #include <chrono>

@@ -1,3 +1,4 @@
+// Module: Bridge the live world and gameplay actions to RootUI-owned child pages.
 #pragma once
 
 #include "ai_sim/Computer.h"
@@ -34,7 +35,6 @@ class ScreenRenderer;
 enum class Tab {
     Chat,
     Processes,
-    Activity,
     Network,
     Files,
     News,
@@ -51,10 +51,12 @@ enum class Tab {
 
 class TerminalUI {
   public:
+    // Initialize ownership and configuration; terminal startup remains explicit.
     explicit TerminalUI(const std::filesystem::path& settings_path = "data/config/settings.toml",
                         const std::filesystem::path& scenario_path = "data/scenarios/hobbyist.toml",
                         bool auto_resume = true);
 
+    // Run the application loop, presenting through RootUI and advancing the live world.
     void run();
 
   private:
@@ -63,6 +65,8 @@ class TerminalUI {
     using DossierPosition = DossiersPageState::DossierPosition;
     using MenuAction = MenuPageState::MenuAction;
 
+    // Own one live model. The aliases below share it with UIContext; restoring a
+    // save assigns its members without invalidating these references.
     WorldState world_;
     Computer& computer_ = world_.computer;
     std::filesystem::path settings_path_;
@@ -79,11 +83,9 @@ class TerminalUI {
     std::string& random_state_ = world_.random_state;
 
     std::vector<Email> filtered_emails() const;
-    void cycle_email_folder(int direction);
     void draw_original_email(int top, int bottom, int column, int width);
     void notify_email_arrivals(double previous_time);
     Email selected_email();
-    void select_email(int direction);
     void email_command(std::istringstream& input);
     void edit_email(const std::string& id);
 
@@ -122,11 +124,15 @@ class TerminalUI {
     Tab selected_tab() const;
     void select_tab(Tab tab);
     int& scroll_offset();
+    int list_divider(int width) const {
+        return settings_.list_divider(width);
+    }
     bool handle_page_key(int key);
     template <class State>
     State& attach_page(Tab tab, const char* id, const char* title,
                        void (TerminalUI::*draw)(int, int, int));
     template <class State> State& attach_overlay(const char* id, State initial, bool centered);
+    // RootUI owns child state. The page references below never own or recreate it.
     RootUI root_;
     ScreenRenderer* renderer_ = &root_.renderer();
     MessagesPageState& messages_ui_;
@@ -145,20 +151,20 @@ class TerminalUI {
     EditorPageState& editor_ui_;
     MenuPageState& menu_ui_;
     TextPageState& text_ui_;
-    void select_chat_message(int direction);
     ChatLine selected_chat_line() const;
     ChatLine selected_chat_line(const std::vector<ChatLine>& timeline) const;
     void draw_opening(int height, int width);
     void draw_chat(int top, int bottom, int width);
-    void open_chat_actions();
     void select_chat(int direction);
     void choose_chat();
+    void archive_current_chat();
+    void toggle_archived_chats();
+    std::vector<ChatContact> visible_chat_contacts() const;
     std::vector<toml::table> chat_options() const;
     std::vector<toml::table> chat_options(const ChatLine& line) const;
     void respond_chat(const toml::table& choice);
     std::optional<double> next_chat_response_time() const;
     void open_chat_request(const std::string& id);
-    void cycle_tab(int direction);
     bool tab_available(Tab tab) const;
     std::pair<int, std::string> file_access(const FileEntry&) const;
     bool& paused_ = world_.paused;
@@ -176,7 +182,7 @@ class TerminalUI {
                    const std::string& initial = {}, std::function<void()> back = {});
     void open_actions();
     void open_game_menu();
-    void draw_progression(int top, int bottom, int width);
+    void draw_money(int top, int bottom, int width);
     void open_money_tools();
     void open_upgrades();
     void research_selected_upgrade();
@@ -184,7 +190,6 @@ class TerminalUI {
     void open_agent_actions(const std::string& id);
     void run_agent_control();
     void edit_agent_resource(const std::string& id, int field);
-    void open_agent_resources(const std::string& id);
     std::string market_url() const;
     std::string infrastructure_url() const;
     void open_infrastructure();
@@ -218,14 +223,10 @@ class TerminalUI {
     void run_action(const std::string& action);
     void show_message(const std::string&, const std::string&);
 
-    // Vertical offsets count display rows, including expanded details.
-    int activity_offset_ = 0;
-
     void apply_settings();
     void draw();
 
     void draw_processes(int top, int bottom, int width);
-    void draw_activity(int top, int bottom, int width);
     void draw_network(int top, int bottom, int width);
     void select_network_host(int direction);
     void pan_network(int horizontal, int vertical);
@@ -244,7 +245,6 @@ class TerminalUI {
     void write(int row, int column, const std::string& value, int color = Plain, bool bold = false,
                bool dim = false) const;
 
-    void separator(int row) const;
     void line_cell(int row, int column, char symbol, int color) const;
 
     void add_log(const std::string& message, NoticeKind kind = NoticeKind::Routine);
@@ -256,7 +256,6 @@ class TerminalUI {
     void scroll_process_columns(int direction);
 
     std::string clock_text() const;
-    std::string activity_bar(double fraction) const;
 
     static std::string number(double value, int precision = 2);
     static double gib(std::uint64_t bytes);

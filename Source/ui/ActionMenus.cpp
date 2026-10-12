@@ -1,3 +1,5 @@
+// Module: Present contextual actions inline and retain dialogs for global menus and text entry.
+#include "ai_sim/ui/TextLayout.h"
 #include <ncurses.h>
 #include "ai_sim/EconomySystem.h"
 #include "ai_sim/UpgradeSystem.h"
@@ -21,10 +23,8 @@ std::string quoted(const std::string& value) {
     out << std::quoted(value);
     return out.str();
 }
-std::string fit(const std::string& value, int width) {
-    return value.size() <= static_cast<std::size_t>(std::max(0, width))
-               ? value
-               : value.substr(0, std::max(0, width - 3)) + "...";
+std::string fit(const std::string& text, int width) {
+    return fit_text(text, width, "...");
 }
 } // namespace
 void TerminalUI::run_action(const std::string& action) {
@@ -40,7 +40,7 @@ void TerminalUI::open_menu(const std::string& title, std::vector<MenuAction> act
           title.starts_with("Bind ") || title.starts_with("Color |") || title.starts_with("Save") ||
           title.starts_with("Load") || title.starts_with("Confirm") ||
           title.starts_with("Delete ") || title.find('?') != std::string::npos);
-    menu_ui_.menu_title_ = title;
+    menu_ui_.menu_title_ = settings_.menu_label(title);
     menu_ui_.menu_actions_ = std::move(actions);
     menu_ui_.menu_selected_ = menu_ui_.menu_offset_ = 0;
     menu_ui_.menu_back_ = std::move(back);
@@ -79,6 +79,7 @@ void TerminalUI::show_message(const std::string& title, const std::string& body)
     open_menu(title, std::move(lines));
 }
 void TerminalUI::draw_menu(int top, int bottom, int width) {
+    // Use the rendered page's divider rather than assume every page shares one width.
     const int origin = menu_ui_.inline_actions_ ? renderer_->pane_divider() + 1 : 0;
     width -= origin;
     const auto paint = [this, origin](int row, int column, const std::string& text, int color,
@@ -115,7 +116,7 @@ void TerminalUI::draw_menu(int top, int bottom, int width) {
         const bool selected = menu_ui_.menu_offset_ + i == menu_ui_.menu_selected_;
         const bool disabled = !action.disabled_reason.empty();
         paint(top + 3 + i, 2,
-              fit(std::string(selected ? "> " : "  ") + action.label +
+              fit(std::string(selected ? "> " : "  ") + settings_.menu_label(action.label) +
                       (disabled ? " [unavailable]" : ""),
                   width - 4),
               selected ? ActiveTab : Plain, selected, disabled);
@@ -651,7 +652,7 @@ void TerminalUI::open_actions() {
         return;
     }
     if (selected_tab() == Tab::Chat) {
-        open_chat_actions();
+        choose_chat();
         return;
     }
     if (selected_tab() == Tab::Files) {

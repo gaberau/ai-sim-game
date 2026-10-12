@@ -1,3 +1,4 @@
+// Module: Migrate legacy layouts using staged output and preserved original definitions.
 #include "ai_sim/DefinitionLoader.h"
 #include "ai_sim/SaveSystem.h"
 #include "ai_sim/TomlIO.h"

@@ -1,3 +1,4 @@
+// Module: Edit a working copy, validate writes on save and retain original email context.
 #include "ai_sim/ui/TerminalUI.h"
 #include "ai_sim/ui/ScreenRenderer.h"
 #include <algorithm>
@@ -162,7 +163,7 @@ void TerminalUI::draw_editor(int top, int bottom, int width) {
     int text_column = 2;
     int text_width = width - 4;
     if (editor_ui_.email_editor_) {
-        const int split = width / 2;
+        const int split = width * settings_.layout.email_editor_width_percent / 100;
         renderer_->split(top, bottom - 1, split);
         text_column = split + 2;
         text_width = width - split - 4;

@@ -1,3 +1,4 @@
+// Module: Typed character-state bounds and conditions/effects shared by authored conversations.
 #include "ai_sim/ConversationRules.h"
 #include "ai_sim/DefinitionLoader.h"
 #include <cmath>

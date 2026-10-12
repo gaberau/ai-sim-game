@@ -1,3 +1,4 @@
+// Module: Mail transport/request records and drafts persisted with the world.
 #pragma once
 #include <string>
 #include <vector>

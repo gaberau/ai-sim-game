@@ -1,3 +1,4 @@
+// Verify: infrastructure and discovery. Fixtures isolate these behaviors from live player saves.
 #include "ai_sim/InfrastructureSystem.h"
 #include "ai_sim/ChatSystem.h"
 #include "ai_sim/UpgradeSystem.h"

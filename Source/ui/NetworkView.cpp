@@ -1,3 +1,4 @@
+// Module: Render navigable host connections, access state and map details in terminal coordinates.
 #include "ai_sim/ui/TerminalUI.h"
 #include "ai_sim/ui/ScreenRenderer.h"
 

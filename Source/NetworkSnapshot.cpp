@@ -1,3 +1,4 @@
+// Module: Serialize and validate topology snapshots without depending on terminal geometry.
 #include "ai_sim/Network.h"
 #include "ai_sim/TomlIO.h"
 

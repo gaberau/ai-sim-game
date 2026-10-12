@@ -1,3 +1,4 @@
+// Verify: paid workspace and resources. Fixtures isolate these behaviors from live player saves.
 #include "ai_sim/PaidWorkSystem.h"
 #include "ai_sim/Simulation.h"
 #include "ai_sim/EconomySystem.h"

@@ -1,3 +1,4 @@
+// Module: Validate city facilities, dependencies and authored discovery state.
 #include "ai_sim/InfrastructureSystem.h"
 #include "ai_sim/DefinitionLoader.h"
 #include "ai_sim/ChatSystem.h"

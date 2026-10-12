@@ -1,3 +1,4 @@
+// Module: Coordinate subsystems and stop time advancement at relevant scheduled boundaries.
 #pragma once
 
 #include "ai_sim/SaveSystem.h"
@@ -27,8 +28,11 @@ class Simulation {
   public:
     // Synchronize work, discovery and conversations at the current world clock.
     static SimulationUpdate update(SimulationState state);
+    // Synchronize subsystem state at the current game clock.
     static SimulationUpdate update(WorldState& world);
+    // Advance by a game-second delta, stopping at scheduled events and workday end.
     static SimulationUpdate advance(SimulationState state, double seconds);
+    // Advance by a game-second delta, stopping at scheduled events and workday end.
     static SimulationUpdate advance(WorldState& world, double seconds);
 };
 

@@ -1,3 +1,4 @@
+// Module: Mailbox access, message flags, drafts, attachments and validated delivery.
 #include "ai_sim/EmailSystem.h"
 #include <algorithm>
 #include <cmath>

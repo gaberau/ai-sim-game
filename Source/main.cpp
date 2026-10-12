@@ -1,3 +1,4 @@
+// Module: Parse launch options, migrate legacy data when needed and start the terminal application.
 #include "ai_sim/Computer.h"
 #include "ai_sim/DefinitionLoader.h"
 #include "ai_sim/ui/TerminalUI.h"

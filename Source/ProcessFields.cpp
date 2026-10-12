@@ -1,3 +1,5 @@
+// Module: Expose typed live/scenario process fields to configurable views without mutating
+// processes.
 #include "ai_sim/ProcessFields.h"
 #include "ai_sim/Computer.h"
 

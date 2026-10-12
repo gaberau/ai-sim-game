@@ -1,3 +1,4 @@
+// Module: Validate process columns, filters, sorting and alignment from TOML.
 #pragma once
 
 #include <toml++/toml.hpp>
@@ -27,8 +28,10 @@ struct ProcessViewConfig {
     std::string filter_owner;
     std::string filter_state;
 
+    // Return the configured width or the field catalog default, in terminal columns.
     int width(const std::string& field) const;
 
+    // Read authored TOML definitions and reject malformed values.
     static ProcessViewConfig load(const toml::table& document);
 };
 

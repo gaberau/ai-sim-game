@@ -1,3 +1,4 @@
+// Module: Scheduling, rented compute, owned hosting and backup-based recovery.
 #include "ai_sim/OperationsSystem.h"
 #include "ai_sim/AgentSystem.h"
 #include "ai_sim/ChatSystem.h"
@@ -492,8 +493,12 @@ std::vector<std::string> OperationsSystem::advance(toml::table& people, Computer
                                                                     : tool->unavailable);
             continue;
         }
-        try { PaidWorkSystem::start(people, computer, files, network, id); }
-        catch (const std::exception& e) { job.insert_or_assign("blocked", e.what()); continue; }
+        try {
+            PaidWorkSystem::start(people, computer, files, network, id);
+        } catch (const std::exception& e) {
+            job.insert_or_assign("blocked", e.what());
+            continue;
+        }
         job.insert_or_assign("status", "active");
         job.erase("blocked");
         messages.push_back("Scheduler started " + tool->label);

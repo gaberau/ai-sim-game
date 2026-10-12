@@ -1,3 +1,4 @@
+// Verify: people and dossiers. Fixtures isolate these behaviors from live player saves.
 #include "ai_sim/PeopleSystem.h"
 #include "ai_sim/SaveSystem.h"
 #include "ai_sim/WorkdaySystem.h"

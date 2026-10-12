@@ -1,3 +1,4 @@
+// Module: Load and edit validated presentation settings, colors and configurable keybindings.
 #include "ai_sim/ui/UISettings.h"
 #include "ai_sim/TomlIO.h"
 #include <chrono>
@@ -12,6 +13,7 @@
 #include <unordered_map>
 #include <ncurses.h>
 #include <charconv>
+#include <cctype>
 
 namespace ai_sim::ui {
 namespace {
@@ -160,6 +162,14 @@ void load_keybindings(UISettings& settings, const toml::table& table) {
         const auto* entries = node ? node->as_array() : nullptr;
         // New UI actions default for older keybinding files without replacing them.
         toml::array defaults;
+        if (!node && action_name == "archive_chat") {
+            defaults.push_back("a");
+            entries = &defaults;
+        }
+        if (!node && action_name == "toggle_archived_chats") {
+            defaults.push_back("v");
+            entries = &defaults;
+        }
         if (!node && action_name == "game_menu") {
             defaults.push_back("F1");
             entries = &defaults;
@@ -245,6 +255,38 @@ void load_keybindings(UISettings& settings, const toml::table& table) {
 
 } // namespace
 
+bool UISettings::page_enabled(std::string_view id) const {
+    return std::find(hidden_pages.begin(), hidden_pages.end(), id) == hidden_pages.end();
+}
+std::string UISettings::page_title(std::string_view id, std::string_view fallback) const {
+    auto it = page_labels.find(std::string(id));
+    return it == page_labels.end() ? std::string(fallback) : it->second;
+}
+std::string UISettings::label(std::string_view key, std::string_view fallback) const {
+    auto it = labels.find(std::string(key));
+    return it == labels.end() ? std::string(fallback) : it->second;
+}
+std::string UISettings::menu_label(std::string_view text) const {
+    std::string key = "menu_";
+    bool separator = false;
+    for (unsigned char ch : text) {
+        if (std::isalnum(ch)) {
+            if (separator && key.size() > 5)
+                key += '_';
+            key += static_cast<char>(std::tolower(ch));
+            separator = false;
+        } else
+            separator = true;
+    }
+    return label(key, text);
+}
+int UISettings::list_divider(int width, bool operations) const {
+    return std::clamp(
+        width * (operations ? layout.operations_width_percent : layout.list_width_percent) / 100,
+        operations ? layout.operations_min_width : layout.list_min_width,
+        operations ? layout.operations_max_width : layout.list_max_width);
+}
+
 UISettings UISettings::load(const std::filesystem::path& path) {
     try {
         const auto data = toml::parse_file(path.string());
@@ -266,6 +308,126 @@ UISettings UISettings::load(const std::filesystem::path& path) {
         }
 
         UISettings settings;
+        const auto optional_table = [&](const char* name) -> const toml::table* {
+            const auto* node = data.get(name);
+            require(!node || node->is_table(), std::string(name) + ": expected table");
+            return node ? node->as_table() : nullptr;
+        };
+        if (const auto* layout = optional_table("layout")) {
+            struct Field {
+                const char* name;
+                int* value;
+                int low, high;
+            };
+            const Field fields[] = {
+                {"workspace_top_gap", &settings.layout.workspace_top_gap, 0, 4},
+                {"workspace_bottom_gap", &settings.layout.workspace_bottom_gap, 0, 4},
+                {"text_margin", &settings.layout.text_margin, 1, 4},
+                {"pane_padding", &settings.layout.pane_padding, 1, 5},
+                {"response_gap", &settings.layout.response_gap, 0, 3},
+                {"response_heading_gap", &settings.layout.response_heading_gap, 0, 3},
+                {"response_height_percent", &settings.layout.response_height_percent, 25, 70},
+                {"list_width_percent", &settings.layout.list_width_percent, 20, 60},
+                {"list_min_width", &settings.layout.list_min_width, 20, 60},
+                {"list_max_width", &settings.layout.list_max_width, 20, 100},
+                {"operations_width_percent", &settings.layout.operations_width_percent, 20, 60},
+                {"operations_min_width", &settings.layout.operations_min_width, 20, 60},
+                {"operations_max_width", &settings.layout.operations_max_width, 20, 100},
+                {"minimum_columns", &settings.layout.minimum_columns, 80, 240},
+                {"minimum_rows", &settings.layout.minimum_rows, 24, 80},
+                {"dialog_max_width", &settings.layout.dialog_max_width, 40, 180},
+                {"dialog_max_height", &settings.layout.dialog_max_height, 12, 50},
+                {"news_width_percent", &settings.layout.news_width_percent, 25, 60},
+                {"email_editor_width_percent", &settings.layout.email_editor_width_percent, 30,
+                 70}};
+            for (const auto& [name, node] : *layout) {
+                (void)node;
+                auto field = std::find_if(std::begin(fields), std::end(fields), [&](const auto& f) {
+                    return name.str() == f.name;
+                });
+                require(field != std::end(fields) && node.is_integer(),
+                        "layout." + std::string(name.str()) + ": unknown setting");
+                *field->value = integer_setting(*layout, field->name, field->low, field->high);
+            }
+            require(settings.layout.list_min_width <= settings.layout.list_max_width &&
+                        settings.layout.operations_min_width <=
+                            settings.layout.operations_max_width,
+                    "layout: minimum pane width exceeds maximum");
+            require(settings.layout.minimum_columns >=
+                            settings.layout.list_max_width + settings.layout.pane_padding + 30 &&
+                        settings.layout.minimum_columns >= settings.layout.operations_max_width +
+                                                               settings.layout.pane_padding + 30,
+                    "layout: terminal width cannot fit configured panes");
+            require(settings.layout.minimum_rows - settings.layout.workspace_top_gap -
+                            settings.layout.workspace_bottom_gap >=
+                        22,
+                    "layout: margins leave insufficient workspace height");
+        }
+        const auto known_page = [](std::string_view id) {
+            return std::find(WorkspaceIds.begin(), WorkspaceIds.end(), id) != WorkspaceIds.end();
+        };
+        if (const auto* pages = optional_table("pages")) {
+            for (const auto& [key, node] : *pages) {
+                (void)node;
+                require(key.str() == "order" || key.str() == "hidden" || key.str() == "labels",
+                        "pages: unknown setting " + std::string(key.str()));
+            }
+            for (const auto* key : {"order", "hidden"})
+                if (const auto* node = pages->get(key)) {
+                    const auto* array = node->as_array();
+                    require(array, std::string("pages.") + key + ": expected array");
+                    auto& target = std::string_view(key) == "order" ? settings.page_order
+                                                                    : settings.hidden_pages;
+                    for (const auto& item : *array) {
+                        const auto id = item.value<std::string>();
+                        require(id && known_page(*id),
+                                std::string("pages.") + key + ": unknown page ID");
+                        require(std::find(target.begin(), target.end(), *id) == target.end(),
+                                std::string("pages.") + key + ": duplicate page ID");
+                        target.push_back(*id);
+                    }
+                }
+            require(settings.page_enabled("messages"),
+                    "pages.hidden: Messages must remain available for progression");
+            if (const auto* node = pages->get("labels")) {
+                const auto* labels = node->as_table();
+                require(labels, "pages.labels: expected table");
+                for (const auto& [key, value] : *labels) {
+                    const auto title = value.value<std::string>();
+                    require(known_page(key.str()) && title && !title->empty() &&
+                                title->size() <= 24 &&
+                                title->find_first_of("\r\n\t") == std::string::npos,
+                            "pages.labels: invalid page ID or title");
+                    settings.page_labels.emplace(key.str(), *title);
+                }
+            }
+        }
+        if (const auto* chrome = optional_table("chrome")) {
+            const std::pair<std::string_view, bool*> fields[] = {
+                {"clock", &settings.show_clock},
+                {"resources", &settings.show_resources},
+                {"notifications", &settings.show_notifications},
+                {"controls", &settings.show_controls},
+                {"tabs", &settings.show_tabs}};
+            for (const auto& [key, node] : *chrome) {
+                auto field = std::find_if(std::begin(fields), std::end(fields), [&](const auto& f) {
+                    return f.first == key.str();
+                });
+                const auto value = node.value<bool>();
+                require(field != std::end(fields) && node.is_boolean() && value,
+                        "chrome: unknown setting or non-boolean value");
+                *field->second = *value;
+            }
+        }
+        if (const auto* labels = optional_table("labels")) {
+            for (const auto& [key, node] : *labels) {
+                const auto value = node.value<std::string>();
+                require(value && !value->empty() && value->size() <= 160 &&
+                            value->find_first_of("\r\n\t") == std::string::npos,
+                        "labels." + std::string(key.str()) + ": expected one nonempty line");
+                settings.labels.emplace(key.str(), *value);
+            }
+        }
 
         if (const auto* cursor = interface->get("software_cursor")) {
             const auto value = cursor->value<bool>();
@@ -318,7 +480,9 @@ UISettings UISettings::load(const std::filesystem::path& path) {
 
         settings.history_limit = integer_setting(*interface, "history_limit", 6, 10000);
 
-        settings.activity_bar_width = integer_setting(*interface, "activity_bar_width", 1, 32);
+        // Older settings files may still contain this retired Activity-page key.
+        if (interface->contains("activity_bar_width"))
+            (void)integer_setting(*interface, "activity_bar_width", 1, 32);
 
         for (const auto& [key, value] : *colors) {
             (void)value;

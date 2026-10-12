@@ -1,3 +1,4 @@
+// Module: Expose in-game stock quotes, portfolio actions and trade/order entry.
 #include "ai_sim/ui/TerminalUI.h"
 #include "ai_sim/StockMarketSystem.h"
 #include "ai_sim/EconomySystem.h"

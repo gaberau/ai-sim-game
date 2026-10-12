@@ -1,3 +1,4 @@
+// Module: Human-approved responsibility policies and automated handling of eligible routine work.
 #include "ai_sim/DelegationSystem.h"
 #include "ai_sim/DefinitionLoader.h"
 #include "ai_sim/EmailSystem.h"

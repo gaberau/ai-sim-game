@@ -1,3 +1,4 @@
+// Module: Connect money tools to real process work, files, storage and host availability.
 #pragma once
 #include "ai_sim/Computer.h"
 #include "ai_sim/FileSystem.h"
@@ -15,13 +16,16 @@ class PaidWorkSystem {
     // Release completed clients' resources or begin a product's next cycle.
     static void finish(toml::table& people, Computer& computer, FileSystem& files,
                        const Network& network);
+    // Release managed allocations associated with a paid workload.
     static void release_storage(toml::table& people, const Computer& computer, FileSystem& files,
                                 const Network& network, const std::string& id);
+    // Reject invalid subsystem state before it is used or restored.
     static void validate(const toml::table& people, const Computer& computer,
                          const FileSystem& files, const Network& network);
     // Membership only; filesystem access and availability are checked at deployment.
     static bool allows_deployment(const toml::table& people, const Network& network,
                                   const std::string& host);
+    // Report whether this subsystem currently has active work/state.
     static bool active(const toml::table& people);
 };
 } // namespace ai_sim

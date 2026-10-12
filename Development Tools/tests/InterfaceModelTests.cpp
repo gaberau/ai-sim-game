@@ -1,3 +1,5 @@
+// Verify: calendar categories and responses. Fixtures isolate these behaviors from live player
+// saves.
 #include "ai_sim/ChatResponses.h"
 #include "ai_sim/EmailSystem.h"
 #include "ai_sim/ConversationSystem.h"
