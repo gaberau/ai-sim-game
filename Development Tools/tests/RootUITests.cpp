@@ -58,6 +58,9 @@ int main() {
         settings.keybindings[static_cast<std::size_t>(KeyAction::NextTab)].codes = {'t'};
         settings.keybindings[static_cast<std::size_t>(KeyAction::Pause)].codes = {'p'};
         RootUI root(world, settings);
+        root.hooks.controls = [] {
+            return "CUSTOM SHORTCUTS";
+        };
         root.hooks.pause = [&world] {
             world.paused = !world.paused;
         };
@@ -86,7 +89,7 @@ int main() {
         root.draw();
         check(file->draws == 1 && hidden->draws == 0 && modal->draws == 0,
               "Root drew hidden or unopened page");
-        check(file->region.top == 5 && file->region.height == 21, "Workspace geometry incorrect");
+        check(file->region.top == 5 && file->region.height == 19, "Workspace geometry incorrect");
         check(root.open_overlay("dialog") && root.modal_active(), "Modal failed to acquire focus");
         root.handle_key('t');
         check(root.active_workspace() == "files", "Modal leaked global navigation");
@@ -94,11 +97,13 @@ int main() {
         check(modal->keys == 2 && file->keys == 1, "Modal input leaked to workspace");
         root.draw();
         check(modal->draws == 1 && file->draws == 2, "Modal lost background workspace");
+        check((mvwinch(curscr, 27, settings.layout.text_margin) & A_CHARTEXT) == 'C',
+              "Dialog swallowed the shared footer");
         root.close_overlay();
         check(!root.has_overlay(), "Overlay did not close");
         resizeterm(40, 120);
         root.draw();
-        check(file->region.height == 31 && file->region.width == 120 && file->selection == 7,
+        check(file->region.height == 29 && file->region.width == 120 && file->selection == 7,
               "Resize reset child state or geometry");
         auto actions = std::make_unique<Page>("menu");
         auto* inline_menu = actions.get();
@@ -142,7 +147,7 @@ int main() {
         settings.layout.workspace_top_gap = 2;
         settings.layout.workspace_bottom_gap = 2;
         root.draw();
-        check(chat->region.top == 6 && chat->region.height == 29,
+        check(chat->region.top == 6 && chat->region.height == 27,
               "Configured margins did not change workspace");
         check((mvwinch(curscr, 2, 5) & A_CHARTEXT) == 'I', "Configured tab title not rendered");
         root.handle_key('q');

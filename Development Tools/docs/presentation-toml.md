@@ -14,6 +14,10 @@ blank rows around the active page. `text_margin` controls primary text insets;
 to the world/map transform, and detailed map widths retain their existing
 `[interface]` preferences.
 
+`footer_context_rows` reserves one to three rows for contextual shortcuts below
+the feedback line. Global shortcuts occupy the final row. Startup title and
+menu captions use the `startup_*` entries in `[labels]`.
+
 Response gaps insert blank rows between choices; heading gap separates choices
 from their heading. `response_height_percent` controls the share of the chat
 pane reserved for choices. Long lists scroll to keep the selected response

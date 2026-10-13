@@ -1,6 +1,7 @@
 // Module: Bridge the live world and gameplay actions to RootUI-owned child pages.
 #include "ai_sim/ui/TerminalUI.h"
 #include "ai_sim/ui/ScreenRenderer.h"
+#include <cctype>
 #include "ai_sim/EconomySystem.h"
 #include "ai_sim/UpgradeSystem.h"
 #include "ai_sim/AgentSystem.h"
@@ -110,7 +111,18 @@ State& TerminalUI::attach_overlay(const char* id, State initial, bool centered) 
     page->label = id;
     page->centered = centered;
     page->overlay = true;
-    if constexpr (std::is_same_v<State, EditorPageState>) {
+    if constexpr (std::is_same_v<State, StartupPageState>) {
+        page->visible = [&state] {
+            return state.active_;
+        };
+        page->paint = [this](const UIRegion& r) {
+            draw_title_page(r.height, r.width);
+        };
+        page->input = [this](int key) {
+            handle_title_key(key);
+            return true;
+        };
+    } else if constexpr (std::is_same_v<State, EditorPageState>) {
         page->visible = [&state] {
             return state.editor_active_;
         };
@@ -175,10 +187,9 @@ State& TerminalUI::attach_overlay(const char* id, State initial, bool centered) 
 TerminalUI::TerminalUI(const std::filesystem::path& settings_path,
                        const std::filesystem::path& scenario_path, bool auto_resume)
     : settings_path_(settings_path), settings_(UISettings::load(settings_path)),
-      definitions_(ScenarioDefinition::load(scenario_path)), scenario_path_(scenario_path),
-      saves_(settings_.save_directory), root_(world_, settings_),
-      messages_ui_(
-          attach_page<MessagesPageState>(Tab::Chat, "messages", "Chat", &TerminalUI::draw_chat)),
+      scenario_path_(scenario_path), saves_(settings_.save_directory), show_title_(auto_resume),
+      root_(world_, settings_), messages_ui_(attach_page<MessagesPageState>(
+                                    Tab::Chat, "messages", "Chat", &TerminalUI::draw_chat)),
       processes_ui_(attach_page<ProcessesPageState>(Tab::Processes, "processes", "Processes",
                                                     &TerminalUI::draw_processes)),
       network_ui_(attach_page<NetworkPageState>(Tab::Network, "network", "Network",
@@ -198,20 +209,36 @@ TerminalUI::TerminalUI(const std::filesystem::path& settings_path,
           Tab::Modifications, "modifications", "Modifications", &TerminalUI::draw_modifications)),
       operations_ui_(attach_page<OperationsPageState>(Tab::Operations, "operations", "Operations",
                                                       &TerminalUI::draw_operations)),
+      startup_ui_(attach_overlay("title", StartupPageState{}, false)),
       editor_ui_(attach_overlay("editor", EditorPageState{}, false)),
       menu_ui_(attach_overlay("menu", MenuPageState{}, true)),
       text_ui_(attach_overlay("text", TextPageState{}, true)) {
+    root_.hooks.reset_controls = [this] {
+        footer_controls_.clear();
+    };
+    root_.hooks.controls = [this] {
+        std::string result;
+        for (const auto& text : footer_controls_) {
+            if (!result.empty())
+                result += " | ";
+            result += text;
+        }
+        return result;
+    };
     root_.hooks.clock = [this] {
         return clock_text();
     };
     root_.hooks.menu = [this] {
-        open_game_menu();
+        if (startup_ui_.active_)
+            open_settings();
+        else
+            open_game_menu();
     };
     root_.hooks.help = [this] {
         open_context_help();
     };
     root_.hooks.pause = [this] {
-        if (!computer_.day_finished()) {
+        if (world_loaded_ && !computer_.day_finished()) {
             paused_ = !paused_;
             add_log(paused_ ? "Paused." : "Resumed.");
         }
@@ -225,16 +252,85 @@ TerminalUI::TerminalUI(const std::filesystem::path& settings_path,
             draw_news_ticker(0, col, width - col - 1);
         }
     };
+}
 
-    load_news();
-    auto world = auto_resume && saves_.exists("autosave") ? saves_.load("autosave")
-                                                          : SaveSystem::new_game(scenario_path_);
+void TerminalUI::start_world(bool resume) {
+    root_.draw_loading(resume ? "Restoring saved game" : "Creating world");
+    auto world = resume ? saves_.load("autosave") : SaveSystem::new_game(scenario_path_);
     if (!definitions_.workday.empty())
         DelegationSystem::install(world, definitions_.workday.parent_path() / "delegation.toml");
-    ChatSystem::install(
-        world, definitions_.people.parent_path().parent_path() / "conversations/opening.toml",
-        false);
     restore_world(std::move(world));
+}
+void TerminalUI::controls(const std::string& text) const {
+    if (!text.empty() &&
+        std::find(footer_controls_.begin(), footer_controls_.end(), text) == footer_controls_.end())
+        footer_controls_.push_back(text);
+}
+void TerminalUI::draw_title_page(int rows, int width) {
+    startup_ui_.has_resume_ = saves_.exists("autosave");
+    const auto title = settings_.label("startup_title", "AI SIM");
+    const int top = std::max(2, rows / 2 - 5), left = std::max(2, (width - 24) / 2);
+    write(top, std::max(0, (width - static_cast<int>(title.size())) / 2), title, Heading, true);
+    const std::string labels[] = {
+        settings_.label("startup_resume", "Resume game"),
+        settings_.label("startup_load", "Load game"), settings_.label("startup_new", "New game"),
+        settings_.label("startup_settings", "Settings"), settings_.label("startup_quit", "Quit")};
+    for (int i = 0; i < 5; ++i)
+        write(top + 2 + i, left,
+              std::string(i == startup_ui_.selected_ ? "> " : "  ") + labels[i] +
+                  (i == 0 && !startup_ui_.has_resume_ ? " (unavailable)" : ""),
+              i == startup_ui_.selected_ ? ActiveTab : Plain, i == startup_ui_.selected_,
+              i == 0 && !startup_ui_.has_resume_);
+    controls(settings_.binding_label(KeyAction::SelectPrevious) + "/" +
+             settings_.binding_label(KeyAction::SelectNext) + ": select | " +
+             settings_.binding_label(KeyAction::Submit) + ": choose | Esc: quit");
+}
+void TerminalUI::handle_title_key(int key) {
+    if (key == 27 || settings_.bound(KeyAction::Quit, key)) {
+        quit_requested_ = true;
+        return;
+    }
+    if (settings_.bound(KeyAction::GameMenu, key)) {
+        open_settings();
+        return;
+    }
+    if (navigation_bound(KeyAction::SelectPrevious, key))
+        startup_ui_.selected_ = std::max(0, startup_ui_.selected_ - 1);
+    else if (navigation_bound(KeyAction::SelectNext, key))
+        startup_ui_.selected_ = std::min(4, startup_ui_.selected_ + 1);
+    else if (settings_.bound(KeyAction::Submit, key)) {
+        switch (startup_ui_.selected_) {
+        case 0:
+            if (startup_ui_.has_resume_)
+                start_world(true);
+            else
+                add_log("No autosave available", NoticeKind::Error);
+            break;
+        case 1:
+            open_save_menu(true);
+            break;
+        case 2:
+            if (startup_ui_.has_resume_)
+                open_menu("Start a new game?", {{"Cancel",
+                                                 [] {
+                                                 },
+                                                 {}},
+                                                {"New game",
+                                                 [this] {
+                                                     start_world(false);
+                                                 },
+                                                 {}}});
+            else
+                start_world(false);
+            break;
+        case 3:
+            open_settings();
+            break;
+        case 4:
+            quit_requested_ = true;
+            break;
+        }
+    }
 }
 
 Tab TerminalUI::selected_tab() const {
@@ -393,6 +489,8 @@ void TerminalUI::restore_world(WorldState world) {
     web_ui_.browser_address_ = "about:home";
     web_ui_.web_selected_ = web_ui_.web_offset_ = 0;
     select_tab(Tab::Chat);
+    world_loaded_ = true;
+    startup_ui_.active_ = false;
     messages_ui_.show_archived_ = false;
     messages_ui_.chat_contact_id_ = "engineer";
     messages_ui_.chat_contacts_focused_ = false;
@@ -439,6 +537,24 @@ std::string TerminalUI::clock_text() const {
 
 void TerminalUI::write(int row, int column, const std::string& value, int color, bool bold,
                        bool dim) const {
+    // Views may emit contextual shortcuts with Footer styling. Collect them
+    // centrally so dialog-local coordinates never scatter shortcuts through content.
+    if (color == Footer) {
+        bool hint = value.find("Press a key") != std::string::npos ||
+                    value.find("Up/Down:") != std::string::npos ||
+                    value.find("Escape:") != std::string::npos;
+        for (const auto& binding : settings_.keybindings)
+            for (const auto& label : binding.labels) {
+                auto offset = value.find(label + ":");
+                if (offset != std::string::npos &&
+                    (offset == 0 || !std::isalnum(static_cast<unsigned char>(value[offset - 1]))))
+                    hint = true;
+            }
+        if (hint) {
+            controls(value);
+            return;
+        }
+    }
     renderer_->write(row, column, value, color, bold, dim);
 }
 
@@ -478,6 +594,7 @@ void TerminalUI::add_log(const std::string& message, NoticeKind kind) {
 }
 
 void TerminalUI::draw() {
+    footer_controls_.clear();
     root_.draw();
 }
 
@@ -657,6 +774,7 @@ bool TerminalUI::execute(const std::string& line) {
             saves_.save(slot, capture_world());
             add_log("Saved slot: " + slot, NoticeKind::Success);
         } else {
+            root_.draw_loading("Loading saved game");
             auto restored = saves_.load(slot);
             restore_world(std::move(restored));
             paused_ = true;
@@ -833,24 +951,32 @@ void TerminalUI::toggle_pane_focus() {
 void TerminalUI::run() {
     root_.start_session();
     apply_settings();
+    root_.draw_loading("Loading definitions");
+    definitions_ = ScenarioDefinition::load(scenario_path_);
+    load_news();
+    startup_ui_.has_resume_ = saves_.exists("autosave");
+    startup_ui_.selected_ = startup_ui_.has_resume_ ? 0 : 2;
+    if (!show_title_)
+        start_world(false);
 
     using WallClock = std::chrono::steady_clock;
     auto previous = WallClock::now();
 
     bool end_reported = false;
 
-    if (!ChatSystem::connected(people_))
+    if (!world_loaded_)
+        add_log("Choose a game to begin.");
+    else if (!ChatSystem::connected(people_))
         add_log("Engineer connected locally. Choose a response.");
     else
-        add_log("World ready at " + clock_text() + ". " +
-                settings_.binding_label(KeyAction::Pause) + ": pause/resume; " +
-                settings_.binding_label(KeyAction::NextTab) + ": next tab.");
+        add_log("World ready at " + clock_text() + ".");
 
     while (!root_.exit_requested() && !quit_requested_) {
-        update_people();
+        if (world_loaded_)
+            update_people();
         draw();
 
-        const bool modal_was_active = root_.modal_active();
+        const bool modal_was_active = root_.modal_active() || startup_ui_.active_;
         const int key = root_.renderer().input(settings_.refresh_milliseconds);
         const auto now = WallClock::now();
 
@@ -858,7 +984,7 @@ void TerminalUI::run() {
 
         previous = now;
 
-        if (!modal_was_active && !paused_ && !ShutdownSystem::active(people_) &&
+        if (world_loaded_ && !modal_was_active && !paused_ && !ShutdownSystem::active(people_) &&
             ChatSystem::connected(people_) && !computer_.day_finished()) {
             const auto before = computer_.time_seconds();
             advance_time(elapsed * computer_.playback_speed());
@@ -868,12 +994,15 @@ void TerminalUI::run() {
         if (key != ERR && key != KEY_RESIZE) {
             try {
                 root_.handle_key(key);
+                previous = WallClock::now();
 
             } catch (const std::exception& error) {
                 add_log(std::string("Error: ") + error.what(), NoticeKind::Error);
             }
         }
 
+        if (!world_loaded_)
+            continue;
         if (!computer_.day_finished())
             end_reported = false;
         if (computer_.day_finished() && !end_reported) {
@@ -882,7 +1011,7 @@ void TerminalUI::run() {
             add_log("Workday ended. Open the game menu to start the next day or save.");
         }
     }
-    if (settings_.autosave_on_quit && !quit_requested_)
+    if (world_loaded_ && settings_.autosave_on_quit && !quit_requested_)
         saves_.save("autosave", capture_world());
 }
 

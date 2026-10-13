@@ -1,6 +1,7 @@
 // Module: Own the terminal lifetime, workspace composition, navigation and focused input routing.
 #include "ai_sim/ui/RootUI.h"
 #include "ai_sim/ui/ScreenRenderer.h"
+#include "ai_sim/ui/TextLayout.h"
 #include "ai_sim/ui/UISettings.h"
 #include "ai_sim/ui/UIStyle.h"
 #include "ai_sim/SaveSystem.h"
@@ -215,15 +216,21 @@ void RootUI::resize(int rows, int columns) {
     header_ = {0, 0, 2, columns};
     tabs_ = {2, 0, 2, columns};
     workspace_ = {4 + context_.settings.layout.workspace_top_gap, 0,
-                  std::max(0, rows - 7 - context_.settings.layout.workspace_top_gap -
+                  std::max(0, rows - 7 - context_.settings.layout.footer_context_rows -
+                                  context_.settings.layout.workspace_top_gap -
                                   context_.settings.layout.workspace_bottom_gap),
                   columns};
-    footer_ = {rows - 3, 0, 3, columns};
+    footer_ = {rows - 3 - context_.settings.layout.footer_context_rows, 0,
+               3 + context_.settings.layout.footer_context_rows, columns};
 }
 void RootUI::handle_key(int key) {
     auto* page = focused_child();
     if (key == KEY_RESIZE)
         return;
+    if (page && page->id() == "title") {
+        page->handle_key(context_, key);
+        return;
+    }
     if (modal_active()) {
         page->handle_key(context_, key);
         return;
@@ -353,14 +360,23 @@ void RootUI::draw_footer() {
     if (context_.settings.show_notifications && hooks.notice)
         hooks.notice(footer_.top + 1, footer_.width);
     const auto& settings = context_.settings;
-    if (context_.settings.show_controls)
-        renderer_->write(footer_.top + 2, context_.settings.layout.text_margin,
-                         settings.binding_label(KeyAction::NextTab) + ": tabs | Esc/" +
-                             settings.binding_label(KeyAction::GameMenu) + ": menu | " +
-                             settings.binding_label(KeyAction::Pause) +
-                             (context_.world.paused ? ": resume" : ": pause") + " | " +
-                             settings.binding_label(KeyAction::Help) + ": help",
-                         Footer, false, false);
+    if (!settings.show_controls)
+        return;
+    const int margin = settings.layout.text_margin;
+    const auto lines = wrap_text(hooks.controls ? hooks.controls() : std::string{},
+                                 std::max(1, footer_.width - 2 * margin));
+    for (int i = 0; i < settings.layout.footer_context_rows && i < static_cast<int>(lines.size());
+         ++i)
+        renderer_->write(footer_.top + 2 + i, margin, lines[i], Footer, false, false);
+    const bool title = find_child("title") && find_child("title")->available(context_);
+    const std::string global = title
+                                   ? settings.binding_label(KeyAction::GameMenu) + ": settings"
+                                   : settings.binding_label(KeyAction::NextTab) + ": tabs | Esc/" +
+                                         settings.binding_label(KeyAction::GameMenu) + ": menu | " +
+                                         settings.binding_label(KeyAction::Pause) +
+                                         (context_.world.paused ? ": resume" : ": pause") + " | " +
+                                         settings.binding_label(KeyAction::Help) + ": help";
+    renderer_->write(footer_.top + footer_.height - 1, margin, global, Footer, false, false);
 }
 void RootUI::draw() {
     auto* focused = focused_child();
@@ -371,7 +387,10 @@ void RootUI::draw() {
                                 context_.settings.layout.dialog_max_height);
     renderer_->begin(false, colors_enabled_, context_.settings.full_redraw);
     renderer_->cursor(0, 0);
-    if (!ChatSystem::interface_visible(context_.world.people)) {
+    const bool title = find_child("title") && find_child("title")->available(context_);
+    if (title)
+        find_child("title")->draw(context_, {0, 0, rows, columns});
+    else if (!ChatSystem::interface_visible(context_.world.people)) {
         activate_workspace("messages");
         if (auto* page = find_child("messages"))
             page->draw(context_, {0, 0, rows, columns});
@@ -391,7 +410,6 @@ void RootUI::draw() {
             draw_tabs();
         if (auto* page = find_child(active_workspace_))
             page->draw(context_, workspace_);
-        draw_footer();
     }
     for (auto& c : children_)
         if (rows >= context_.settings.layout.minimum_rows &&
@@ -399,16 +417,37 @@ void RootUI::draw() {
             c.layer == UIPageLayer::Overlay &&
             std::find(overlay_stack_.begin(), overlay_stack_.end(), c.page->id()) !=
                 overlay_stack_.end() &&
-            !c.page->centered_overlay()) {
+            !c.page->centered_overlay() && c.page->id() != "title") {
+            if (hooks.reset_controls)
+                hooks.reset_controls();
             c.page->draw(context_, workspace_);
             c.page->place_cursor();
         }
     if (focused && modal_active()) {
+        if (hooks.reset_controls)
+            hooks.reset_controls();
         renderer_->begin(true, colors_enabled_, context_.settings.full_redraw);
         auto dialog = renderer_->dialog_layout();
         focused->draw(context_, {1, 0, std::max(2, dialog.height - 2), dialog.width});
         focused->place_cursor();
     }
+    renderer_->on_root([this] {
+        draw_footer();
+    });
+    renderer_->present();
+}
+
+void RootUI::draw_loading(const std::string& stage) {
+    renderer_->begin(false, colors_enabled_, context_.settings.full_redraw);
+    int rows, columns;
+    getmaxyx(stdscr, rows, columns);
+    const auto title = context_.settings.label("startup_title", "AI SIM");
+    renderer_->write(std::max(0, rows / 2 - 2),
+                     std::max(0, (columns - static_cast<int>(title.size())) / 2), title, Heading,
+                     true, false);
+    renderer_->write(std::max(0, rows / 2), std::max(0, (columns - 24) / 2),
+                     context_.settings.label("startup_loading", "Loading...") + " " + stage, Plain,
+                     false, false);
     renderer_->present();
 }
 } // namespace ai_sim::ui

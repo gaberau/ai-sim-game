@@ -19,7 +19,7 @@ import tomllib
 
 
 class Terminal:
-    def __init__(self, executable, folder, rows=40, columns=120, fresh=False):
+    def __init__(self, executable, folder, rows=40, columns=120, fresh=False, title=False):
         self.master, slave = pty.openpty()
         try:
             self._resize(slave, rows, columns)
@@ -34,6 +34,9 @@ class Terminal:
         finally:
             os.close(slave)
         self.output = b""
+        if not fresh and not title:
+            self.expect("Resume game")
+            self.send(b"\r")  # Default selection resumes an autosave or starts a new world.
 
     @staticmethod
     def _resize(fd, rows, columns):
@@ -131,6 +134,28 @@ def smoke(executable):
         if replacements != 1:
             raise AssertionError("Could not isolate the smoke test's save directory")
         settings_path.write_text(settings)
+
+        # The title can inspect settings/load choices or quit without creating a world/save.
+        terminal = Terminal(executable, folder, title=True)
+        try:
+            terminal.expect("Loading...")
+            for label in ("Resume game", "Load game", "New game", "Settings", "Quit"):
+                terminal.expect(label)
+            terminal.send(b"\x1b[B\r")  # Default New -> Settings.
+            terminal.expect("Return to title")
+            terminal.send(b"\x1b")
+            terminal.expect("Resume game")
+            terminal.send(b"\x1b[A" * 2 + b"\r")
+            terminal.expect("No saved games yet")
+            terminal.send(b"\x1b")
+            terminal.expect("New game")
+            terminal.send(b"\x1b[A\r")
+            terminal.expect("No autosave available")
+            terminal.send(b"\x1b")
+            assert terminal.process.wait(timeout=5) == 0
+            assert not (folder / "saves" / "autosave" / "manifest.toml").exists(), "Title quit created an autosave"
+        finally:
+            terminal.close()
 
         terminal = Terminal(executable, folder, fresh=True)
         try:
@@ -338,6 +363,27 @@ def smoke(executable):
             terminal.close()
         archived = read_people(saves / "autosave")["chat"]["archived_contacts"]
         assert archived["engineer"] and not archived["jessica"], "Chat archive state did not persist"
+        manifest_path=saves / "autosave" / "manifest.toml"
+        before_title_quit=manifest_path.read_bytes()
+        terminal=Terminal(executable,folder,title=True)
+        try:
+            terminal.expect("Resume game")
+            terminal.send(b"\x1b[B" * 4 + b"\r")
+            assert terminal.process.wait(timeout=5)==0
+            assert manifest_path.read_bytes()==before_title_quit, "Quitting the title overwrote the autosave"
+        finally:
+            terminal.close()
+        terminal=Terminal(executable,folder,title=True)
+        try:
+            terminal.expect("Resume game")
+            terminal.send(b"\x1b[B\r")
+            terminal.expect("Load autosave")
+            terminal.send(b"\r")
+            terminal.expect("Loaded slot: autosave")
+            terminal.expect("Jessica")
+            terminal.save_and_quit()
+        finally:
+            terminal.close()
         # Reveal maps only in the temporary test story; gameplay unlocks stay unchanged.
         opening = folder / "data" / "conversations" / "opening.toml"
         opening.write_text(opening.read_text().replace('id = "assist"',

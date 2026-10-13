@@ -2,6 +2,7 @@
 #pragma once
 
 #include <memory>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -33,6 +34,8 @@ class ScreenRenderer {
     int pane_divider() const;
     // Choose the frame target and reset its buffered content without physical refresh.
     // Update dialog bounds; surfaces are recreated on the next frame when needed.
+    // Stage screen-wide chrome while preserving a focused dialog and its cursor.
+    void on_root(const std::function<void()>& draw);
     void configure_dialog(int max_width, int max_height);
     void begin(bool modal, bool colors, bool repaint);
     // Create/update shared-buffer left/right panes for the supplied row bounds.

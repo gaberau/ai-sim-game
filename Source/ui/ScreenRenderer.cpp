@@ -111,6 +111,18 @@ ScreenRenderer::DialogLayout ScreenRenderer::dialog_layout() const {
 int ScreenRenderer::list_divider(int width) {
     return std::clamp(width / 3, 26, 36);
 }
+void ScreenRenderer::on_root(const std::function<void()>& draw) {
+    auto& state = *impl_;
+    const bool modal = state.modal;
+    state.modal = false;
+    try {
+        draw();
+    } catch (...) {
+        state.modal = modal;
+        throw;
+    }
+    state.modal = modal;
+}
 void ScreenRenderer::configure_dialog(int max_width, int max_height) {
     auto& state = *impl_;
     if (state.dialog_max_width != max_width || state.dialog_max_height != max_height) {

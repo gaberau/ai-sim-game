@@ -98,13 +98,15 @@ void TerminalUI::draw_menu(int top, int bottom, int width) {
               std::to_string(menu_ui_.menu_selected_ + 1) + " / " +
                   std::to_string(menu_ui_.menu_actions_.size()),
               Footer);
-    paint(top + 1, 1,
-          settings_.binding_label(KeyAction::SelectPrevious) + "/" +
-              settings_.binding_label(KeyAction::SelectNext) + ": select | " +
-              settings_.binding_label(KeyAction::Submit) + ": apply | " +
-              settings_.binding_label(KeyAction::Back) + ": back",
-          Footer);
-    const int visible = std::max(1, bottom - top - 5);
+    const bool actionable =
+        !menu_ui_.menu_actions_.empty() &&
+        static_cast<bool>(menu_ui_.menu_actions_[menu_ui_.menu_selected_].invoke);
+    controls(settings_.binding_label(KeyAction::SelectPrevious) + "/" +
+             settings_.binding_label(KeyAction::SelectNext) +
+             (actionable ? ": select | " + settings_.binding_label(KeyAction::Submit) + ": apply"
+                         : ": scroll") +
+             " | " + settings_.binding_label(KeyAction::Back) + ": back");
+    const int visible = std::max(1, bottom - top - 4);
     if (menu_ui_.menu_selected_ < menu_ui_.menu_offset_)
         menu_ui_.menu_offset_ = menu_ui_.menu_selected_;
     if (menu_ui_.menu_selected_ >= menu_ui_.menu_offset_ + visible)
@@ -121,8 +123,6 @@ void TerminalUI::draw_menu(int top, int bottom, int width) {
                   width - 4),
               selected ? ActiveTab : Plain, selected, disabled);
     }
-    if (!menu_ui_.inline_actions_)
-        draw_notification(bottom - 2, width);
     if (!menu_ui_.menu_actions_.empty()) {
         const auto& selected = menu_ui_.menu_actions_[menu_ui_.menu_selected_];
         const auto hint = !selected.disabled_reason.empty() ? selected.disabled_reason
@@ -149,7 +149,6 @@ void TerminalUI::draw_text_dialog(int top, int bottom, int width) {
                      ? text_ui_.text_value_.substr(text_ui_.text_value_.size() - length)
                      : text_ui_.text_value_),
           Prompt);
-    draw_notification(bottom - 1, width);
     write(bottom, 1,
           (text_ui_.key_capture_active_
                ? "Press a key | Escape: cancel"
@@ -216,7 +215,10 @@ void TerminalUI::handle_modal_key(int key) {
     }
     if (settings_.bound(KeyAction::GameMenu, key)) {
         menu_ui_.menu_active_ = text_ui_.text_active_ = false;
-        open_game_menu();
+        if (startup_ui_.active_)
+            open_settings();
+        else
+            open_game_menu();
         return;
     }
     if (text_ui_.text_active_) {
@@ -338,7 +340,8 @@ void TerminalUI::open_save_menu(bool loading) {
     if (choices.empty())
         choices.push_back({"No saved games yet", {}, "Save your game first."});
     open_menu(loading ? "Load game" : "Save game", std::move(choices), [this] {
-        open_game_menu();
+        if (!startup_ui_.active_)
+            open_game_menu();
     });
 }
 void TerminalUI::open_game_menu() {

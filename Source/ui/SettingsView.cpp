@@ -70,13 +70,14 @@ void TerminalUI::open_settings() {
                        open_settings();
                    },
                    {}},
-                  {"Return to game",
+                  {startup_ui_.active_ ? "Return to title" : "Return to game",
                    [] {
                    },
                    {}},
               },
               [this] {
-                  open_game_menu();
+                  if (!startup_ui_.active_)
+                      open_game_menu();
               });
 }
 
@@ -139,7 +140,7 @@ void TerminalUI::open_settings_section(const std::string& section, bool editing_
                                  [this, section, key, literal] {
                                      open_text(
                                          "Press a key for " + key,
-                                         "Escape cancels. A successful capture replaces this "
+                                         "A successful capture replaces this "
                                          "action's keys.",
                                          [this, section, key](const std::string& value) {
                                              apply_settings_edit(section, key, true, value);
@@ -243,7 +244,8 @@ void TerminalUI::open_context_help() {
             lines.push_back({line, {}, {}});
     };
     auto control = [&](KeyAction action, const std::string& text) {
-        explain(settings_.binding_label(action) + ": " + text);
+        (void)action;
+        explain(text);
     };
     std::string title = "Help";
     if (editor_ui_.editor_active_) {
@@ -352,9 +354,9 @@ void TerminalUI::open_context_help() {
         control(KeyAction::NextTab, "next unlocked screen");
         control(KeyAction::Pause, "pause or resume simulation time");
     }
-    explain("Escape: back; Escape or F1 during play: game menu.");
+
     control(KeyAction::GameMenu, "open the game menu, including settings and help");
-    lines.push_back({"Return to game",
+    lines.push_back({startup_ui_.active_ ? "Return to title" : "Return to game",
                      [] {
                      },
                      {}});

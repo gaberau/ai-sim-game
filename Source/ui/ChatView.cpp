@@ -448,6 +448,22 @@ void TerminalUI::draw_chat(int top, int bottom, int width) {
                   "]",
               Footer);
     }
+    if (!local) {
+        if (!contacts.empty())
+            write(bottom - 2, settings_.layout.text_margin,
+                  "[" +
+                      (messages_ui_.show_archived_ ? settings_.label("chat_restore", "Restore")
+                                                   : settings_.label("chat_archive", "Archive")) +
+                      "]",
+                  Plain);
+        write(bottom - 1, settings_.layout.text_margin,
+              "[" +
+                  (messages_ui_.show_archived_
+                       ? settings_.label("chat_active_list", "Active chats")
+                       : settings_.label("chat_archived_list", "Archived chats")) +
+                  "]",
+              Plain);
+    }
     const auto contact = std::find_if(contacts.begin(), contacts.end(), [this](const auto& c) {
         return c.id == messages_ui_.chat_contact_id_;
     });

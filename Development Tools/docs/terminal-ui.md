@@ -31,9 +31,18 @@ and agent details wrap and scroll independently of selection. The persistent
 tab strip hides locked tabs and keeps the selected tab visible when the whole
 strip cannot fit. The retired Activity page is removed; resource details unlock with process access.
 
+Startup renders a loading screen while definitions are read, then a root-owned
+title child with Resume game, Load game, New game, Settings and Quit. World
+creation or restoration is deferred until the player chooses a game. Resume is
+unavailable without an autosave; quitting from the title never writes one.
+Explicit `--new` and custom-scenario launches bypass the title.
+
 The header shows the clock and a short resource summary; the news ticker appears
 on the news view. The footer separates contextual actions from the short global
-navigation hint. The default palette uses neutral text and borders, reserving
+navigation hint. All shortcut instructions live here, including focused-dialog
+controls; the footer is composed after overlays so it stays visible.
+`layout.footer_context_rows` sets the number of wrapped contextual hint rows.
+The default palette uses neutral text and borders, reserving
 strong colors for selection and warnings; saved color settings remain editable.
 
 Chat history, file previews, and editor drafts use bounded

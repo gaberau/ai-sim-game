@@ -335,6 +335,7 @@ UISettings UISettings::load(const std::filesystem::path& path) {
                 {"operations_max_width", &settings.layout.operations_max_width, 20, 100},
                 {"minimum_columns", &settings.layout.minimum_columns, 80, 240},
                 {"minimum_rows", &settings.layout.minimum_rows, 24, 80},
+                {"footer_context_rows", &settings.layout.footer_context_rows, 1, 3},
                 {"dialog_max_width", &settings.layout.dialog_max_width, 40, 180},
                 {"dialog_max_height", &settings.layout.dialog_max_height, 12, 50},
                 {"news_width_percent", &settings.layout.news_width_percent, 25, 60},
@@ -359,8 +360,9 @@ UISettings UISettings::load(const std::filesystem::path& path) {
                                                                settings.layout.pane_padding + 30,
                     "layout: terminal width cannot fit configured panes");
             require(settings.layout.minimum_rows - settings.layout.workspace_top_gap -
-                            settings.layout.workspace_bottom_gap >=
-                        22,
+                            settings.layout.workspace_bottom_gap -
+                            settings.layout.footer_context_rows >=
+                        20,
                     "layout: margins leave insufficient workspace height");
         }
         const auto known_page = [](std::string_view id) {

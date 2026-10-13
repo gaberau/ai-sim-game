@@ -29,6 +29,12 @@ cmake --build build -j2
 CMake fetches toml++ v3.4.0 at a pinned commit. Ncurses and its panel library are
 the only interface dependencies. Build outputs and saves are ignored by Git.
 
+Normal startup shows a loading screen, then the title menu: **Resume game**,
+**Load game**, **New game**, **Settings**, and **Quit**. Resume uses the autosave;
+Load lets you select a saved slot. Quitting from the title does not change saves.
+Use `./build/ai_sim --new` to start a fresh game directly. Shortcut hints appear
+in the shared footer, including while menus and dialogs are open.
+
 ## Repository layout
 
 - `Source/`: C++ implementations and terminal screens; `Source/Systems/` contains gameplay systems.

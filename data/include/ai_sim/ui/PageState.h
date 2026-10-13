@@ -9,6 +9,11 @@
 
 namespace ai_sim::ui {
 // These state objects live inside RootUI's child pages. They survive navigation/resizing.
+// Startup owns menu selection only; world loading stays in the application bridge.
+struct StartupPageState {
+    bool active_ = true, has_resume_ = false;
+    int selected_ = 0;
+};
 // Contact selection, archive-list focus and response/history viewport state. Archive flags
 // themselves live in the saved world.
 struct MessagesPageState {

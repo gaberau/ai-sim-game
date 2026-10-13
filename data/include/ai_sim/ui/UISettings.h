@@ -101,6 +101,7 @@ struct UILayout {
     int minimum_columns = 80, minimum_rows = 24;
     int dialog_max_width = 92, dialog_max_height = 22;
     int news_width_percent = 40, email_editor_width_percent = 50;
+    int footer_context_rows = 2;
 };
 inline constexpr std::array<std::string_view, 13> WorkspaceIds = {
     "messages", "processes", "network", "files", "news",          "ai",        "dossiers",

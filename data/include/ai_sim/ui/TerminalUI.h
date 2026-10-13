@@ -133,6 +133,12 @@ class TerminalUI {
                        void (TerminalUI::*draw)(int, int, int));
     template <class State> State& attach_overlay(const char* id, State initial, bool centered);
     // RootUI owns child state. The page references below never own or recreate it.
+    bool show_title_ = true, world_loaded_ = false;
+    mutable std::vector<std::string> footer_controls_;
+    void draw_title_page(int rows, int width);
+    void handle_title_key(int key);
+    void start_world(bool resume);
+    void controls(const std::string& text) const;
     RootUI root_;
     ScreenRenderer* renderer_ = &root_.renderer();
     MessagesPageState& messages_ui_;
@@ -148,6 +154,7 @@ class TerminalUI {
     ScrollPageState& money_ui_;
     ModificationsPageState& modifications_ui_;
     OperationsPageState& operations_ui_;
+    StartupPageState& startup_ui_;
     EditorPageState& editor_ui_;
     MenuPageState& menu_ui_;
     TextPageState& text_ui_;

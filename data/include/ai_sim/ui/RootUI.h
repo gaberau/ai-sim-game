@@ -87,11 +87,14 @@ class RootUI final {
     // Gameplay callbacks are borrowed from TerminalUI; these never own model state.
     struct Hooks {
         std::function<std::string()> clock;
-        std::function<void()> menu, help, pause;
+        std::function<void()> menu, help, pause, reset_controls;
+        std::function<std::string()> controls;
         std::function<void(int, int)> notice, header;
     } hooks;
     // Initialize ncurses once; the root closes it after owned surfaces are destroyed.
     void start_session();
+    // Present actual startup work before constructing/loading a world.
+    void draw_loading(const std::string& stage);
     // Apply the current palette, cursor preference and terminal input timeout.
     void apply_settings();
     // Report whether ncurses initialized enough configured color pairs.
